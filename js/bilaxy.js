@@ -97,7 +97,6 @@ module.exports = class bilaxy extends Exchange {
             };
             let active = true;
             this.bilaxySymbols[symbol] = market['symbol'];
-            this.bilaxySymbolsReversed[market['symbol']] = symbol;
             let entry = {
                 'id': id,
                 'symbol': symbol,
@@ -129,11 +128,11 @@ module.exports = class bilaxy extends Exchange {
     }
 
     getBilaxySymbol (symbol) {
-        if (this.bilaxySymbolsReversed === undefined) {
+        if (this.bilaxySymbols === undefined) {
             throw new ExchangeError (this.id + ' markets not loaded');
         }
-        if ((typeof symbol === 'string') && (symbol in this.bilaxySymbolsReversed)) {
-            return this.bilaxySymbolsReversed[symbol];
+        if ((typeof symbol === 'string') && (symbol in this.bilaxySymbols)) {
+            return this.bilaxySymbols[symbol];
         }
         throw new ExchangeError (this.id + ' does not have market symbol ' + symbol);
     }
@@ -214,8 +213,30 @@ module.exports = class bilaxy extends Exchange {
         return await this.parseTickers (rawTickers['data'], symbols);
     }
 
-    // sign (path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
-    //     // TODO: implement
-    // }
-
+    sign (path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
+        let url = this.urls['api'][api];
+        url += '/' + path;
+        if (api === 'public') {
+            if (Object.keys (params).length)
+                url += '?' + this.urlencode (params);
+        } else {
+            this.checkRequiredCredentials ();
+            let signature = this.urlencode (this.keysort (this.extend ({
+                'key': this.apiKey,
+                'secret': this.secret,
+            }, params)));
+            signature = this.hash (this.encode (signature), 'sha1');
+            let query = this.urlencode (this.keysort (this.extend ({
+                'key': this.apiKey,
+            }, params)));
+            query += '&' + 'sign=' + signature;
+            if (method === 'GET') {
+                url += '?' + query;
+            } else {
+                body = query;
+                headers['Content-Type'] = 'application/x-www-form-urlencoded';
+            }
+        }
+        return { 'url': url, 'method': method, 'body': body, 'headers': headers };
+    }
 };
