@@ -217,7 +217,7 @@ module.exports = class idex extends Exchange {
             let quote = ids[0].toUpperCase ();
             let symbol = base + '/' + quote;
             let market = this.market (symbol);
-            tickers.push (this.parseTicker (symbol, rawTickers[symbol], market));
+            tickers.push (this.parseTicker (symbol, rawTickers[id], market));
         }
         return this.filterByArray (tickers, 'symbol', symbols);
     }
