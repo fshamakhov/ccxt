@@ -337,6 +337,7 @@ declare module 'ccxt' {
     export class bequant extends hitbtc2 {}
     export class bibox extends Exchange {}
     export class bigone extends Exchange {}
+    export class bilaxy extends Exchange {}
     export class binance extends Exchange {}
     export class binanceje extends binance {}
     export class bit2c extends Exchange {}
@@ -419,6 +420,7 @@ declare module 'ccxt' {
     export class huobipro extends Exchange {}
     export class huobiru extends huobipro {}
     export class ice3x extends Exchange {}
+    export class idex extends Exchange {}
     export class independentreserve extends Exchange {}
     export class indodax extends Exchange {}
     export class itbit extends Exchange {}
