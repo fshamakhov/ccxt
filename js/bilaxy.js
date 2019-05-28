@@ -145,7 +145,7 @@ module.exports = class bilaxy extends Exchange {
         for (let i = 0; i < keys.length; i++) {
             let id = keys[i];
             if (this.bilaxySymbols[id] === symbol) {
-                return i;
+                return id;
             }
         }
         throw new ExchangeError (this.id + ' does not have market symbol');
