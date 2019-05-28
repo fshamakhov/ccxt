@@ -211,7 +211,11 @@ module.exports = class idex extends Exchange {
         let keys = Object.keys (rawTickers);
         let tickers = [];
         for (let i = 0; i < keys.length; i++) {
-            let symbol = keys[i];
+            let id = keys[i];
+            let ids = id.split ('_');
+            let base = ids[1].toUpperCase ();
+            let quote = ids[0].toUpperCase ();
+            let symbol = base + '/' + quote;
             let market = this.market (symbol);
             tickers.push (this.parseTicker (symbol, rawTickers[symbol], market));
         }
