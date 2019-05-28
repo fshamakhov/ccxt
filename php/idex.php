@@ -212,10 +212,14 @@ class idex extends Exchange {
         $this->load_markets();
         $keys = is_array ($rawTickers) ? array_keys ($rawTickers) : array ();
         $tickers = array ();
-        for ($i = 0; $i < count ($symbols); $i++) {
-            $symbol = $keys[$i];
+        for ($i = 0; $i < count ($keys); $i++) {
+            $id = $keys[$i];
+            $ids = explode ('_', $id);
+            $base = strtoupper ($ids[1]);
+            $quote = strtoupper ($ids[0]);
+            $symbol = $base . '/' . $quote;
             $market = $this->market ($symbol);
-            $tickers[] = $this->parse_ticker($symbol, $rawTickers[$symbol], $market);
+            $tickers[] = $this->parse_ticker($symbol, $rawTickers[$id], $market);
         }
         return $this->filter_by_array($tickers, 'symbol', $symbols);
     }

@@ -146,7 +146,7 @@ class bilaxy extends Exchange {
         for ($i = 0; $i < count ($keys); $i++) {
             $id = $keys[$i];
             if ($this->bilaxySymbols[$id] === $symbol) {
-                return $i;
+                return $id;
             }
         }
         throw new ExchangeError ($this->id . ' does not have market symbol');

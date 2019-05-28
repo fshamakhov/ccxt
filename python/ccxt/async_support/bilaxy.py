@@ -146,7 +146,7 @@ class bilaxy (Exchange):
         for i in range(0, len(keys)):
             id = keys[i]
             if self.bilaxySymbols[id] == symbol:
-                return i
+                return id
         raise ExchangeError(self.id + ' does not have market symbol')
 
     async def fetch_order_book(self, symbol, limit=None, params={}):

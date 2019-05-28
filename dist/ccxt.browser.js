@@ -7537,7 +7537,7 @@ module.exports = class bilaxy extends Exchange {
         for (let i = 0; i < keys.length; i++) {
             let id = keys[i];
             if (this.bilaxySymbols[id] === symbol) {
-                return i;
+                return id;
             }
         }
         throw new ExchangeError (this.id + ' does not have market symbol');
@@ -48536,10 +48536,14 @@ module.exports = class idex extends Exchange {
         await this.loadMarkets ();
         let keys = Object.keys (rawTickers);
         let tickers = [];
-        for (let i = 0; i < symbols.length; i++) {
-            let symbol = keys[i];
+        for (let i = 0; i < keys.length; i++) {
+            let id = keys[i];
+            let ids = id.split ('_');
+            let base = ids[1].toUpperCase ();
+            let quote = ids[0].toUpperCase ();
+            let symbol = base + '/' + quote;
             let market = this.market (symbol);
-            tickers.push (this.parseTicker (symbol, rawTickers[symbol], market));
+            tickers.push (this.parseTicker (symbol, rawTickers[id], market));
         }
         return this.filterByArray (tickers, 'symbol', symbols);
     }

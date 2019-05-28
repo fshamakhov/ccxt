@@ -203,10 +203,14 @@ class idex (Exchange):
         self.load_markets()
         keys = list(rawTickers.keys())
         tickers = []
-        for i in range(0, len(symbols)):
-            symbol = keys[i]
+        for i in range(0, len(keys)):
+            id = keys[i]
+            ids = id.split('_')
+            base = ids[1].upper()
+            quote = ids[0].upper()
+            symbol = base + '/' + quote
             market = self.market(symbol)
-            tickers.append(self.parse_ticker(symbol, rawTickers[symbol], market))
+            tickers.append(self.parse_ticker(symbol, rawTickers[id], market))
         return self.filter_by_array(tickers, 'symbol', symbols)
 
     def fetch_tickers(self, symbols=None, params={}):
