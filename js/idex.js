@@ -2,8 +2,8 @@
 
 //  ---------------------------------------------------------------------------
 
+const { ExchangeError } = require ('./base/errors');
 const Exchange = require ('./base/Exchange');
-
 //  ---------------------------------------------------------------------------
 
 module.exports = class idex extends Exchange {
@@ -21,7 +21,7 @@ module.exports = class idex extends Exchange {
                 'fetchOHLCV': false,
                 'fetchMyTrades': false,
                 'fetchOrder': true,
-                'fetchOrders': true,
+                'fetchOrders': false,
                 'fetchOpenOrders': true,
                 'fetchClosedOrders': true,
                 'withdraw': false,
@@ -94,7 +94,80 @@ module.exports = class idex extends Exchange {
                 },
             },
             'idexContractAddress': undefined,
+            'currencyAddresses': undefined,
         });
+    }
+
+    getCurrency (currency = '') {
+        if (currency in this.currencyAddresses) {
+            return this.currencyAddresses[currency];
+        }
+        throw new ExchangeError ('Exchange ' + this.id + 'currency ' + currency + ' not found');
+    }
+
+    async fetchMarkets (params = {}) {
+        this.currencyAddresses = await this.publicGetReturnCurrencies ();
+        let response = await this.publicGetReturnTicker ();
+        let symbols = Object.keys (response);
+        let result = [];
+        for (let i = 0; i < symbols.length; i++) {
+            let id = symbols[i];
+            let market = response[id];
+            let ids = id.split ('_');
+            let baseId = ids[0].toUpperCase ();
+            let quoteId = ids[1].toUpperCase ();
+            let baseCurrency = this.getCurrency (baseId);
+            let quoteCurrency = this.getCurrency (quoteId);
+            let base = this.commonCurrencyCode (baseId);
+            let quote = this.commonCurrencyCode (quoteId);
+            let symbol = base + '/' + quote;
+            let precision = {
+                'base': baseCurrency['decimals'],
+                'quote': quoteCurrency['decimals'],
+            };
+            let active = true;
+            let entry = {
+                'id': id,
+                'symbol': symbol,
+                'base': base,
+                'quote': quote,
+                'baseId': baseId,
+                'quoteId': quoteId,
+                'info': market,
+                'active': active,
+                'precision': precision,
+                'limits': {
+                    'amount': {
+                        'min': undefined,
+                        'max': undefined,
+                    },
+                    'price': {
+                        'min': undefined,
+                        'max': undefined,
+                    },
+                    'cost': {
+                        'min': 0.15,
+                        'max': undefined,
+                    },
+                },
+            };
+            result.push (entry);
+        }
+        return result;
+    }
+
+    async fetchOrderBook (symbol, limit = undefined, params = {}) {
+        if (limit === undefined) {
+            limit = 100;
+        }
+        await this.loadMarkets ();
+        let market = this.market (symbol);
+        let request = {
+            'market': market['id'],
+            'count': limit,
+        };
+        let order_book = await this.publicGetReturnOrderBook (request);
+        return this.parseOrderBook (order_book, undefined, 'bids', 'asks', 'price', 'amount');
     }
 
     sign (path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
@@ -105,12 +178,10 @@ module.exports = class idex extends Exchange {
                 url += '?' + this.urlencode (params);
         } else {
             headers['Content-Type'] = 'application/json';
-            if (api === 'public') {
-                body = this.json (params);
-            } else {
+            if (api !== 'public') {
                 this.checkRequiredCredentials ();
-                // TODO: sign private request
             }
+            body = this.json (params);
         }
         return { 'url': url, 'method': method, 'body': body, 'headers': headers };
     }
