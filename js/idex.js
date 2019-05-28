@@ -210,7 +210,7 @@ module.exports = class idex extends Exchange {
         await this.loadMarkets ();
         let keys = Object.keys (rawTickers);
         let tickers = [];
-        for (let i = 0; i < symbols.length; i++) {
+        for (let i = 0; i < keys.length; i++) {
             let symbol = keys[i];
             let market = this.market (symbol);
             tickers.push (this.parseTicker (symbol, rawTickers[symbol], market));
