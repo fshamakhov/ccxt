@@ -106,7 +106,7 @@ module.exports = class idex extends Exchange {
     }
 
     async fetchMarkets (params = {}) {
-        this.currencyAddresses = await this.publicGetReturnCurrencies ();
+        this.currencyAddresses = await this.publicGetReturnCurrencies (params);
         let response = await this.publicGetReturnTicker ();
         let symbols = Object.keys (response);
         let result = [];
@@ -114,8 +114,8 @@ module.exports = class idex extends Exchange {
             let id = symbols[i];
             let market = response[id];
             let ids = id.split ('_');
-            let baseId = ids[0].toUpperCase ();
-            let quoteId = ids[1].toUpperCase ();
+            let baseId = ids[1].toUpperCase ();
+            let quoteId = ids[0].toUpperCase ();
             let baseCurrency = this.getCurrency (baseId);
             let quoteCurrency = this.getCurrency (quoteId);
             let base = this.commonCurrencyCode (baseId);
@@ -166,8 +166,62 @@ module.exports = class idex extends Exchange {
             'market': market['id'],
             'count': limit,
         };
-        let order_book = await this.publicGetReturnOrderBook (request);
+        let order_book = await this.publicGetReturnOrderBook (this.extend (request, params));
         return this.parseOrderBook (order_book, undefined, 'bids', 'asks', 'price', 'amount');
+    }
+
+    parseTicker (symbol, ticker, market = undefined) {
+        let last = this.safeFloat (ticker, 'last');
+        return {
+            'symbol': symbol,
+            'timestamp': undefined,
+            'datetime': undefined,
+            'high': this.safeFloat (ticker, 'high'),
+            'low': this.safeFloat (ticker, 'low'),
+            'bid': this.safeFloat (ticker, 'highestBid'),
+            'bidVolume': undefined,
+            'ask': this.safeFloat (ticker, 'lowestAsk'),
+            'askVolume': undefined,
+            'vwap': undefined,
+            'open': undefined,
+            'close': last,
+            'last': last,
+            'previousClose': undefined,
+            'change': undefined,
+            'percentage': this.safeFloat (ticker, 'percentChange'),
+            'average': undefined,
+            'baseVolume': this.safeFloat (ticker, 'baseVolume'),
+            'quoteVolume': this.safeFloat (ticker, 'quoteVolume'),
+            'info': ticker,
+        };
+    }
+
+    async fetchTicker (symbol, params = {}) {
+        await this.loadMarkets ();
+        let market = this.market (symbol);
+        let request = {
+            'market': market['id'],
+        };
+        let response = await this.publicGetReturnTicker (this.extend (request, params));
+        return this.parseTicker (symbol, response, market);
+    }
+
+    async parseTickers (rawTickers, symbols = undefined) {
+        await this.loadMarkets ();
+        let keys = Object.keys (rawTickers);
+        let tickers = [];
+        for (let i = 0; i < symbols.length; i++) {
+            let symbol = keys[i];
+            let market = this.market (symbol);
+            tickers.push (this.parseTicker (symbol, rawTickers[symbol], market));
+        }
+        return this.filterByArray (tickers, 'symbol', symbols);
+    }
+
+    async fetchTickers (symbols = undefined, params = {}) {
+        await this.loadMarkets ();
+        let rawTickers = await this.publicGetReturnTicker (params);
+        return await this.parseTickers (rawTickers, symbols);
     }
 
     sign (path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
