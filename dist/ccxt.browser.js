@@ -7579,7 +7579,7 @@ module.exports = class bilaxy extends Exchange {
     }
 
     async fetchTicker (symbol, params = {}) {
-        let bilaxy_symbol = await this.getBilaxySymbol (symbol);
+        let bilaxy_symbol = this.getBilaxySymbol (symbol);
         let response = await this.publicGetTicker (this.extend ({
             'symbol': bilaxy_symbol,
         }, params));

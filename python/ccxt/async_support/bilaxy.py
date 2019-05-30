@@ -183,7 +183,7 @@ class bilaxy (Exchange):
         }
 
     async def fetch_ticker(self, symbol, params={}):
-        bilaxy_symbol = await self.get_bilaxy_symbol(symbol)
+        bilaxy_symbol = self.get_bilaxy_symbol(symbol)
         response = await self.publicGetTicker(self.extend({
             'symbol': bilaxy_symbol,
         }, params))
