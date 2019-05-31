@@ -22,7 +22,7 @@
 
 # ----------------------------------------------------------------------------
 
-__version__ = '1.18.584'
+__version__ = '1.18.594'
 
 # ----------------------------------------------------------------------------
 
@@ -133,7 +133,6 @@ from ccxt.coolcoin import coolcoin                          # noqa: F401
 from ccxt.coss import coss                                  # noqa: F401
 from ccxt.crex24 import crex24                              # noqa: F401
 from ccxt.crypton import crypton                            # noqa: F401
-from ccxt.cryptopia import cryptopia                        # noqa: F401
 from ccxt.deribit import deribit                            # noqa: F401
 from ccxt.dsx import dsx                                    # noqa: F401
 from ccxt.dx import dx                                      # noqa: F401
@@ -274,7 +273,6 @@ exchanges = [
     'coss',
     'crex24',
     'crypton',
-    'cryptopia',
     'deribit',
     'dsx',
     'dx',
