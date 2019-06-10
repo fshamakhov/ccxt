@@ -101,23 +101,23 @@ class idex extends Exchange {
     }
 
     public function get_currency ($currency = '') {
-        if (is_array ($this->currencyAddresses) && array_key_exists ($currency, $this->currencyAddresses)) {
+        if (is_array($this->currencyAddresses) && array_key_exists($currency, $this->currencyAddresses)) {
             return $this->currencyAddresses[$currency];
         }
-        throw new ExchangeError ('Exchange ' . $this->id . 'currency ' . $currency . ' not found');
+        throw new ExchangeError('Exchange ' . $this->id . 'currency ' . $currency . ' not found');
     }
 
     public function fetch_markets ($params = array ()) {
         $this->currencyAddresses = $this->publicGetReturnCurrencies ($params);
         $response = $this->publicGetReturnTicker ();
-        $symbols = is_array ($response) ? array_keys ($response) : array ();
-        $result = array ();
+        $symbols = is_array($response) ? array_keys($response) : array();
+        $result = array();
         for ($i = 0; $i < count ($symbols); $i++) {
             $id = $symbols[$i];
             $market = $response[$id];
-            $ids = explode ('_', $id);
-            $baseId = strtoupper ($ids[1]);
-            $quoteId = strtoupper ($ids[0]);
+            $ids = explode('_', $id);
+            $baseId = strtoupper($ids[1]);
+            $quoteId = strtoupper($ids[0]);
             $baseCurrency = $this->get_currency ($baseId);
             $quoteCurrency = $this->get_currency ($quoteId);
             $base = $this->common_currency_code($baseId);
@@ -210,13 +210,13 @@ class idex extends Exchange {
 
     public function parse_tickers ($rawTickers, $symbols = null) {
         $this->load_markets();
-        $keys = is_array ($rawTickers) ? array_keys ($rawTickers) : array ();
-        $tickers = array ();
+        $keys = is_array($rawTickers) ? array_keys($rawTickers) : array();
+        $tickers = array();
         for ($i = 0; $i < count ($keys); $i++) {
             $id = $keys[$i];
-            $ids = explode ('_', $id);
-            $base = strtoupper ($ids[1]);
-            $quote = strtoupper ($ids[0]);
+            $ids = explode('_', $id);
+            $base = strtoupper($ids[1]);
+            $quote = strtoupper($ids[0]);
             $symbol = $base . '/' . $quote;
             $market = $this->market ($symbol);
             $tickers[] = $this->parse_ticker($symbol, $rawTickers[$id], $market);
@@ -243,6 +243,6 @@ class idex extends Exchange {
             }
             $body = $this->json ($params);
         }
-        return array ( 'url' => $url, 'method' => $method, 'body' => $body, 'headers' => $headers );
+        return array( 'url' => $url, 'method' => $method, 'body' => $body, 'headers' => $headers );
     }
 }

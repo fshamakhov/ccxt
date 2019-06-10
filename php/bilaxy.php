@@ -39,6 +39,7 @@ class bilaxy extends Exchange {
                     'public' => 'https://api.bilaxy.com/v1',
                     'private' => 'https://api.bilaxy.com/v1',
                     'v1' => 'https://api.bilaxy.com/v1',
+                    'v2' => 'https://bilaxy.com/api/v2',
                 ),
                 'www' => 'https://bilaxy.com',
                 'doc' => 'https://bilaxy.com/api',
@@ -65,6 +66,13 @@ class bilaxy extends Exchange {
                         'trade',
                     ),
                 ),
+                'v2' => array (
+                    'get' => array (
+                        'market/depth',
+                        'market/coins',
+                        'market/orders',
+                    ),
+                ),
             ),
             'fees' => array (
                 'trading' => array (
@@ -74,14 +82,14 @@ class bilaxy extends Exchange {
                     'maker' => 0.0015,
                 ),
             ),
-            'bilaxySymbols' => array (),
+            'bilaxySymbols' => array(),
         ));
     }
 
     public function fetch_markets ($params = array ()) {
         $response = $this->publicGetCoins ();
         $markets = $response['data'];
-        $result = array ();
+        $result = array();
         for ($i = 0; $i < count ($markets); $i++) {
             $market = $markets[$i];
             $id = $market['name'] . $market['group'];
@@ -130,26 +138,26 @@ class bilaxy extends Exchange {
 
     public function get_bilaxy_symbol ($symbol) {
         if ($this->bilaxySymbols === null) {
-            throw new ExchangeError ($this->id . ' markets not loaded');
+            throw new ExchangeError($this->id . ' markets not loaded');
         }
-        if ((gettype ($symbol) === 'string') && (is_array ($this->bilaxySymbols) && array_key_exists ($symbol, $this->bilaxySymbols))) {
+        if ((gettype ($symbol) === 'string') && (is_array($this->bilaxySymbols) && array_key_exists($symbol, $this->bilaxySymbols))) {
             return $this->bilaxySymbols[$symbol];
         }
-        throw new ExchangeError ($this->id . ' does not have market $symbol ' . $symbol);
+        throw new ExchangeError($this->id . ' does not have market $symbol ' . $symbol);
     }
 
     public function get_symbol_from_bilaxy ($symbol) {
         if ($this->bilaxySymbols === null) {
-            throw new ExchangeError ($this->id . ' markets not loaded');
+            throw new ExchangeError($this->id . ' markets not loaded');
         }
-        $keys = is_array ($this->bilaxySymbols) ? array_keys ($this->bilaxySymbols) : array ();
+        $keys = is_array($this->bilaxySymbols) ? array_keys($this->bilaxySymbols) : array();
         for ($i = 0; $i < count ($keys); $i++) {
             $id = $keys[$i];
             if ($this->bilaxySymbols[$id] === $symbol) {
                 return $id;
             }
         }
-        throw new ExchangeError ($this->id . ' does not have market symbol');
+        throw new ExchangeError($this->id . ' does not have market symbol');
     }
 
     public function fetch_order_book ($symbol, $limit = null, $params = array ()) {
@@ -199,7 +207,7 @@ class bilaxy extends Exchange {
 
     public function parse_tickers ($rawTickers, $symbols = null) {
         $this->load_markets();
-        $tickers = array ();
+        $tickers = array();
         for ($i = 0; $i < count ($rawTickers); $i++) {
             $symbol = $this->get_symbol_from_bilaxy ($rawTickers[$i]['symbol']);
             $market = $this->market ($symbol);
@@ -217,9 +225,11 @@ class bilaxy extends Exchange {
     public function sign ($path, $api = 'public', $method = 'GET', $params = array (), $headers = null, $body = null) {
         $url = $this->urls['api'][$api];
         $url .= '/' . $path;
-        if ($api === 'public') {
+        if (($api === 'public') || ($api === 'v2')) {
             if ($params)
                 $url .= '?' . $this->urlencode ($params);
+            if ($api === 'v2')
+                $headers = array( 'accept' => 'application/json' );
         } else {
             $this->check_required_credentials();
             $signature = $this->urlencode ($this->keysort (array_merge (array (
@@ -235,9 +245,9 @@ class bilaxy extends Exchange {
                 $url .= '?' . $query;
             } else {
                 $body = $query;
-                $headers['Content-Type'] = 'application/x-www-form-urlencoded';
+                $headers = array( 'Content-Type' => 'application/x-www-form-urlencoded' );
             }
         }
-        return array ( 'url' => $url, 'method' => $method, 'body' => $body, 'headers' => $headers );
+        return array( 'url' => $url, 'method' => $method, 'body' => $body, 'headers' => $headers );
     }
 }

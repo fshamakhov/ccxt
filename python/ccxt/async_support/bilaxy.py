@@ -46,6 +46,7 @@ class bilaxy (Exchange):
                     'public': 'https://api.bilaxy.com/v1',
                     'private': 'https://api.bilaxy.com/v1',
                     'v1': 'https://api.bilaxy.com/v1',
+                    'v2': 'https://bilaxy.com/api/v2',
                 },
                 'www': 'https://bilaxy.com',
                 'doc': 'https://bilaxy.com/api',
@@ -70,6 +71,13 @@ class bilaxy (Exchange):
                     'post': [
                         'cancel_trade',
                         'trade',
+                    ],
+                },
+                'v2': {
+                    'get': [
+                        'market/depth',
+                        'market/coins',
+                        'market/orders',
                     ],
                 },
             },
@@ -208,9 +216,11 @@ class bilaxy (Exchange):
     def sign(self, path, api='public', method='GET', params={}, headers=None, body=None):
         url = self.urls['api'][api]
         url += '/' + path
-        if api == 'public':
+        if (api == 'public') or (api == 'v2'):
             if params:
                 url += '?' + self.urlencode(params)
+            if api == 'v2':
+                headers = {'accept': 'application/json'}
         else:
             self.check_required_credentials()
             signature = self.urlencode(self.keysort(self.extend({
@@ -226,5 +236,5 @@ class bilaxy (Exchange):
                 url += '?' + query
             else:
                 body = query
-                headers['Content-Type'] = 'application/x-www-form-urlencoded'
+                headers = {'Content-Type': 'application/x-www-form-urlencoded'}
         return {'url': url, 'method': method, 'body': body, 'headers': headers}
