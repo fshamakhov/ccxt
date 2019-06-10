@@ -66,13 +66,11 @@ module.exports = class bilaxy extends Exchange {
                     ],
                 },
                 'v2': {
-                    'get': {
-                        'market': [
-                            'depth',
-                            'coins',
-                            'orders',
-                        ],
-                    },
+                    'get': [
+                        'market/depth',
+                        'market/coins',
+                        'market/orders',
+                    ],
                 },
             },
             'fees': {
