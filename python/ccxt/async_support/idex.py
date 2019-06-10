@@ -216,8 +216,10 @@ class idex (Exchange):
         for i in range(0, len(keys)):
             id = keys[i]
             ids = id.split('_')
-            base = ids[1].upper()
-            quote = ids[0].upper()
+            baseId = ids[1].upper()
+            quoteId = ids[0].upper()
+            base = self.common_currency_code(baseId)
+            quote = self.common_currency_code(quoteId)
             symbol = base + '/' + quote
             market = self.market(symbol)
             tickers.append(self.parse_ticker(symbol, rawTickers[id], market))

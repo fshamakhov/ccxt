@@ -225,8 +225,10 @@ class idex extends Exchange {
         for ($i = 0; $i < count ($keys); $i++) {
             $id = $keys[$i];
             $ids = explode('_', $id);
-            $base = strtoupper($ids[1]);
-            $quote = strtoupper($ids[0]);
+            $baseId = strtoupper($ids[1]);
+            $quoteId = strtoupper($ids[0]);
+            $base = $this->common_currency_code($baseId);
+            $quote = $this->common_currency_code($quoteId);
             $symbol = $base . '/' . $quote;
             $market = $this->market ($symbol);
             $tickers[] = $this->parse_ticker($symbol, $rawTickers[$id], $market);
