@@ -38,7 +38,7 @@ module.exports = class bilaxy extends Exchange {
                     'public': 'https://api.bilaxy.com/v1',
                     'private': 'https://api.bilaxy.com/v1',
                     'v1': 'https://api.bilaxy.com/v1',
-                    'v2': 'https://api.bilaxy.com/v2',
+                    'v2': 'https://bilaxy.com/api/v2',
                 },
                 'www': 'https://bilaxy.com',
                 'doc': 'https://bilaxy.com/api',
@@ -224,9 +224,11 @@ module.exports = class bilaxy extends Exchange {
     sign (path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
         let url = this.urls['api'][api];
         url += '/' + path;
-        if (api === 'public') {
+        if ((api === 'public') || (api === 'v2')) {
             if (Object.keys (params).length)
                 url += '?' + this.urlencode (params);
+            if (api === 'v2')
+                headers = this.extend (headers, { 'accept': 'application/json' });
         } else {
             this.checkRequiredCredentials ();
             let signature = this.urlencode (this.keysort (this.extend ({
@@ -242,7 +244,7 @@ module.exports = class bilaxy extends Exchange {
                 url += '?' + query;
             } else {
                 body = query;
-                headers['Content-Type'] = 'application/x-www-form-urlencoded';
+                headers = this.extend (headers, { 'Content-Type': 'application/x-www-form-urlencoded' });
             }
         }
         return { 'url': url, 'method': method, 'body': body, 'headers': headers };
