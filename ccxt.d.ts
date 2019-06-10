@@ -149,7 +149,7 @@ declare module 'ccxt' {
     export interface Transaction {
         info: {};
         id: string;
-        txid: string;
+        txid?: string;
         timestamp: number;
         datetime: string;
         address: string;
@@ -323,7 +323,7 @@ declare module 'ccxt' {
         fetchDeposits (currency?: string, since?: number, limit?: number, params?: {}): Promise<Transaction[]>;
         fetchWithdrawals (currency?: string, since?: number, limit?: number, params?: {}): Promise<Transaction[]>;
         cancelOrder (id: string, symbol?: string, params?: {}): Promise<any>;
-        createDepositAddress (currency: string, params?: {}): Promise<any>;
+        createDepositAddress (currency: string, params?: {}): Promise<DepositAddressResponse>;
         fetchDepositAddress (currency: string, params?: {}): Promise<DepositAddressResponse>;
         withdraw (currency: string, amount: number, address: string, tag?: string, params?: {}): Promise<WithdrawalResponse>;
         request (path: string, api?: string, method?: string, params?: any, headers?: any, body?: any): Promise<any>;
@@ -453,7 +453,6 @@ declare module 'ccxt' {
     export class okex3 extends Exchange {}
     export class paymium extends Exchange {}
     export class poloniex extends Exchange {}
-    export class quadrigacx extends Exchange {}
     export class rightbtc extends Exchange {}
     export class southxchange extends Exchange {}
     export class stronghold extends Exchange {}
