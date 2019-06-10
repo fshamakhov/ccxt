@@ -96,6 +96,16 @@ class idex (Exchange):
                 },
             },
             'idexContractAddress': None,
+            'commonCurrencies': {
+                'GET': 'GET Protocol',
+                'GET2': 'GET',
+                'AIC': 'AKAI',
+                'BTT': 'Blocktrade Token',
+                'ONE': 'Menlo One',
+                'ONG': 'SoMee.Social',
+                'SMT': 'Sun Money Token',
+                'VNT': 'Vanta Network',
+            },
             'currencyAddresses': None,
         })
 
