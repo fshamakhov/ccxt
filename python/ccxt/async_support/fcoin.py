@@ -16,6 +16,7 @@ import hashlib
 import math
 from ccxt.base.errors import ExchangeError
 from ccxt.base.errors import AuthenticationError
+from ccxt.base.errors import ArgumentsRequired
 from ccxt.base.errors import InsufficientFunds
 from ccxt.base.errors import InvalidOrder
 from ccxt.base.errors import NotSupported
@@ -242,9 +243,10 @@ class fcoin (Exchange):
     async def fetch_ticker(self, symbol, params={}):
         await self.load_markets()
         market = self.market(symbol)
-        ticker = await self.marketGetTickerSymbol(self.extend({
+        request = {
             'symbol': market['id'],
-        }, params))
+        }
+        ticker = await self.marketGetTickerSymbol(self.extend(request, params))
         return self.parse_ticker(ticker['data'], market)
 
     def parse_ticker(self, ticker, market=None):
@@ -426,21 +428,23 @@ class fcoin (Exchange):
 
     async def fetch_order(self, id, symbol=None, params={}):
         await self.load_markets()
-        request = self.extend({
+        request = {
             'order_id': id,
-        }, params)
-        response = await self.privateGetOrdersOrderId(request)
+        }
+        response = await self.privateGetOrdersOrderId(self.extend(request, params))
         return self.parse_order(response['data'])
 
     async def fetch_open_orders(self, symbol=None, since=None, limit=None, params={}):
-        result = await self.fetch_orders(symbol, since, limit, {'states': 'submitted,partial_filled'})
-        return result
+        request = {'states': 'submitted,partial_filled'}
+        return await self.fetch_orders(symbol, since, limit, self.extend(request, params))
 
     async def fetch_closed_orders(self, symbol=None, since=None, limit=None, params={}):
-        result = await self.fetch_orders(symbol, since, limit, {'states': 'filled'})
-        return result
+        request = {'states': 'filled'}
+        return await self.fetch_orders(symbol, since, limit, self.extend(request, params))
 
     async def fetch_orders(self, symbol=None, since=None, limit=None, params={}):
+        if symbol is None:
+            raise ArgumentsRequired(self.id + ' fetchOrders() requires a `symbol` argument')
         await self.load_markets()
         market = self.market(symbol)
         request = {

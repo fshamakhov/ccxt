@@ -55,7 +55,7 @@ Full public and private HTTP REST APIs for all exchanges are implemented. WebSoc
 Exchanges
 =========
 
-The ccxt library currently supports the following 137 cryptocurrency exchange markets and trading APIs:
+The ccxt library currently supports the following 136 cryptocurrency exchange markets and trading APIs:
 
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-------+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 |        logo                                                                               | id                 | name                                                                                       | ver   | doc                                                                                             | certified                                                            |
@@ -198,7 +198,7 @@ The ccxt library currently supports the following 137 cryptocurrency exchange ma
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-------+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 | `deribit <https://www.deribit.com/reg-1189.4038>`__                                       | deribit            | `Deribit <https://www.deribit.com/reg-1189.4038>`__                                        | 1     | `API <https://docs.deribit.com>`__                                                              |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-------+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
-| `dsx <https://dsx.uk>`__                                                                  | dsx                | `DSX <https://dsx.uk>`__                                                                   | 2     | `API <https://api.dsx.uk>`__                                                                    |                                                                      |
+| `dsx <https://dsx.uk>`__                                                                  | dsx                | `DSX <https://dsx.uk>`__                                                                   | 2     | `API <https://dsx.uk/developers/publicApiV2>`__                                                 |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-------+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 | `dx <https://dx.exchange/registration?dx_cid=20&dx_scname=100001100000038139>`__          | dx                 | `DX.Exchange <https://dx.exchange/registration?dx_cid=20&dx_scname=100001100000038139>`__  | 1     | `API <https://apidocs.dx.exchange>`__                                                           |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-------+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
@@ -258,11 +258,11 @@ The ccxt library currently supports the following 137 cryptocurrency exchange ma
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-------+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 | `lakebtc <https://www.lakebtc.com>`__                                                     | lakebtc            | `LakeBTC <https://www.lakebtc.com>`__                                                      | 2     | `API <https://www.lakebtc.com/s/api_v2>`__                                                      |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-------+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
-| `lbank <https://www.lbank.info/sign-up.html?icode=7QCY&lang=en-US>`__                     | lbank              | `LBank <https://www.lbank.info/sign-up.html?icode=7QCY&lang=en-US>`__                      | 1     | `API <https://github.com/LBank-exchange/lbank-official-api-docs>`__                             |                                                                      |
+| `lbank <https://www.lbex.io/sign-up.html?icode=7QCY&lang=en-US>`__                        | lbank              | `LBank <https://www.lbex.io/sign-up.html?icode=7QCY&lang=en-US>`__                         | 1     | `API <https://github.com/LBank-exchange/lbank-official-api-docs>`__                             |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-------+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 | `liqui <https://liqui.io>`__                                                              | liqui              | `Liqui <https://liqui.io>`__                                                               | 3     | `API <https://liqui.io/api>`__                                                                  |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-------+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
-| `liquid <https://www.liquid.com?affiliate=SbzC62lt30976>`__                               | liquid             | `Liquid <https://www.liquid.com?affiliate=SbzC62lt30976>`__                                | 2     | `API <https://developers.quoine.com>`__                                                         |                                                                      |
+| `liquid <https://www.liquid.com?affiliate=SbzC62lt30976>`__                               | liquid             | `Liquid <https://www.liquid.com?affiliate=SbzC62lt30976>`__                                | 2     | `API <https://developers.liquid.com>`__                                                         |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-------+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 | `livecoin <https://livecoin.net/?from=Livecoin-CQ1hfx44>`__                               | livecoin           | `LiveCoin <https://livecoin.net/?from=Livecoin-CQ1hfx44>`__                                | \*    | `API <https://www.livecoin.net/api?lang=en>`__                                                  |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-------+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
@@ -292,9 +292,7 @@ The ccxt library currently supports the following 137 cryptocurrency exchange ma
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-------+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 | `paymium <https://www.paymium.com>`__                                                     | paymium            | `Paymium <https://www.paymium.com>`__                                                      | 1     | `API <https://github.com/Paymium/api-documentation>`__                                          |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-------+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
-| `poloniex <https://poloniex.com>`__                                                       | poloniex           | `Poloniex <https://poloniex.com>`__                                                        | \*    | `API <https://docs.poloniex.com>`__                                                             |                                                                      |
-+-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-------+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
-| `quadrigacx <https://www.quadrigacx.com/?ref=laiqgbp6juewva44finhtmrk>`__                 | quadrigacx         | `QuadrigaCX <https://www.quadrigacx.com/?ref=laiqgbp6juewva44finhtmrk>`__                  | 2     | `API <https://www.quadrigacx.com/api_info>`__                                                   |                                                                      |
+| `poloniex <https://www.poloniex.com/?utm_source=ccxt&utm_medium=web>`__                   | poloniex           | `Poloniex <https://www.poloniex.com/?utm_source=ccxt&utm_medium=web>`__                    | \*    | `API <https://docs.poloniex.com>`__                                                             | `CCXT Certified <https://github.com/ccxt/ccxt/wiki/Certification>`__ |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-------+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 | `rightbtc <https://www.rightbtc.com>`__                                                   | rightbtc           | `RightBTC <https://www.rightbtc.com>`__                                                    | \*    | `API <https://52.53.159.206/api/trader/>`__                                                     |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-------+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
@@ -928,11 +926,11 @@ In order to load markets manually beforehand call the ``loadMarkets ()`` / ``loa
 .. code:: php
 
    // PHP
-   $id = 'huobi';
+   $id = 'huobipro';
    $exchange = '\\ccxt\\' . $id;
-   $huobi = new $exchange ();
-   $markets = $huobi->load_markets ();
-   var_dump ($huobi->id, $markets);
+   $huobipro = new $exchange ();
+   $markets = $huobipro->load_markets ();
+   var_dump ($huobipro->id, $markets);
 
 Symbols And Market Ids
 ----------------------
@@ -2619,12 +2617,16 @@ The exchange will close your market order for the best price available. You are 
 ::
 
    // camelCaseNotation
-   exchange.createMarketBuyOrder (symbol, amount[, params])
    exchange.createMarketSellOrder (symbol, amount[, params])
+   exchange.createMarketBuyOrder (symbol, amount[, params])
 
    // underscore_notation
-   exchange.create_market_buy_order (symbol, amount[, params])
    exchange.create_market_sell_order (symbol, amount[, params])
+   exchange.create_market_buy_order (symbol, amount[, params])
+
+   // using general createOrder, type = 'market' and side = 'buy' or 'sell'
+   exchange.createOrder (symbol, 'market', 'sell', amount, ...)
+   exchange.create_order (symbol, 'market', 'buy', amount, ...)
 
 **Note, that some exchanges will not accept market orders (they allow limit orders only).** In order to detect programmatically if the exchange in question does support market orders or not, you can use the ``.has['createMarketOrder']`` exchange property:
 
@@ -2647,6 +2649,90 @@ The exchange will close your market order for the best price available. You are 
    if ($exchange->has['createMarketOrder']) {
        ...
    }
+
+Market Buys
+'''''''''''
+
+In general, when placing a ``market buy`` or ``market sell`` order the user has to specify just the amount of the base currency to buy or sell. However, with some exchanges market buy orders implement a different approach to calculating the value of the order.
+
+Suppose you’re trading BTC/USD and the current market price for BTC is over 9000 USD. For a market buy or market sell you could specify an ``amount`` of 2 BTC and that would result in *plus or minus* 18000 USD (more or less ;)) on your account, depending on the side of the order.
+
+**With market buys some exchanges require the total cost of the order in the quote currency!** The logic behind it is simple, instead of taking the amount of base currency to buy or sell some exchanges operate with *“how much quote currency you want to spend on buying in total”*.
+
+To place a market buy order with those exchanges you would not specify an amount of 2 BTC, instead you should somehow specify the total cost of the order, that is, 18000 USD in this example. The exchanges that treat ``market buy`` orders in this way have an exchange-specific option ``createMarketBuyOrderRequiresPrice`` that allows specifying the total cost of a ``market buy`` order in two ways.
+
+The first is the default and if you specify the ``price`` along with the ``amount`` the total cost of the order would be calculated inside the lib from those two values with a simple multiplication (``cost = amount * price``). The resulting ``cost`` would be the amount in USD quote currency that will be spent on this particular market buy order.
+
+.. code:: javascript
+
+   // this example is oversimplified and doesn't show all the code that is
+   // required to handle the errors and exchange metadata properly
+   // it shows just the concept of placing a market buy order
+
+   const exchange = new ccxt.cex ({
+       'apiKey': YOUR_API_KEY,
+       'secret': 'YOUR_SECRET',
+       'enableRateLimit': true,
+       // 'options': {
+       //     'createMarketBuyOrderRequiresPrice': true, // default
+       // },
+   })
+
+   ;(async () => {
+
+       // when `createMarketBuyOrderRequiresPrice` is true, we can pass the price
+       // so that the total cost of the order would be calculated inside the library
+       // by multiplying the amount over price (amount * price)
+
+       const symbol = 'BTC/USD'
+       const amount = 2 // BTC
+       const price = 9000 // USD
+       // cost = amount * price = 2 * 9000 = 18000 (USD)
+
+       // note that we don't use createMarketBuyOrder here, instead we use createOrder
+       // createMarketBuyOrder will omit the price and will not work when
+       // exchange.options['createMarketBuyOrderRequiresPrice'] = true
+       const order = await exchange.createOrder (symbol, 'market', 'buy', amount, price)
+
+       console.log (order)
+   })
+
+The second alternative is useful in cases when the user wants to calculate and specify the resulting total cost of the order himself. That can be done by setting the ``createMarketBuyOrderRequiresPrice`` option to ``false`` to switch it off:
+
+.. code:: javascript
+
+   const exchange = new ccxt.cex ({
+       'apiKey': YOUR_API_KEY,
+       'secret': 'YOUR_SECRET',
+       'enableRateLimit': true,
+       'options': {
+           'createMarketBuyOrderRequiresPrice': false, // switch off
+       },
+   })
+
+   // or, to switch it off later, after the exchange instantiation, you can do
+   exchange.options['createMarketBuyOrderRequiresPrice'] = false
+
+   ;(async () => {
+
+       // when `createMarketBuyOrderRequiresPrice` is true, we can pass the price
+       // so that the total cost of the order would be calculated inside the library
+       // by multiplying the amount over price (amount * price)
+
+       const symbol = 'BTC/USD'
+       const amount = 2 // BTC
+       const price = 9000 // USD
+       cost = amount * price // ← instead of the amount cost goes ↓ here
+       const order = await exchange.createMarketBuyOrder (symbol, cost)
+       console.log (order)
+   })
+
+More about it:
+
+-  https://github.com/ccxt/ccxt/issues/564#issuecomment-347458566
+-  https://github.com/ccxt/ccxt/issues/4914#issuecomment-478199357
+-  https://github.com/ccxt/ccxt/issues/4799#issuecomment-470966769
+-  https://github.com/ccxt/ccxt/issues/5197#issuecomment-496270785
 
 Emulating Market Orders With Limit Orders
 '''''''''''''''''''''''''''''''''''''''''
@@ -3256,6 +3342,7 @@ Ledger Entry Structure
        'datetime': "2018-12-12T02:49:01.735Z", // string of timestamp, ISO8601
        'before': 0,                            // amount of currency on balance before
        'after': 0,                             // amount of currency on balance after
+       'status': 'ok',                         // 'ok, 'pending', 'canceled'
        'fee': {                                // object or or undefined
            'cost': 54.321,                     // absolute number on top of the amount
            'currency': 'ETH',                  // string, unified currency code, 'ETH', 'USDT'...
@@ -3278,7 +3365,11 @@ The type of the ledger entry is the type of the operation associated with it. If
 -  ``whatever``
 -  …
 
-The ``referenceId`` field holds the id of the corresponding event that was registered by adding a new item to the ledger. The ledger entry type can be associated with a regular trade or a funding transaction (deposit or withdrawal) or an internal ``transfer`` between two accounts of the same user. If the ledger entry is associated with an internal transfer, the ``account`` field will contain the id of the account that is being altered with the ledger entry in question. The ``referenceAccount`` field will contain the id of the opposite account the funds are transferred to/from, depending on the ``direction`` (``'in'`` or ``'out'``).
+The ``referenceId`` field holds the id of the corresponding event that was registered by adding a new item to the ledger.
+
+The ``status`` field is there to support for exchanges that include pending and canceled changes in the ledger. The ledger naturally represents the actual changes that have taken place, therefore the status is ``'ok'`` in most cases.
+
+The ledger entry type can be associated with a regular trade or a funding transaction (deposit or withdrawal) or an internal ``transfer`` between two accounts of the same user. If the ledger entry is associated with an internal transfer, the ``account`` field will contain the id of the account that is being altered with the ledger entry in question. The ``referenceAccount`` field will contain the id of the opposite account the funds are transferred to/from, depending on the ``direction`` (``'in'`` or ``'out'``).
 
 Overriding The Nonce
 --------------------
@@ -3628,7 +3719,9 @@ In case you experience any difficulty connecting to a particular exchange, do th
       import logging
       logging.basicConfig(level=logging.DEBUG)
 
--  Check your API credentials. Try a fresh new keypair if possible.
+-  Use verbose mode to make sure that the used API credentials correspond to the keys you intend to use. Make sure there’s no confusion of keypairs.
+-  **Try a fresh new keypair if possible.**
+-  Check the permissions on the keypair with the exchange website!
 -  If it is a Cloudflare protection error, try these examples:
 
    -  https://github.com/ccxt/ccxt/blob/master/examples/js/bypass-cloudflare.js
