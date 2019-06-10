@@ -228,7 +228,7 @@ module.exports = class bilaxy extends Exchange {
             if (Object.keys (params).length)
                 url += '?' + this.urlencode (params);
             if (api === 'v2')
-                headers = this.extend (headers, { 'accept': 'application/json' });
+                headers = { 'accept': 'application/json' };
         } else {
             this.checkRequiredCredentials ();
             let signature = this.urlencode (this.keysort (this.extend ({
@@ -244,7 +244,7 @@ module.exports = class bilaxy extends Exchange {
                 url += '?' + query;
             } else {
                 body = query;
-                headers = this.extend (headers, { 'Content-Type': 'application/x-www-form-urlencoded' });
+                headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
             }
         }
         return { 'url': url, 'method': method, 'body': body, 'headers': headers };
