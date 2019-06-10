@@ -38,6 +38,7 @@ module.exports = class bilaxy extends Exchange {
                     'public': 'https://api.bilaxy.com/v1',
                     'private': 'https://api.bilaxy.com/v1',
                     'v1': 'https://api.bilaxy.com/v1',
+                    'v2': 'https://api.bilaxy.com/v2',
                 },
                 'www': 'https://bilaxy.com',
                 'doc': 'https://bilaxy.com/api',
@@ -63,6 +64,15 @@ module.exports = class bilaxy extends Exchange {
                         'cancel_trade',
                         'trade',
                     ],
+                },
+                'v2': {
+                    'get': {
+                        'market': [
+                            'depth',
+                            'coins',
+                            'orders',
+                        ],
+                    },
                 },
             },
             'fees': {
