@@ -87,6 +87,7 @@ class gdax (Exchange):
                         'accounts/{id}/ledger',
                         'accounts/{id}/transfers',
                         'coinbase-accounts',
+                        'coinbase-accounts/{id}/addresses',
                         'fills',
                         'funding',
                         'orders',
@@ -583,8 +584,8 @@ class gdax (Exchange):
 
     def withdraw(self, code, amount, address, tag=None, params={}):
         self.check_address(address)
-        currency = self.currency(code)
         self.load_markets()
+        currency = self.currency(code)
         request = {
             'currency': currency['id'],
             'amount': amount,
