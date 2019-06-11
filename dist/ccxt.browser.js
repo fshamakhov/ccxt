@@ -45,7 +45,7 @@ const Exchange  = require ('./js/base/Exchange')
 //-----------------------------------------------------------------------------
 // this is updated by vss.js when building
 
-const version = '1.18.664'
+const version = '1.18.668'
 
 Exchange.ccxtVersion = version
 
@@ -4244,7 +4244,6 @@ module.exports =
     , utf16ToBase64:  string => CryptoJS.enc.Utf16 .parse (string).toString (CryptoJS.enc.Base64)
     , base64ToBinary: string => CryptoJS.enc.Base64.parse (string)
     , base64ToString: string => CryptoJS.enc.Base64.parse (string).toString (CryptoJS.enc.Utf8)
-    , binaryToString: string => string
 
     , binaryConcat: (...args) => args.reduce ((a, b) => a.concat (b))
 
@@ -4604,6 +4603,7 @@ const ROUND    = 0                  // rounding mode
 
 const DECIMAL_PLACES     = 0        // digits counting mode
     , SIGNIFICANT_DIGITS = 1
+    , TICK_SIZE = 2
 
 const NO_PADDING    = 0             // zero-padding mode
     , PAD_WITH_ZERO = 1
@@ -4613,6 +4613,7 @@ const precisionConstants = {
     TRUNCATE,
     DECIMAL_PLACES,
     SIGNIFICANT_DIGITS,
+    TICK_SIZE,
     NO_PADDING,
     PAD_WITH_ZERO,
 }
@@ -4672,6 +4673,9 @@ const decimalToPrecision = (x, roundingMode
                              , paddingMode        = NO_PADDING) => {
 
     if (numPrecisionDigits < 0) {
+        if (countingMode === TICK_SIZE) {
+            throw new Error (`TICK_SIZE cant be used with negative numPrecisionDigits`)
+        }
         let toNearest = Math.pow (10, -numPrecisionDigits)
         if (roundingMode === ROUND) {
             return (toNearest * decimalToPrecision (x / toNearest, roundingMode, 0, countingMode, paddingMode)).toString ()
@@ -4679,6 +4683,34 @@ const decimalToPrecision = (x, roundingMode
         if (roundingMode === TRUNCATE) {
             return (x - (x % toNearest)).toString ()
         }
+    }
+
+/*  handle tick size */
+    if (countingMode === TICK_SIZE) {
+        const missing = x % numPrecisionDigits
+        const reminder = x / numPrecisionDigits
+        if (reminder !== Math.floor(reminder)) {
+            if (roundingMode === ROUND) {
+                if (x > 0) {
+                    if (missing >= numPrecisionDigits / 2) {
+                        x = x - missing + numPrecisionDigits
+                    } else {
+                        x = x - missing
+                    }
+                } else {
+                    if (missing >= numPrecisionDigits / 2) {
+                        x = Number(x) - missing
+                    } else {
+                        x = Number(x) - missing - numPrecisionDigits
+                    }
+                }
+            } else if (roundingMode === TRUNCATE) {
+                x = x - missing
+            }
+        }
+        const precisionDigitsString = decimalToPrecision (numPrecisionDigits, ROUND, 100, DECIMAL_PLACES, NO_PADDING)
+        const newNumPrecisionDigits = precisionFromString (precisionDigitsString)
+        return decimalToPrecision (x, ROUND, newNumPrecisionDigits, DECIMAL_PLACES, paddingMode);
     }
 
 /*  Convert to a string (if needed), skip leading minus sign (if any)   */
@@ -4845,6 +4877,7 @@ module.exports = {
     TRUNCATE,
     DECIMAL_PLACES,
     SIGNIFICANT_DIGITS,
+    TICK_SIZE,
     NO_PADDING,
     PAD_WITH_ZERO,
 }
@@ -14199,6 +14232,7 @@ module.exports = class bitmarket extends Exchange {
 //  ---------------------------------------------------------------------------
 
 const Exchange = require ('./base/Exchange');
+const { TICK_SIZE } = require ('./base/functions/number');
 const { AuthenticationError, BadRequest, DDoSProtection, ExchangeError, ExchangeNotAvailable, InsufficientFunds, InvalidOrder, OrderNotFound, PermissionDenied } = require ('./base/errors');
 
 //  ---------------------------------------------------------------------------
@@ -14344,6 +14378,7 @@ module.exports = class bitmex extends Exchange {
                     'Account has insufficient Available Balance': InsufficientFunds,
                 },
             },
+            'precisionMode': TICK_SIZE,
             'options': {
                 // https://blog.bitmex.com/api_announcement/deprecation-of-api-nonce-header/
                 // https://github.com/ccxt/ccxt/issues/4789
@@ -14390,10 +14425,10 @@ module.exports = class bitmex extends Exchange {
             const lotSize = this.safeFloat (market, 'lotSize');
             const tickSize = this.safeFloat (market, 'tickSize');
             if (lotSize !== undefined) {
-                precision['amount'] = this.precisionFromString (this.truncate_to_string (lotSize, 16));
+                precision['amount'] = lotSize;
             }
             if (tickSize !== undefined) {
-                precision['price'] = this.precisionFromString (this.truncate_to_string (tickSize, 16));
+                precision['price'] = tickSize;
             }
             const limits = {
                 'amount': {
@@ -15311,54 +15346,61 @@ module.exports = class bitmex extends Exchange {
 
     async createOrder (symbol, type, side, amount, price = undefined, params = {}) {
         await this.loadMarkets ();
-        let request = {
+        const request = {
             'symbol': this.marketId (symbol),
             'side': this.capitalize (side),
             'orderQty': amount,
             'ordType': this.capitalize (type),
         };
-        if (price !== undefined)
+        if (price !== undefined) {
             request['price'] = price;
-        let response = await this.privatePostOrder (this.extend (request, params));
-        let order = this.parseOrder (response);
-        let id = order['id'];
+        }
+        const response = await this.privatePostOrder (this.extend (request, params));
+        const order = this.parseOrder (response);
+        const id = this.safeString (order, 'id');
         this.orders[id] = order;
         return this.extend ({ 'info': response }, order);
     }
 
     async editOrder (id, symbol, type, side, amount = undefined, price = undefined, params = {}) {
         await this.loadMarkets ();
-        let request = {
+        const request = {
             'orderID': id,
         };
-        if (amount !== undefined)
+        if (amount !== undefined) {
             request['orderQty'] = amount;
-        if (price !== undefined)
+        }
+        if (price !== undefined) {
             request['price'] = price;
-        let response = await this.privatePutOrder (this.extend (request, params));
-        let order = this.parseOrder (response);
+        }
+        const response = await this.privatePutOrder (this.extend (request, params));
+        const order = this.parseOrder (response);
         this.orders[order['id']] = order;
         return this.extend ({ 'info': response }, order);
     }
 
     async cancelOrder (id, symbol = undefined, params = {}) {
         await this.loadMarkets ();
-        let response = await this.privateDeleteOrder (this.extend ({ 'orderID': id }, params));
+        const response = await this.privateDeleteOrder (this.extend ({ 'orderID': id }, params));
         let order = response[0];
-        let error = this.safeString (order, 'error');
-        if (error !== undefined)
-            if (error.indexOf ('Unable to cancel order due to existing state') >= 0)
+        const error = this.safeString (order, 'error');
+        if (error !== undefined) {
+            if (error.indexOf ('Unable to cancel order due to existing state') >= 0) {
                 throw new OrderNotFound (this.id + ' cancelOrder() failed: ' + error);
+            }
+        }
         order = this.parseOrder (order);
         this.orders[order['id']] = order;
         return this.extend ({ 'info': response }, order);
     }
 
     isFiat (currency) {
-        if (currency === 'EUR')
+        if (currency === 'EUR') {
             return true;
-        if (currency === 'PLN')
+        }
+        if (currency === 'PLN') {
             return true;
+        }
         return false;
     }
 
@@ -15369,14 +15411,14 @@ module.exports = class bitmex extends Exchange {
         if (code !== 'BTC') {
             throw new ExchangeError (this.id + ' supoprts BTC withdrawals only, other currencies coming soon...');
         }
-        let request = {
+        const request = {
             'currency': 'XBt', // temporarily
             'amount': amount,
             'address': address,
             // 'otpToken': '123456', // requires if two-factor auth (OTP) is enabled
             // 'fee': 0.001, // bitcoin network fee
         };
-        let response = await this.privatePostUserRequestWithdrawal (this.extend (request, params));
+        const response = await this.privatePostUserRequestWithdrawal (this.extend (request, params));
         return {
             'info': response,
             'id': response['transactID'],
@@ -15427,7 +15469,7 @@ module.exports = class bitmex extends Exchange {
                 params = this.omit (params, '_format');
             }
         }
-        let url = this.urls['api'] + query;
+        const url = this.urls['api'] + query;
         if (api === 'private') {
             this.checkRequiredCredentials ();
             let auth = method + query;
@@ -15452,7 +15494,7 @@ module.exports = class bitmex extends Exchange {
     }
 };
 
-},{"./base/Exchange":8,"./base/errors":9}],40:[function(require,module,exports){
+},{"./base/Exchange":8,"./base/errors":9,"./base/functions/number":15}],40:[function(require,module,exports){
 'use strict';
 
 //  ---------------------------------------------------------------------------
@@ -60241,7 +60283,7 @@ module.exports = class negociecoins extends Exchange {
             let payload = [ this.apiKey, method, uri, timestamp, nonce, content ].join ('');
             let secret = this.base64ToBinary (this.secret);
             let signature = this.hmac (this.encode (payload), secret, 'sha256', 'base64');
-            signature = this.binaryToString (signature);
+            signature = this.decode (signature);
             let auth = [ this.apiKey, signature, nonce, timestamp ].join (':');
             headers = {
                 'Authorization': 'amx ' + auth,
@@ -86025,7 +86067,7 @@ module.exports = class xbtce extends Exchange {
             if (body)
                 auth += body;
             let signature = this.hmac (this.encode (auth), this.encode (this.secret), 'sha256', 'base64');
-            let credentials = this.uid + ':' + this.apiKey + ':' + nonce + ':' + this.binaryToString (signature);
+            let credentials = this.uid + ':' + this.apiKey + ':' + nonce + ':' + this.decode (signature);
             headers['Authorization'] = 'HMAC ' + credentials;
         }
         return { 'url': url, 'method': method, 'body': body, 'headers': headers };

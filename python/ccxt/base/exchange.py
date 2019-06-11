@@ -4,7 +4,7 @@
 
 # -----------------------------------------------------------------------------
 
-__version__ = '1.18.664'
+__version__ = '1.18.668'
 
 # -----------------------------------------------------------------------------
 
@@ -948,10 +948,6 @@ class Exchange(object):
         for arg in args:
             result = result + arg
         return result
-
-    @staticmethod
-    def binary_to_string(s):
-        return s.decode('ascii')
 
     @staticmethod
     def base64urlencode(s):
