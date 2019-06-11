@@ -103,6 +103,8 @@ module.exports = class idex extends Exchange {
                 'ONG': 'SoMee.Social',
                 'SMT': 'Sun Money Token',
                 'VNT': 'Vanta Network',
+                'PRO': 'ProChain',
+                'PRO2': 'PRO',
             },
             'currencyAddresses': undefined,
         });
