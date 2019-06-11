@@ -105,6 +105,12 @@ class idex (Exchange):
                 'ONG': 'SoMee.Social',
                 'SMT': 'Sun Money Token',
                 'VNT': 'Vanta Network',
+                'PRO': 'ProChain',
+                'PRO2': 'PRO',
+                'TFT': 'Travelling Free Token',
+                'BLUE': 'Ethereum Blue',
+                'ACC': 'Accelerator',
+                'CAT2': 'BitClave',
             },
             'currencyAddresses': None,
         })
