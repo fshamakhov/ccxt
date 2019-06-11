@@ -34,7 +34,7 @@ use kornrunner\Eth;
 use kornrunner\Secp256k1;
 use kornrunner\Solidity;
 
-$version = '1.18.664';
+$version = '1.18.668';
 
 // rounding mode
 const TRUNCATE = 0;
@@ -43,6 +43,7 @@ const ROUND = 1;
 // digits counting mode
 const DECIMAL_PLACES = 0;
 const SIGNIFICANT_DIGITS = 1;
+const TICK_SIZE = 2;
 
 // padding mode
 const NO_PADDING = 0;
@@ -50,7 +51,7 @@ const PAD_WITH_ZERO = 1;
 
 class Exchange {
 
-    const VERSION = '1.18.664';
+    const VERSION = '1.18.668';
 
     public static $eth_units = array (
         'wei'        => '1',
@@ -646,10 +647,6 @@ class Exchange {
 
     public static function binary_concat() {
         return implode('', func_get_args());
-    }
-
-    public function binary_to_string($binary) {
-        return $binary;
     }
 
     public static function json($data, $params = array()) {
@@ -2270,8 +2267,13 @@ class Exchange {
     }
 
     public static function decimal_to_precision($x, $roundingMode = ROUND, $numPrecisionDigits = null, $countingMode = DECIMAL_PLACES, $paddingMode = NO_PADDING) {
-        if (!is_int($numPrecisionDigits)) {
-            throw new BaseError('Precision must be an integer');
+        if ($countingMode === TICK_SIZE) {
+            if (!(is_float ($numPrecisionDigits) || is_int($numPrecisionDigits)))
+                throw new BaseError('Precision must be an integer or float for TICK_SIZE');
+        } else {
+            if (!is_int($numPrecisionDigits)) {
+                throw new BaseError('Precision must be an integer');
+            }
         }
 
         if (!is_numeric($x)) {
@@ -2284,6 +2286,9 @@ class Exchange {
 
         // Special handling for negative precision
         if ($numPrecisionDigits < 0) {
+            if ($countingMode === TICK_SIZE) {
+                throw new BaseError ('TICK_SIZE cant be used with negative numPrecisionDigits');
+            }
             $toNearest = pow(10, abs($numPrecisionDigits));
             if ($roundingMode === ROUND) {
                 $result = (string) ($toNearest * static::decimal_to_precision($x / $toNearest, $roundingMode, 0, DECIMAL_PLACES, $paddingMode));
@@ -2293,6 +2298,39 @@ class Exchange {
             }
             return $result;
         }
+
+        if ($countingMode === TICK_SIZE) {
+            $missing = fmod($x, $numPrecisionDigits);
+            $reminder = $x / $numPrecisionDigits;
+            if ($reminder !== floor($reminder)) {
+                if ($roundingMode === ROUND) {
+                    if ($x > 0) {
+                        if ($missing >= $numPrecisionDigits / 2) {
+                            $x = $x - $missing + $numPrecisionDigits;
+                        } else {
+                            $x = $x - $missing;
+                        }
+                    } else {
+                        if ($missing >= $numPrecisionDigits / 2) {
+                            $x = $x - $missing;
+                        } else {
+                            $x = $x - $missing - $numPrecisionDigits;
+                        }
+                    }
+                } else if (TRUNCATE === $roundingMode) {
+                    $x = $x - $missing;
+                }
+            }
+            $precisionDigitsString = static::decimal_to_precision ($numPrecisionDigits, ROUND, 100, DECIMAL_PLACES, NO_PADDING);
+            $parts = explode ('.', preg_replace ('/0+$/', '', $precisionDigitsString));
+            if (count ($parts) > 1) {
+                $newNumPrecisionDigits = strlen ($parts[1]);
+            } else {
+                $newNumPrecisionDigits = strlen (preg_replace ('/0+$/', '', $parts[0]));
+            }
+            return static::decimal_to_precision ($x, ROUND, $newNumPrecisionDigits, DECIMAL_PLACES, $paddingMode);
+        }
+
 
         if ($roundingMode === ROUND) {
             if ($countingMode === DECIMAL_PLACES) {
