@@ -90,6 +90,9 @@ class bilaxy (Exchange):
                 },
             },
             'bilaxySymbols': {},
+            'commonCurrencies': {
+                'CRE': 'Carry',
+            },
         })
 
     def fetch_markets(self, params={}):

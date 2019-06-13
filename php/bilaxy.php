@@ -83,6 +83,9 @@ class bilaxy extends Exchange {
                 ),
             ),
             'bilaxySymbols' => array(),
+            'commonCurrencies' => array (
+                'CRE' => 'Carry',
+            ),
         ));
     }
 
