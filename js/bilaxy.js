@@ -82,6 +82,9 @@ module.exports = class bilaxy extends Exchange {
                 },
             },
             'bilaxySymbols': {},
+            'commonCurrencies': {
+                'CRE': 'Carry',
+            },
         });
     }
 
