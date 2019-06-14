@@ -7554,7 +7554,11 @@ module.exports = class bilaxy extends Exchange {
             },
             'bilaxySymbols': {},
             'commonCurrencies': {
+                'CPT': 'Contents Protocol',
                 'CRE': 'Carry',
+                'EMB': 'Emblem',
+                'SFT': 'SportsFix',
+                'SMT': 'Smathium',
             },
         });
     }

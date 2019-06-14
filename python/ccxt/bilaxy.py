@@ -91,7 +91,11 @@ class bilaxy (Exchange):
             },
             'bilaxySymbols': {},
             'commonCurrencies': {
+                'CPT': 'Contents Protocol',
                 'CRE': 'Carry',
+                'EMB': 'Emblem',
+                'SFT': 'SportsFix',
+                'SMT': 'Smathium',
             },
         })
 

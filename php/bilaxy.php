@@ -84,7 +84,11 @@ class bilaxy extends Exchange {
             ),
             'bilaxySymbols' => array(),
             'commonCurrencies' => array (
+                'CPT' => 'Contents Protocol',
                 'CRE' => 'Carry',
+                'EMB' => 'Emblem',
+                'SFT' => 'SportsFix',
+                'SMT' => 'Smathium',
             ),
         ));
     }
