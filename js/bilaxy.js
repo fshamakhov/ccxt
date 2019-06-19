@@ -3,7 +3,7 @@
 //  ---------------------------------------------------------------------------
 
 const Exchange = require ('./base/Exchange');
-const { ExchangeError } = require ('./base/errors');
+const { ExchangeError, ArgumentsRequired, ExchangeNotAvailable, InsufficientFunds, AuthenticationError, PermissionDenied, BadRequest } = require ('./base/errors');
 
 //  ---------------------------------------------------------------------------
 
@@ -88,6 +88,29 @@ module.exports = class bilaxy extends Exchange {
                 'EMB': 'Emblem',
                 'SFT': 'SportsFix',
                 'SMT': 'Smathium',
+            },
+            'exceptions': {
+                '101': { 'class': ArgumentsRequired, 'msg': 'The required parameters cannot be empty' },
+                '102': { 'class': AuthenticationError, 'msg': 'API key dose not exist' },
+                '103': { 'class': ExchangeError, 'msg': 'API is no longer used' },
+                '104': { 'class': PermissionDenied, 'msg': 'Permissions closed' },
+                '105': { 'class': PermissionDenied, 'msg': 'Insufficient authority' },
+                '106': { 'class': AuthenticationError, 'msg': 'Signature mismatch' },
+                '201': { 'class': BadRequest, 'msg': 'The asset does not exist' },
+                '202': { 'class': BadRequest, 'msg': 'The asset cannot be deposit or withdraw' },
+                '203': { 'class': ExchangeError, 'msg': 'The asset is not yet allocated to the wallet address' },
+                '204': { 'class': ExchangeError, 'msg': 'Failed to cancel the order' },
+                '205': { 'class': ExchangeError, 'msg': 'The transaction amount must not be less than 0.0001' },
+                '206': { 'class': ExchangeError, 'msg': 'The transaction price must not be less than 0.0001' },
+                '-100': { 'class': ExchangeError, 'msg': 'The transaction is lock' },
+                '208': { 'class': InsufficientFunds, 'msg': 'Insufficient base currency balance' },
+                '209': { 'class': AuthenticationError, 'msg': 'The transaction password is error' },
+                '210': { 'class': BadRequest, 'msg': 'The transaction price is not within the limit price' },
+                '-4': { 'class': InsufficientFunds, 'msg': 'Insufficient currency balance' },
+                '212': { 'class': BadRequest, 'msg': 'The maximum amount of the transaction is limited' },
+                '213': { 'class': BadRequest, 'msg': 'The minimum total amount of the transaction is limited' },
+                '401': { 'class': BadRequest, 'msg': 'Illegal parameter' },
+                '402': { 'class': ExchangeNotAvailable, 'msg': 'System error' },
             },
         });
     }
@@ -286,6 +309,16 @@ module.exports = class bilaxy extends Exchange {
             result[currency] = account;
         }
         return this.parseBalance (result);
+    }
+
+    handleErrors (code, reason, url, method, headers, body, response) {
+        const exceptions = this.exceptions;
+        const bilaxyCode = this.safeString (response, 'code');
+        if (bilaxyCode in exceptions) {
+            const ExceptionClass = exceptions[bilaxyCode]['class'];
+            const message = exceptions[bilaxyCode]['msg'];
+            throw new ExceptionClass (this.id + ' ' + message);
+        }
     }
 
     sign (path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
