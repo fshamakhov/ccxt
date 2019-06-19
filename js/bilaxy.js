@@ -228,6 +228,45 @@ module.exports = class bilaxy extends Exchange {
         return await this.parseTickers (rawTickers['data'], symbols);
     }
 
+    parseTrade (trade, market = undefined) {
+        const timestamp = this.safeInteger (trade, 'date');
+        const price = this.safeFloat (trade, 'price');
+        const amount = this.safeFloat (trade, 'count');
+        const id = this.safeString (trade, 'id');
+        const side = this.safeString (trade, 'type');
+        const cost = this.safeFloat (trade, 'amount');
+        let symbol = undefined;
+        if (market !== undefined) {
+            symbol = market['symbol'];
+        }
+        return {
+            'info': trade,
+            'timestamp': timestamp,
+            'datetime': this.iso8601 (timestamp),
+            'symbol': symbol,
+            'id': id,
+            'order': undefined,
+            'type': undefined,
+            'side': side,
+            'price': price,
+            'amount': amount,
+            'cost': cost,
+        };
+    }
+
+    async fetchTrades (symbol, since = undefined, limit = undefined, params = {}) {
+        await this.loadMarkets ();
+        const market = this.market (symbol);
+        const request = {
+            'symbol': market['info']['symbol'],
+        };
+        if (limit !== undefined) {
+            request['size'] = limit; // default = 100, maximum = 000
+        }
+        const response = await this.publicGetOrders (this.extend (request, params));
+        return this.parseTrades (response['data'], market, undefined, limit);
+    }
+
     sign (path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
         let url = this.urls['api'][api];
         url += '/' + path;
