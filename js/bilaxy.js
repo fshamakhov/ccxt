@@ -267,6 +267,27 @@ module.exports = class bilaxy extends Exchange {
         return this.parseTrades (response['data'], market, undefined, limit);
     }
 
+    async fetchBalance (params = {}) {
+        await this.loadMarkets ();
+        let response = await this.privateGetBalances (params);
+        let result = { 'info': response['data'] };
+        let balances = response['data'];
+        for (let i = 0; i < balances.length; i++) {
+            let balance = balances[i];
+            let currency = balance['name'];
+            if (currency in this.currencies_by_id)
+                currency = this.currencies_by_id[currency]['code'];
+            let account = {
+                'free': parseFloat (balance['balance']),
+                'used': parseFloat (balance['frozen']),
+                'total': 0.0,
+            };
+            account['total'] = this.sum (account['free'], account['used']);
+            result[currency] = account;
+        }
+        return this.parseBalance (result);
+    }
+
     sign (path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
         let url = this.urls['api'][api];
         url += '/' + path;
