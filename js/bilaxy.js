@@ -15,6 +15,7 @@ module.exports = class bilaxy extends Exchange {
             'countries': ['CN'], // Japan, Malta
             'rateLimit': 500,
             'has': {
+                'fetchDepositAddress': true,
                 'createLimitOrder': true,
                 'createMarketOrder': false,
                 'createOrder': true,
@@ -452,6 +453,29 @@ module.exports = class bilaxy extends Exchange {
         const response = await this.privatePostTrade (this.extend (request, params));
         const order = await this.privateGetTradeView ({ 'id': response['data'] });
         return this.parseOrder (order['data'], market);
+    }
+
+    async fetchDepositAddress (code, params = {}) {
+        const balance = await this.fetchBalance ();
+        await this.loadMarkets ();
+        const currency = this.currency (code);
+        let symbol = this.filterBy (balance['info'], 'name', currency['id']);
+        if (symbol.length !== 1) {
+            throw new ExchangeError (this.id + ' could not find currency with code ' + code);
+        }
+        symbol = symbol[0]['symbol'];
+        const request = {
+            'symbol': symbol,
+        };
+        const response = await this.privateGetCoinAddress (this.extend (request, params));
+        const address = this.safeString (response, 'data');
+        this.checkAddress (address);
+        return {
+            'currency': code,
+            'address': address,
+            'tag': undefined,
+            'info': response,
+        };
     }
 
     sign (path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
