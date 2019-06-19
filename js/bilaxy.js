@@ -3,7 +3,7 @@
 //  ---------------------------------------------------------------------------
 
 const Exchange = require ('./base/Exchange');
-const { ExchangeError, ArgumentsRequired, ExchangeNotAvailable, InsufficientFunds, AuthenticationError, PermissionDenied, BadRequest } = require ('./base/errors');
+const { ExchangeError, ArgumentsRequired, ExchangeNotAvailable, InsufficientFunds, AuthenticationError, PermissionDenied, BadRequest, InvalidOrder } = require ('./base/errors');
 
 //  ---------------------------------------------------------------------------
 
@@ -15,21 +15,16 @@ module.exports = class bilaxy extends Exchange {
             'countries': ['CN'], // Japan, Malta
             'rateLimit': 500,
             'has': {
-                'fetchDepositAddress': false,
-                'CORS': false,
+                'createLimitOrder': true,
+                'createMarketOrder': false,
+                'createOrder': true,
+                'fetchBalance': true,
                 'fetchBidsAsks': true,
-                'fetchTickers': true,
-                'fetchOHLCV': false,
-                'fetchMyTrades': false,
+                'fetchClosedOrders': true,
+                'fetchOpenOrders': true,
                 'fetchOrder': true,
                 'fetchOrders': true,
-                'fetchOpenOrders': true,
-                'fetchClosedOrders': true,
-                'withdraw': false,
-                'fetchFundingFees': false,
-                'fetchDeposits': false,
-                'fetchWithdrawals': false,
-                'fetchTransactions': false,
+                'fetchTickers': true,
             },
             'urls': {
                 'logo': 'https://bilaxy.com/dist/images/logo.png',
@@ -319,6 +314,144 @@ module.exports = class bilaxy extends Exchange {
             const message = exceptions[bilaxyCode]['msg'];
             throw new ExceptionClass (this.id + ' ' + message);
         }
+    }
+
+    async fetchOrder (id, symbol = undefined, params = {}) {
+        if (symbol === undefined) {
+            throw new ArgumentsRequired (this.id + ' fetchOrder requires a symbol argument');
+        }
+        await this.loadMarkets ();
+        const market = this.market (symbol);
+        const request = {
+            'id': parseInt (id),
+        };
+        const response = await this.privateGetTradeView (this.extend (request, params));
+        return this.parseOrder (response, market);
+    }
+
+    async fetchOrders (symbol = undefined, since = undefined, limit = undefined, params = {}) {
+        if (symbol === undefined) {
+            throw new ArgumentsRequired (this.id + ' fetchOrders requires a symbol argument');
+        }
+        await this.loadMarkets ();
+        const market = this.market (symbol);
+        const request = {
+            'symbol': market['info']['symbol'],
+            'type': 0, // => All orders
+        };
+        if (since !== undefined) {
+            request['since'] = since;
+        }
+        const response = await this.privateGetTradeList (this.extend (request, params));
+        return this.parseOrders (response['data'], market, since, limit);
+    }
+
+    async fetchOpenOrders (symbol = undefined, since = undefined, limit = undefined, params = {}) {
+        const openParams = { 'type': 1 }; // 1 => Pending orders
+        return await this.fetchOrders (symbol, since, limit, this.extend (openParams, params));
+    }
+
+    async fetchClosedOrders (symbol = undefined, since = undefined, limit = undefined, params = {}) {
+        const orders = await this.fetchOrders (symbol, since, limit, params);
+        return this.filterBy (orders, 'status', 3); // 3 => Traded completely
+    }
+
+    async cancelOrder (id, symbol = undefined, params = {}) {
+        if (symbol === undefined) {
+            throw new ArgumentsRequired (this.id + ' cancelOrder requires a symbol argument');
+        }
+        await this.loadMarkets ();
+        const market = this.market (symbol);
+        const request = {
+            'id': parseInt (id),
+        };
+        const response = await this.privatePostCancelTrade (this.extend (request, params));
+        const order = await this.privateGetTradeView ({ 'id': response['data'] });
+        return this.parseOrder (order['data'], market);
+    }
+
+    parseOrderStatus (status) {
+        const statusString = this.numberToString (status);
+        const statuses = {
+            '1': 'open',
+            '2': 'open',
+            '3': 'closed',
+            '4': 'canceled',
+        };
+        return this.safeString (statuses, statusString, statusString);
+    }
+
+    parseOrder (order, market = undefined) {
+        const status = this.parseOrderStatus (this.safeString (order, 'status'));
+        let symbol = undefined;
+        if (market) {
+            symbol = market['symbol'];
+        }
+        let timestamp = undefined;
+        let datetime = this.safeString (order, 'datetime');
+        if (datetime) {
+            timestamp = this.parse8601 (datetime);
+        }
+        const price = this.safeFloat (order, 'price');
+        const amount = this.safeFloat (order, 'amount');
+        const remaining = this.safeFloat (order, 'left_amount');
+        let cost = undefined;
+        let filled = undefined;
+        if (remaining !== undefined) {
+            if (amount !== undefined) {
+                filled = amount - remaining;
+                if (this.options['parseOrderToPrecision']) {
+                    filled = parseFloat (this.amountToPrecision (symbol, filled));
+                }
+                filled = Math.max (filled, 0.0);
+            }
+            if ((price !== undefined) && (filled !== undefined)) {
+                cost = price * filled;
+            }
+        }
+        const id = this.safeString (order, 'id');
+        const type = 'limit'; // Bilaxy has only limit orders
+        let side = this.safeString (order, 'type');
+        if (side !== undefined) {
+            side = side.toLowerCase ();
+        }
+        let fee = undefined;
+        let trades = undefined;
+        return {
+            'info': order,
+            'id': id,
+            'timestamp': timestamp,
+            'datetime': this.iso8601 (timestamp),
+            'lastTradeTimestamp': undefined,
+            'symbol': symbol,
+            'type': type,
+            'side': side,
+            'price': price,
+            'amount': amount,
+            'cost': cost,
+            'filled': filled,
+            'remaining': remaining,
+            'status': status,
+            'fee': fee,
+            'trades': trades,
+        };
+    }
+
+    async createOrder (symbol, type, side, amount, price = undefined, params = {}) {
+        await this.loadMarkets ();
+        const market = this.market (symbol);
+        if (price === undefined) {
+            throw new InvalidOrder (this.id + ' createOrder method requires a price argument');
+        }
+        const request = {
+            'symbol': market['info']['symbol'],
+            'amount': this.amountToPrecision (symbol, amount),
+            'price': this.priceToPrecision (symbol, price),
+            'type': side,
+        };
+        const response = await this.privatePostTrade (this.extend (request, params));
+        const order = await this.privateGetTradeView ({ 'id': response['data'] });
+        return this.parseOrder (order['data'], market);
     }
 
     sign (path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
