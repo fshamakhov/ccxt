@@ -53,6 +53,8 @@ module.exports = class idex extends Exchange {
                         'returnCurrencies',
                         'return24Volume',
                         'returnOrderBook', // "market": "ETH_AURA", "count": 1
+                        'returnContractAddress',
+                        'returnTradeHistory', // "market": "ETH_AURA", "address": "0x2dbdcec64db33e673140fbd0ceef610a273b84db", "start": 5000, "end": 10000, "sort": "desc", "count": 10, "cursor": "1000"
                     ],
                 },
                 'private': {
@@ -63,8 +65,6 @@ module.exports = class idex extends Exchange {
                         'returnOpenOrders', // "market": "ETH_AURA", "address": "0x2a0c0dbecc7e4d658f48e01e3fa353f44050c208", "count": 10, "cursor": "2228127"
                         'returnOrderStatus', // "orderHash": "0x22a9ba7f8dd37ed24ae327b14a8a941b0eb072d60e54bcf24640c2af819fc7ec"
                         'returnOrderTrades', // "orderHash": "0x22a9ba7f8dd37ed24ae327b14a8a941b0eb072d60e54bcf24640c2af819fc7ec"
-                        'returnTradeHistory', // "market": "ETH_AURA", "address": "0x2dbdcec64db33e673140fbd0ceef610a273b84db", "start": 5000, "end": 10000, "sort": "desc", "count": 10, "cursor": "1000"
-                        'returnContractAddress', // "address": "0x2a0c0dbecc7e4d658f48e01e3fa353f44050c208"
                         'returnNextNonce', // "address": "0x2a0c0dbecc7e4d658f48e01e3fa353f44050c208"
                         'order', // https://github.com/AuroraDAO/idex-api-docs/blob/master/scripts/generate-order-payload.js
                         'cancel', // https://github.com/AuroraDAO/idex-api-docs/blob/master/scripts/generate-cancel-payload.js
@@ -126,6 +126,8 @@ module.exports = class idex extends Exchange {
                 'WCT': 'Wealth Chain Token',
             },
             'currencyAddresses': undefined,
+            'enableLastResponseHeaders': true,
+            'requiresWeb3': true,
         });
     }
 
@@ -139,6 +141,7 @@ module.exports = class idex extends Exchange {
     async fetchMarkets (params = {}) {
         this.currencyAddresses = await this.publicGetReturnCurrencies (params);
         let response = await this.publicGetReturnTicker ();
+        this.idexContractAddress = await this.publicPostReturnContractAddress ();
         let symbols = Object.keys (response);
         let result = [];
         for (let i = 0; i < symbols.length; i++) {
@@ -261,6 +264,74 @@ module.exports = class idex extends Exchange {
         return await this.parseTickers (rawTickers, symbols);
     }
 
+    parseTrade (trade, market = undefined) {
+        const id = this.safeString (trade, 'uuid');
+        const timestamp = this.safeString (trade, 'timestamp');
+        const datetime = this.safeString (trade, 'date');
+        let symbol = undefined;
+        if (market !== undefined) {
+            symbol = market['symbol'];
+        }
+        const order = this.safeString (trade, 'tid');
+        let type = this.safeString (trade, 'type');
+        if (type) {
+            type = type.toLowerCase ();
+        }
+        const side = undefined;
+        const price = this.safeFloat (trade, 'price');
+        const amount = this.safeFloat (trade, 'amount');
+        const cost = this.safeFloat (trade, 'total');
+        return {
+            'info': trade,
+            'id': id,
+            'timestamp': timestamp,
+            'datetime': datetime,
+            'symbol': symbol,
+            'order': order,
+            'type': type,
+            'side': side,
+            'price': price,
+            'amount': amount,
+            'cost': cost,
+        };
+    }
+
+    async fetchBalance (params = {}) {
+        await this.loadMarkets ();
+        const request = { 'address': this.walletAddress };
+        let response = await this.privatePostReturnCompleteBalances (this.extend (request, params));
+        let result = { 'info': response };
+        const currencies = Object.keys (response);
+        for (let i = 0; i < currencies.length; i++) {
+            const currency = currencies[i];
+            const balance = response[currency];
+            let account = {
+                'free': parseFloat (balance['available']),
+                'used': parseFloat (balance['onOrders']),
+                'total': 0,
+            };
+            account['total'] = this.sum (account['free'], account['used']);
+            result[currency] = account;
+        }
+        return this.parseBalance (result);
+    }
+
+    async fetchTrades (symbol, since = undefined, limit = undefined, params = {}) {
+        await this.loadMarkets ();
+        const market = this.market (symbol);
+        const request = {
+            'market': market['id'],
+        };
+        if (since !== undefined) {
+            request['start'] = since;
+        }
+        if (limit !== undefined) {
+            request['count'] = limit; // default = 10, maximum = 100
+        }
+        const response = await this.publicPostReturnTradeHistory (this.extend (request, params));
+        return this.parseTrades (response, market, since, limit);
+    }
+
     sign (path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
         let url = this.urls['api'][api];
         url += '/' + path;
@@ -268,7 +339,7 @@ module.exports = class idex extends Exchange {
             if (Object.keys (params).length)
                 url += '?' + this.urlencode (params);
         } else {
-            headers['Content-Type'] = 'application/json';
+            headers = { 'Content-Type': 'application/json' };
             if (api !== 'public') {
                 this.checkRequiredCredentials ();
             }
