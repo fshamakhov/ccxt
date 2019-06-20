@@ -2,7 +2,7 @@
 
 //  ---------------------------------------------------------------------------
 
-const { ExchangeError } = require ('./base/errors');
+const { ExchangeError, InvalidOrder } = require ('./base/errors');
 const Exchange = require ('./base/Exchange');
 //  ---------------------------------------------------------------------------
 
@@ -200,8 +200,8 @@ module.exports = class idex extends Exchange {
             'market': market['id'],
             'count': limit,
         };
-        let order_book = await this.publicGetReturnOrderBook (this.extend (request, params));
-        return this.parseOrderBook (order_book, undefined, 'bids', 'asks', 'price', 'amount');
+        let orderbook = await this.publicGetReturnOrderBook (this.extend (request, params));
+        return this.parseOrderBook (orderbook, undefined, 'bids', 'asks', 'price', 'amount');
     }
 
     parseTicker (symbol, ticker, market = undefined) {
@@ -332,6 +332,83 @@ module.exports = class idex extends Exchange {
         return this.parseTrades (response, market, since, limit);
     }
 
+    async idexOrder (base, quote, side, amount, price, nonce, params = {}) {
+        let tokenBuy = undefined;
+        let tokenSell = undefined;
+        let amountBuy = undefined;
+        let amountSell = undefined;
+        if (side === 'buy') {
+            tokenBuy = base['address'];
+            tokenSell = quote['address'];
+            amountBuy = this.toWei (amount);
+            amountSell = this.toWei (amount * price);
+        } else if (side === 'sell') {
+            tokenBuy = quote['address'];
+            tokenSell = base['address'];
+            amountBuy = this.toWei (amount * price);
+            amountSell = this.toWei (amount);
+        } else {
+            throw new InvalidOrder (this.id + ' invalid value for side: ' + side);
+        }
+        let expires = 10000;
+        if ('expires' in params) {
+            expires = params['expires'];
+        }
+        const args = {
+            'tokenBuy': tokenBuy,
+            'amountBuy': amountBuy,
+            'tokenSell': tokenSell,
+            'amountSell': amountSell,
+            'address': this.walletAddress,
+            'nonce': nonce,
+            'expires': expires,
+        };
+        const raw = this.soliditySha3 ([
+            this.idexContractAddress,
+            args['tokenBuy'],
+            args['amountBuy'],
+            args['tokenSell'],
+            args['amountSell'],
+            args['expires'],
+            args['nonce'],
+            args['address'],
+        ]);
+        const salted = this.hashMessage (raw);
+        const vrs = this.signMessage (salted, this.privateKey);
+        return await this.privatePostOrder (this.extend (args, vrs));
+    }
+
+    async idexTrade (base, quote, side, amount, nonce, params = {}) {
+        const symbol = base + '/' + quote;
+        let market = this.market (symbol);
+        let request = {
+            'market': market['id'],
+            'count': 100,
+        };
+        const orderbook = await this.publicGetReturnOrderBook (request);
+        // TODO: process orderbook
+    }
+
+    async createOrder (symbol, type, side, amount, price = undefined, params = {}) {
+        await this.loadMarkets ();
+        const market = this.market (symbol);
+        // the next 5 lines are added to support for testing orders
+        const nonce = await this.privatePostReturnNextNonce ({ 'address': this.walletAddress });
+        let currencies = symbol.split ('/');
+        const base = this.getCurrency (currencies[0]);
+        const quote = this.getCurrency (currencies[1]);
+        const uppercaseType = type.toUpperCase ();
+        let response = undefined;
+        if ((uppercaseType === 'LIMIT') && (price !== undefined)) {
+            response = await this.idexOrder (base, quote, side, amount, price, nonce, params);
+        } else if (uppercaseType === 'MARKET') {
+            response = await this.idexTrade (base, quote, side, amount, nonce, params);
+        } else {
+            throw new InvalidOrder (this.id + ' Invalid order type: ' + type);
+        }
+        return this.parseOrder (response, market);
+    }
+
     sign (path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
         let url = this.urls['api'][api];
         url += '/' + path;
@@ -346,5 +423,16 @@ module.exports = class idex extends Exchange {
             body = this.json (params);
         }
         return { 'url': url, 'method': method, 'body': body, 'headers': headers };
+    }
+
+    handleErrors (code, reason, url, method, headers, body, response) {
+        if (body.length > 0) {
+            if (body[0] === '{') {
+                const error = this.safeString (response, 'error');
+                if (error) {
+                    throw new ExchangeError (this.id + ' ' + error);
+                }
+            }
+        }
     }
 };
