@@ -332,7 +332,51 @@ module.exports = class idex extends Exchange {
         return this.parseTrades (response, market, since, limit);
     }
 
+    parseOrder (order, market = undefined) {
+        const status = undefined;
+        const symbol = this.findSymbol (this.safeString (order, 'market'), market);
+        let timestamp = undefined;
+        let datetime = undefined;
+        if ('timestamp' in order) {
+            timestamp = this.safeInteger (order, 'timestamp');
+        } else if ('date' in order) {
+            datetime = this.safeString (order, 'date');
+            timestamp = this.parse8601 (datetime);
+        }
+        let price = this.safeFloat (order, 'price');
+        const amount = this.safeFloat (order, 'amount');
+        const filled = undefined;
+        let remaining = undefined;
+        let cost = this.safeFloat (order, 'total');
+        const id = this.safeString (order, 'orderHash');
+        let type = undefined;
+        let side = this.safeString (order, 'type');
+        if (side !== undefined) {
+            side = side.toLowerCase ();
+        }
+        let fee = undefined;
+        return {
+            'info': order,
+            'id': id,
+            'timestamp': timestamp,
+            'datetime': datetime,
+            'lastTradeTimestamp': undefined,
+            'symbol': symbol,
+            'type': type,
+            'side': side,
+            'price': price,
+            'amount': amount,
+            'cost': cost,
+            'filled': filled,
+            'remaining': remaining,
+            'status': status,
+            'fee': fee,
+        };
+    }
+
     async idexOrder (base, quote, side, amount, price, nonce, params = {}) {
+        const amountFloat = parseFloat (amount);
+        const priceFloat = parseFloat (price);
         let tokenBuy = undefined;
         let tokenSell = undefined;
         let amountBuy = undefined;
@@ -341,11 +385,11 @@ module.exports = class idex extends Exchange {
             tokenBuy = base['address'];
             tokenSell = quote['address'];
             amountBuy = this.toWei (amount);
-            amountSell = this.toWei (amount * price);
+            amountSell = this.toWei (amountFloat * priceFloat);
         } else if (side === 'sell') {
             tokenBuy = quote['address'];
             tokenSell = base['address'];
-            amountBuy = this.toWei (amount * price);
+            amountBuy = this.toWei (amountFloat * priceFloat);
             amountSell = this.toWei (amount);
         } else {
             throw new InvalidOrder (this.id + ' invalid value for side: ' + side);
@@ -378,7 +422,26 @@ module.exports = class idex extends Exchange {
         return await this.privatePostOrder (this.extend (args, vrs));
     }
 
+    prepareOrderForTrade (orderAmount, openOrder, nonce) {
+        const args = {
+            'orderHash': openOrder['orderHash'],
+            'amount': this.toWei (orderAmount),
+            'nonce': nonce,
+            'address': idex.walletAddress,
+        };
+        const raw = this.soliditySha3 ([
+            args['orderHash'],
+            args['amount'],
+            args['address'],
+            args['nonce'],
+        ]);
+        const salted = this.hashMessage (raw);
+        const vrs = this.signMessage (salted, this.privateKey);
+        return this.extend (args, vrs);
+    }
+
     async idexTrade (base, quote, side, amount, nonce, params = {}) {
+        const amountFloat = parseFloat (amount);
         const symbol = base + '/' + quote;
         let market = this.market (symbol);
         let request = {
@@ -386,7 +449,30 @@ module.exports = class idex extends Exchange {
             'count': 100,
         };
         const orderbook = await this.publicGetReturnOrderBook (request);
-        // TODO: process orderbook
+        let orderbookKey = undefined;
+        if (side === 'buy') {
+            orderbookKey = 'asks';
+        } else if (side === 'sell') {
+            orderbookKey = 'bids';
+        } else {
+            throw new InvalidOrder (this.id + ' invalid side value: ' + side);
+        }
+        let totalAmount = 0;
+        let orders = [];
+        for (let i = 0; i < orderbook[orderbookKey].length; i++) {
+            if (totalAmount >= amountFloat) {
+                break;
+            }
+            let openOrder = orderbook[orderbookKey][i];
+            let orderAmount = this.safeFloat (openOrder['amount']);
+            if (totalAmount + orderAmount > amount) {
+                orderAmount = totalAmount - amount;
+            }
+            totalAmount += orderAmount;
+            const newOrder = this.prepareOrderForTrade (orderAmount, openOrder, nonce);
+            orders.push (newOrder);
+        }
+        return await this.privatePostTrade (orders);
     }
 
     async createOrder (symbol, type, side, amount, price = undefined, params = {}) {
@@ -399,14 +485,21 @@ module.exports = class idex extends Exchange {
         const quote = this.getCurrency (currencies[1]);
         const uppercaseType = type.toUpperCase ();
         let response = undefined;
+        let result = undefined;
         if ((uppercaseType === 'LIMIT') && (price !== undefined)) {
             response = await this.idexOrder (base, quote, side, amount, price, nonce, params);
+            result = this.parseOrder (response, market);
         } else if (uppercaseType === 'MARKET') {
             response = await this.idexTrade (base, quote, side, amount, nonce, params);
+            result = [];
+            for (let i = 0; i < response.length; i++) {
+                const order = this.parseOrder (response[i], market);
+                result.push (order);
+            }
         } else {
             throw new InvalidOrder (this.id + ' Invalid order type: ' + type);
         }
-        return this.parseOrder (response, market);
+        return result;
     }
 
     sign (path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
