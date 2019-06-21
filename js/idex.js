@@ -502,6 +502,52 @@ module.exports = class idex extends Exchange {
         return result;
     }
 
+    async cancelOrder (orderHash, symbol = undefined, params = {}) {
+        const nonce = await this.privatePostReturnNextNonce ({ 'address': this.walletAddress });
+        const args = {
+            'orderHash': orderHash,
+            'nonce': nonce,
+            'address': this.walletAddress,
+        };
+        const raw = this.soliditySha3 ([
+            args.orderHash,
+            args.nonce,
+        ]);
+        const salted = this.hashMessage (raw);
+        const vrs = this.signMessage (salted, this.privateKey);
+        return await this.privatePostCancel (this.extend (args, vrs));
+    }
+
+    async withdraw (code, amount, address = undefined, tag = undefined, params = {}) {
+        if (address !== undefined) {
+            this.checkAddress (address);
+        }
+        const currency = this.getCurrency (code);
+        let withdrawAddress = undefined;
+        if (address !== undefined) {
+            withdrawAddress = address;
+        } else {
+            withdrawAddress = this.walletAddress;
+        }
+        const nonce = await this.privatePostReturnNextNonce ({ 'address': this.walletAddress });
+        const args = {
+            'address': withdrawAddress,
+            'amount': this.toWei (amount),
+            'token': currency['address'],
+            'nonce': nonce,
+        };
+        const raw = this.soliditySha3 ([
+            this.idexContractAddress,
+            args['token'],
+            args['amount'],
+            args['address'],
+            args['nonce'],
+        ]);
+        const salted = this.hashMessage (raw);
+        const vrs = this.signMessage (salted, this.privateKey);
+        return await this.privatePostWithdraw (this.extend (args, vrs));
+    }
+
     sign (path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
         let url = this.urls['api'][api];
         url += '/' + path;
