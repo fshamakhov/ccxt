@@ -408,7 +408,8 @@ module.exports = class idex extends Exchange {
         ]);
         const salted = this.hashMessage (raw);
         const vrs = this.signMessage (salted, this.privateKey);
-        return await this.privatePostOrder (this.extend (args, vrs));
+        const request = this.extend (args, vrs);
+        return await this.privatePostOrder (request);
     }
 
     prepareOrderForTrade (orderAmount, openOrder, nonce) {
@@ -464,11 +465,20 @@ module.exports = class idex extends Exchange {
         return await this.privatePostTrade (orders);
     }
 
+    async fetchNextNonce () {
+        let nonce = undefined;
+        const nonceResponse = await this.privatePostReturnNextNonce ({ 'address': this.walletAddress });
+        if ('nonce' in nonceResponse) {
+            nonce = nonceResponse['nonce'];
+        }
+        return nonce;
+    }
+
     async createOrder (symbol, type, side, amount, price = undefined, params = {}) {
         await this.loadMarkets ();
         const market = this.market (symbol);
         // the next 5 lines are added to support for testing orders
-        const nonce = await this.privatePostReturnNextNonce ({ 'address': this.walletAddress });
+        const nonce = await this.fetchNextNonce ();
         let currencies = symbol.split ('/');
         const base = this.getCurrency (currencies[0]);
         const quote = this.getCurrency (currencies[1]);
@@ -492,7 +502,7 @@ module.exports = class idex extends Exchange {
     }
 
     async cancelOrder (orderHash, symbol = undefined, params = {}) {
-        const nonce = await this.privatePostReturnNextNonce ({ 'address': this.walletAddress });
+        const nonce = await this.fetchNextNonce ();
         const args = {
             'orderHash': orderHash,
             'nonce': nonce,
@@ -518,7 +528,7 @@ module.exports = class idex extends Exchange {
         } else {
             withdrawAddress = this.walletAddress;
         }
-        const nonce = await this.privatePostReturnNextNonce ({ 'address': this.walletAddress });
+        const nonce = await this.fetchNextNonce ();
         const args = {
             'address': withdrawAddress,
             'amount': this.toWei (amount),
