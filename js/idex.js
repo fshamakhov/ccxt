@@ -120,9 +120,16 @@ module.exports = class idex extends Exchange {
         });
     }
 
+    async fetchContractAddress () {
+        const response = await this.publicPostReturnContractAddress ();
+        if ('address' in response) {
+            this.idexContractAddress = response['address'];
+        }
+    }
+
     getCurrency (currency = '') {
         if (currency in this.currencyAddresses) {
-            return this.currencyAddresses[currency];
+            return this.extend ({ 'symbol': currency }, this.currencyAddresses[currency]);
         }
         throw new ExchangeError ('Exchange ' + this.id + 'currency ' + currency + ' not found');
     }
@@ -130,7 +137,7 @@ module.exports = class idex extends Exchange {
     async fetchMarkets (params = {}) {
         this.currencyAddresses = await this.publicGetReturnCurrencies (params);
         let response = await this.publicGetReturnTicker ();
-        this.idexContractAddress = await this.publicPostReturnContractAddress ();
+        await this.fetchContractAddress ();
         let symbols = Object.keys (response);
         let result = [];
         for (let i = 0; i < symbols.length; i++) {
@@ -363,6 +370,13 @@ module.exports = class idex extends Exchange {
         };
     }
 
+    getSignedRequestParams (args, raw) {
+        const salted = this.hashMessage (raw).slice (2); // according to example salted message should be without leading 0x substring
+        const vrs = this.signHash (salted, this.privateKey);
+        const request = this.extend (args, vrs);
+        return request;
+    }
+
     async idexOrder (base, quote, side, amount, price, nonce, params = {}) {
         const amountFloat = parseFloat (amount);
         const priceFloat = parseFloat (price);
@@ -406,9 +420,7 @@ module.exports = class idex extends Exchange {
             args['nonce'],
             args['address'],
         ]);
-        const salted = this.hashMessage (raw);
-        const vrs = this.signMessage (salted, this.privateKey);
-        const request = this.extend (args, vrs);
+        const request = this.getSignedRequestParams (args, raw);
         return await this.privatePostOrder (request);
     }
 
@@ -417,7 +429,7 @@ module.exports = class idex extends Exchange {
             'orderHash': openOrder['orderHash'],
             'amount': this.toWei (orderAmount),
             'nonce': nonce,
-            'address': idex.walletAddress,
+            'address': this.walletAddress,
         };
         const raw = this.soliditySha3 ([
             args['orderHash'],
@@ -425,16 +437,16 @@ module.exports = class idex extends Exchange {
             args['address'],
             args['nonce'],
         ]);
-        const salted = this.hashMessage (raw);
-        const vrs = this.signMessage (salted, this.privateKey);
-        return this.extend (args, vrs);
+        const request = this.getSignedRequestParams (args, raw);
+        // console.log ('args: ', args, 'raw: ', raw, 'request: ', request);
+        return request;
     }
 
     async idexTrade (base, quote, side, amount, nonce, params = {}) {
         const amountFloat = parseFloat (amount);
-        const symbol = base + '/' + quote;
+        const symbol = base['symbol'] + '/' + quote['symbol'];
         let market = this.market (symbol);
-        let request = {
+        const request = {
             'market': market['id'],
             'count': 100,
         };
@@ -454,7 +466,10 @@ module.exports = class idex extends Exchange {
                 break;
             }
             let openOrder = orderbook[orderbookKey][i];
-            let orderAmount = this.safeFloat (openOrder['amount']);
+            let orderAmount = this.safeFloat (openOrder, 'amount');
+            if (orderAmount === undefined) {
+                continue;
+            }
             if (totalAmount + orderAmount > amount) {
                 orderAmount = totalAmount - amount;
             }
@@ -462,7 +477,8 @@ module.exports = class idex extends Exchange {
             const newOrder = this.prepareOrderForTrade (orderAmount, openOrder, nonce);
             orders.push (newOrder);
         }
-        return await this.privatePostTrade (orders);
+        console.log ('totalAmount: ', totalAmount);
+        // return await this.privatePostTrade (orders);
     }
 
     async fetchNextNonce () {
@@ -542,9 +558,8 @@ module.exports = class idex extends Exchange {
             args['address'],
             args['nonce'],
         ]);
-        const salted = this.hashMessage (raw);
-        const vrs = this.signMessage (salted, this.privateKey);
-        return await this.privatePostWithdraw (this.extend (args, vrs));
+        const request = this.getSignedRequestParams (args, raw);
+        return await this.privatePostWithdraw (request);
     }
 
     sign (path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
