@@ -152,7 +152,7 @@ class livecoin (Exchange):
         result = []
         for i in range(0, len(response)):
             market = response[i]
-            id = market['symbol']
+            id = self.safe_string(market, 'symbol')
             baseId, quoteId = id.split('/')
             base = self.common_currency_code(baseId)
             quote = self.common_currency_code(quoteId)
@@ -192,28 +192,31 @@ class livecoin (Exchange):
 
     def fetch_currencies(self, params={}):
         response = self.publicGetInfoCoinInfo(params)
-        currencies = response['info']
+        currencies = self.safe_value(response, 'info')
         result = {}
         for i in range(0, len(currencies)):
             currency = currencies[i]
-            id = currency['symbol']
+            id = self.safe_string(currency, 'symbol')
             # todo: will need to rethink the fees
             # to add support for multiple withdrawal/deposit methods and
             # differentiated fees for each particular method
             code = self.common_currency_code(id)
             precision = 8  # default precision, todo: fix "magic constants"
-            active = (currency['walletStatus'] == 'normal')
+            walletStatus = self.safe_string(currency, 'walletStatus')
+            active = (walletStatus == 'normal')
+            name = self.safe_string(currency, 'name')
+            fee = self.safe_float(currency, 'withdrawFee')
             result[code] = {
                 'id': id,
                 'code': code,
                 'info': currency,
-                'name': currency['name'],
+                'name': name,
                 'active': active,
-                'fee': currency['withdrawFee'],  # todo: redesign
+                'fee': fee,
                 'precision': precision,
                 'limits': {
                     'amount': {
-                        'min': currency['minOrderAmount'],
+                        'min': self.safe_float(currency, 'minOrderAmount'),
                         'max': math.pow(10, precision),
                     },
                     'price': {
@@ -221,15 +224,15 @@ class livecoin (Exchange):
                         'max': math.pow(10, precision),
                     },
                     'cost': {
-                        'min': currency['minOrderAmount'],
+                        'min': self.safe_float(currency, 'minOrderAmount'),
                         'max': None,
                     },
                     'withdraw': {
-                        'min': currency['minWithdrawAmount'],
+                        'min': self.safe_float(currency, 'minWithdrawAmount'),
                         'max': math.pow(10, precision),
                     },
                     'deposit': {
-                        'min': currency['minDepositAmount'],
+                        'min': self.safe_float(currency, 'minDepositAmount'),
                         'max': None,
                     },
                 },
@@ -277,8 +280,12 @@ class livecoin (Exchange):
         result = {'info': response}
         for i in range(0, len(response)):
             balance = response[i]
-            currencyId = balance['currency']
-            code = self.common_currency_code(currencyId)
+            currencyId = self.safe_string(balance, 'currency')
+            code = currencyId
+            if currencyId in self.currencies_by_id:
+                code = self.currencies_by_id[currencyId]['code']
+            else:
+                code = self.common_currency_code(currencyId)
             account = None
             if code in result:
                 account = result[code]
@@ -366,12 +373,13 @@ class livecoin (Exchange):
     def fetch_ticker(self, symbol, params={}):
         self.load_markets()
         market = self.market(symbol)
-        ticker = self.publicGetExchangeTicker(self.extend({
+        request = {
             'currencyPair': market['id'],
-        }, params))
+        }
+        ticker = self.publicGetExchangeTicker(self.extend(request, params))
         return self.parse_ticker(ticker, market)
 
-    def parse_trade(self, trade, market):
+    def parse_trade(self, trade, market=None):
         #
         # fetchTrades(public)
         #
@@ -395,7 +403,7 @@ class livecoin (Exchange):
         #         "commission": 0,
         #         "clientorderid": 1472837650
         #     }
-        timestamp = self.safe_string_2(trade, 'time', 'datetime')
+        timestamp = self.safe_integer_2(trade, 'time', 'datetime')
         if timestamp is not None:
             timestamp = timestamp * 1000
         fee = None
@@ -417,15 +425,19 @@ class livecoin (Exchange):
         if amount is not None:
             if price is not None:
                 cost = amount * price
+        symbol = None
+        if market is not None:
+            symbol = market['symbol']
         return {
+            'id': id,
             'info': trade,
             'timestamp': timestamp,
             'datetime': self.iso8601(timestamp),
-            'symbol': market['symbol'],
-            'id': id,
+            'symbol': symbol,
             'order': orderId,
             'type': None,
             'side': side,
+            'takerOrMaker': None,
             'price': price,
             'amount': amount,
             'cost': cost,

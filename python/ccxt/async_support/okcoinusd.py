@@ -525,7 +525,9 @@ class okcoinusd (Exchange):
         request = {}
         response = await self.publicGetTickers(self.extend(request, params))
         tickers = response['tickers']
-        timestamp = int(response['date']) * 1000
+        timestamp = self.safe_integer(response, 'date')
+        if timestamp is not None:
+            timestamp *= 1000
         result = {}
         for i in range(0, len(tickers)):
             ticker = tickers[i]
@@ -538,7 +540,7 @@ class okcoinusd (Exchange):
         await self.load_markets()
         request = {}
         response = await self.webGetSpotMarketsTickers(self.extend(request, params))
-        tickers = response['data']
+        tickers = self.safe_value(response, 'data')
         result = {}
         for i in range(0, len(tickers)):
             ticker = self.parse_ticker(tickers[i])
@@ -646,17 +648,29 @@ class okcoinusd (Exchange):
         if market:
             symbol = market['symbol']
         timestamp = self.safe_integer(trade, 'date_ms')
+        id = self.safe_string(trade, 'tid')
+        type = None
+        side = self.safe_string(trade, 'type')
+        price = self.safe_float(trade, 'price')
+        amount = self.safe_float(trade, 'amount')
+        cost = None
+        if price is not None:
+            if amount is not None:
+                cost = price * amount
         return {
+            'id': id,
             'info': trade,
             'timestamp': timestamp,
             'datetime': self.iso8601(timestamp),
             'symbol': symbol,
-            'id': self.safe_string(trade, 'tid'),
             'order': None,
-            'type': None,
-            'side': trade['type'],
-            'price': self.safe_float(trade, 'price'),
-            'amount': self.safe_float(trade, 'amount'),
+            'type': type,
+            'side': side,
+            'takerOrMaker': None,
+            'price': price,
+            'amount': amount,
+            'cost': cost,
+            'fee': None,
         }
 
     async def fetch_trades(self, symbol, since=None, limit=None, params={}):
@@ -693,7 +707,7 @@ class okcoinusd (Exchange):
             request['since'] = self.milliseconds() - 86400000  # default last 24h
         if limit is not None:
             if self.options['fetchOHLCVWarning']:
-                raise ExchangeError(self.id + ' fetchOHLCV counts "limit" candles from current time backwards, therefore the "limit" argument for ' + self.id + ' is disabled. Set ' + self.id + '.options["fetchOHLCVWarning"] = False to suppress self warning message.')
+                raise ExchangeError(self.id + ' fetchOHLCV counts "limit" candles backwards in chronological ascending order, therefore the "limit" argument for ' + self.id + ' is disabled. Set ' + self.id + '.options["fetchOHLCVWarning"] = False to suppress self warning message.')
             request['size'] = int(limit)  # max is 1440 candles
         response = await getattr(self, method)(self.extend(request, params))
         return self.parse_ohlcvs(response, market, timeframe, since, limit)
@@ -720,9 +734,8 @@ class okcoinusd (Exchange):
             else:
                 code = self.common_currency_code(code)
             account = self.account()
-            account['free'] = self.safe_float(balances['free'], id, 0.0)
-            account['used'] = self.safe_float(balances[usedField], id, 0.0)
-            account['total'] = self.sum(account['free'], account['used'])
+            account['free'] = self.safe_float(balances['free'], id)
+            account['used'] = self.safe_float(balances[usedField], id)
             result[code] = account
         return self.parse_balance(result)
 

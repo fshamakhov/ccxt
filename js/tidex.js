@@ -178,9 +178,9 @@ module.exports = class tidex extends Exchange {
     }
 
     calculateFee (symbol, type, side, amount, price, takerOrMaker = 'taker', params = {}) {
-        let market = this.markets[symbol];
+        const market = this.markets[symbol];
         let key = 'quote';
-        let rate = market[takerOrMaker];
+        const rate = market[takerOrMaker];
         let cost = parseFloat (this.costToPrecision (symbol, amount * rate));
         if (side === 'sell') {
             cost *= price;
@@ -250,24 +250,28 @@ module.exports = class tidex extends Exchange {
         const response = await this.privatePostGetInfo (params);
         const balances = this.safeValue (response, 'return');
         const result = { 'info': balances };
-        const funds = balances['funds'];
-        const currencies = Object.keys (funds);
-        for (let i = 0; i < currencies.length; i++) {
-            const currency = currencies[i];
-            let uppercase = currency.toUpperCase ();
-            uppercase = this.commonCurrencyCode (uppercase);
+        const funds = this.safeValue (balances, 'funds', {});
+        const currencyIds = Object.keys (funds);
+        for (let i = 0; i < currencyIds.length; i++) {
+            const currencyId = currencyIds[i];
+            let code = currencyId;
+            if (currencyId in this.currencies_by_id) {
+                code = this.currencies_by_id[currencyId]['code'];
+            } else {
+                code = this.commonCurrencyCode (currencyId.toUpperCase ());
+            }
             let total = undefined;
             let used = undefined;
             if (balances['open_orders'] === 0) {
-                total = funds[currency];
+                total = funds[currencyId];
                 used = 0.0;
             }
             const account = {
-                'free': funds[currency],
+                'free': funds[currencyId],
                 'used': used,
                 'total': total,
             };
-            result[uppercase] = account;
+            result[code] = account;
         }
         return this.parseBalance (result);
     }
@@ -297,7 +301,7 @@ module.exports = class tidex extends Exchange {
             ids = this.ids.join ('-');
             // max URL length is 2083 symbols, including http schema, hostname, tld, etc...
             if (ids.length > 2048) {
-                let numIds = this.ids.length;
+                const numIds = this.ids.length;
                 throw new ExchangeError (this.id + ' has ' + numIds.toString () + ' symbols exceeding max URL length, you are required to specify a list of symbols in the first argument to fetchOrderBooks');
             }
         } else {
@@ -417,7 +421,7 @@ module.exports = class tidex extends Exchange {
         const id = this.safeString2 (trade, 'trade_id', 'tid');
         const orderId = this.safeString (trade, 'order_id');
         if ('pair' in trade) {
-            let marketId = this.safeString (trade, 'pair');
+            const marketId = this.safeString (trade, 'pair');
             market = this.safeValue (this.markets_by_id, marketId, market);
         }
         let symbol = undefined;
@@ -432,7 +436,7 @@ module.exports = class tidex extends Exchange {
         if (feeCost !== undefined) {
             let feeCurrencyId = this.safeString (trade, 'commissionCurrency');
             feeCurrencyId = feeCurrencyId.toUpperCase ();
-            let feeCurrency = this.safeValue (this.currencies_by_id, feeCurrencyId);
+            const feeCurrency = this.safeValue (this.currencies_by_id, feeCurrencyId);
             let feeCurrencyCode = undefined;
             if (feeCurrency !== undefined) {
                 feeCurrencyCode = feeCurrency['code'];
@@ -454,6 +458,12 @@ module.exports = class tidex extends Exchange {
                 fee = this.calculateFee (symbol, type, side, amount, price, takerOrMaker);
             }
         }
+        let cost = undefined;
+        if (amount !== undefined) {
+            if (price !== undefined) {
+                cost = amount * price;
+            }
+        }
         return {
             'id': id,
             'order': orderId,
@@ -465,6 +475,7 @@ module.exports = class tidex extends Exchange {
             'takerOrMaker': takerOrMaker,
             'price': price,
             'amount': amount,
+            'cost': cost,
             'fee': fee,
             'info': trade,
         };
@@ -564,10 +575,16 @@ module.exports = class tidex extends Exchange {
     parseOrder (order, market = undefined) {
         const id = this.safeString (order, 'id');
         const status = this.parseOrderStatus (this.safeString (order, 'status'));
-        const timestamp = parseInt (order['timestamp_created']) * 1000;
+        let timestamp = this.safeInteger (order, 'timestamp_created');
+        if (timestamp !== undefined) {
+            timestamp *= 1000;
+        }
         let symbol = undefined;
         if (market === undefined) {
-            market = this.markets_by_id[order['pair']];
+            const marketId = this.safeString (order, 'pair');
+            if (marketId in this.markets_by_id) {
+                market = this.markets_by_id[marketId];
+            }
         }
         if (market !== undefined) {
             symbol = market['symbol'];
@@ -686,7 +703,7 @@ module.exports = class tidex extends Exchange {
         if ('fetchOrdersRequiresSymbol' in this.options) {
             if (this.options['fetchOrdersRequiresSymbol']) {
                 if (symbol === undefined) {
-                    throw new ArgumentsRequired (this.id + ' fetchOrders requires a symbol argument');
+                    throw new ArgumentsRequired (this.id + ' fetchOrders requires a `symbol` argument');
                 }
             }
         }

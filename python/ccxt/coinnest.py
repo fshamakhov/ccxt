@@ -179,24 +179,35 @@ class coinnest (Exchange):
         return self.parse_order_book(response)
 
     def parse_trade(self, trade, market=None):
-        timestamp = self.safe_integer(trade, 'date') * 1000
+        timestamp = self.safe_integer(trade, 'date')
+        if timestamp is not None:
+            timestamp *= 1000
         price = self.safe_float(trade, 'price')
         amount = self.safe_float(trade, 'amount')
-        symbol = market['symbol']
-        cost = self.price_to_precision(symbol, amount * price)
+        cost = None
+        if price is not None:
+            if amount is not None:
+                cost = amount * price
+        symbol = None
+        if market is not None:
+            symbol = market['symbol']
+        type = 'limit'
+        side = self.safe_string(trade, 'type')
+        id = self.safe_string(trade, 'tid')
         return {
+            'id': id,
+            'info': trade,
             'timestamp': timestamp,
             'datetime': self.iso8601(timestamp),
             'symbol': symbol,
-            'id': self.safe_string(trade, 'tid'),
             'order': None,
-            'type': 'limit',
-            'side': trade['type'],
+            'type': type,
+            'side': side,
+            'takerOrMaker': None,
             'price': price,
             'amount': amount,
-            'cost': float(cost),
+            'cost': cost,
             'fee': None,
-            'info': trade,
         }
 
     def fetch_trades(self, symbol, since=None, limit=None, params={}):
@@ -226,11 +237,7 @@ class coinnest (Exchange):
             uppercase = currencyId.upper()
             code = self.common_currency_code(uppercase)
             if not(code in list(result.keys())):
-                result[code] = {
-                    'free': 0.0,
-                    'used': 0.0,
-                    'total': 0.0,
-                }
+                result[code] = self.account()
             type = (type == 'used' if 'reserved' else 'free')
             result[code][type] = self.safe_float(response, key)
             otherType = (type == 'free' if 'used' else 'used')

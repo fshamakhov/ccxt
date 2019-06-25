@@ -393,9 +393,11 @@ class btcmarkets extends Exchange {
             'symbol' => $symbol,
             'type' => null,
             'side' => null,
+            'takerOrMaker' => null,
             'price' => $price,
             'amount' => $amount,
             'cost' => $cost,
+            'fee' => null,
         );
     }
 
@@ -665,13 +667,13 @@ class btcmarkets extends Exchange {
                 'apikey' => $this->apiKey,
                 'timestamp' => $nonce,
             );
-            if ($method === 'post') {
+            if ($method === 'POST') {
                 $headers['Content-Type'] = 'application/json';
                 $auth = $uri . "\n" . $nonce . "\n"; // eslint-disable-line quotes
                 $body = $this->json ($params);
                 $auth .= $body;
             } else {
-                $query = $this->ksort ($this->omit ($params, $this->extract_params($path)));
+                $query = $this->keysort ($this->omit ($params, $this->extract_params($path)));
                 $queryString = '';
                 if ($query) {
                     $queryString = $this->urlencode ($query);

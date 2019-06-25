@@ -396,12 +396,9 @@ class cex extends Exchange {
         for ($i = 0; $i < count ($currencyIds); $i++) {
             $currencyId = $currencyIds[$i];
             $balance = $this->safe_value($balances, $currencyId, array());
-            $account = array (
-                'free' => $this->safe_float($balance, 'available', 0.0),
-                'used' => $this->safe_float($balance, 'orders', 0.0),
-                'total' => 0.0,
-            );
-            $account['total'] = $this->sum ($account['free'], $account['used']);
+            $account = $this->account ();
+            $account['free'] = $this->safe_float($balance, 'available');
+            $account['used'] = $this->safe_float($balance, 'orders');
             $code = $this->common_currency_code($currencyId);
             $result[$code] = $account;
         }
@@ -544,17 +541,24 @@ class cex extends Exchange {
                 $cost = $amount * $price;
             }
         }
+        $symbol = null;
+        if ($market !== null) {
+            $symbol = $market['symbol'];
+        }
         return array (
             'info' => $trade,
             'id' => $id,
             'timestamp' => $timestamp,
             'datetime' => $this->iso8601 ($timestamp),
-            'symbol' => $market['symbol'],
+            'symbol' => $symbol,
             'type' => $type,
             'side' => $side,
+            'order' => null,
+            'takerOrMaker' => null,
             'price' => $price,
             'amount' => $amount,
             'cost' => $cost,
+            'fee' => null,
         );
     }
 
@@ -632,6 +636,11 @@ class cex extends Exchange {
         $status = $this->parse_order_status($this->safe_string($order, 'status'));
         $price = $this->safe_float($order, 'price');
         $amount = $this->safe_float($order, 'amount');
+        // sell orders can have a negative $amount
+        // https://github.com/ccxt/ccxt/issues/5338
+        if ($amount !== null) {
+            $amount = abs ($amount);
+        }
         $remaining = $this->safe_float_2($order, 'pending', 'remains');
         $filled = $amount - $remaining;
         $fee = null;
@@ -898,6 +907,9 @@ class cex extends Exchange {
 
     public function request ($path, $api = 'public', $method = 'GET', $params = array (), $headers = null, $body = null) {
         $response = $this->fetch2 ($path, $api, $method, $params, $headers, $body);
+        if (gettype ($response) === 'array' && count (array_filter (array_keys ($response), 'is_string')) == 0) {
+            return $response; // public endpoints may return array()-arrays
+        }
         if (!$response) {
             throw new NullResponse($this->id . ' returned ' . $this->json ($response));
         } else if ($response === true || $response === 'true') {

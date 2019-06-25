@@ -138,7 +138,7 @@ class rightbtc extends Exchange {
     }
 
     public function fetch_markets ($params = array ()) {
-        $response = $this->publicGetTradingPairs ();
+        $response = $this->publicGetTradingPairs ($params);
         // $zh = $this->publicGetGetAssetsTradingPairsZh ();
         $markets = array_merge ($response['status']['message']);
         $marketIds = is_array($markets) ? array_keys($markets) : array();
@@ -146,14 +146,14 @@ class rightbtc extends Exchange {
         for ($i = 0; $i < count ($marketIds); $i++) {
             $id = $marketIds[$i];
             $market = $markets[$id];
-            $baseId = $market['bid_asset_symbol'];
-            $quoteId = $market['ask_asset_symbol'];
+            $baseId = $this->safe_string($market, 'bid_asset_symbol');
+            $quoteId = $this->safe_string($market, 'ask_asset_symbol');
             $base = $this->common_currency_code($baseId);
             $quote = $this->common_currency_code($quoteId);
             $symbol = $base . '/' . $quote;
             $precision = array (
-                'amount' => intval ($market['bid_asset_decimals']),
-                'price' => intval ($market['ask_asset_decimals']),
+                'amount' => $this->safe_integer($market, 'bid_asset_decimals'),
+                'price' => $this->safe_integer($market, 'ask_asset_decimals'),
             );
             $result[] = array (
                 'id' => $id,
@@ -330,48 +330,51 @@ class rightbtc extends Exchange {
             $side = 'sell';
         }
         return array (
+            'id' => $id,
+            'info' => $trade,
             'timestamp' => $timestamp,
             'datetime' => $this->iso8601 ($timestamp),
             'symbol' => $symbol,
-            'id' => $id,
             'order' => $orderId,
             'type' => 'limit',
             'side' => $side,
+            'takerOrMaker' => null,
             'price' => $price,
             'amount' => $amount,
             'cost' => $cost,
             'fee' => null,
-            'info' => $trade,
         );
     }
 
     public function fetch_trades ($symbol, $since = null, $limit = null, $params = array ()) {
         $this->load_markets();
         $market = $this->market ($symbol);
-        $response = $this->publicGetTradesTradingPair (array_merge (array (
+        $request = array (
             'trading_pair' => $market['id'],
-        ), $params));
+        );
+        $response = $this->publicGetTradesTradingPair (array_merge ($request, $params));
         return $this->parse_trades($response['result'], $market, $since, $limit);
     }
 
     public function parse_ohlcv ($ohlcv, $market = null, $timeframe = '5m', $since = null, $limit = null) {
         return [
-            $ohlcv[0],
-            $ohlcv[2] / 1e8,
-            $ohlcv[3] / 1e8,
-            $ohlcv[4] / 1e8,
-            $ohlcv[5] / 1e8,
-            $ohlcv[1] / 1e8,
+            intval ($ohlcv[0]),
+            floatval ($ohlcv[2]) / 1e8,
+            floatval ($ohlcv[3]) / 1e8,
+            floatval ($ohlcv[4]) / 1e8,
+            floatval ($ohlcv[5]) / 1e8,
+            floatval ($ohlcv[1]) / 1e8,
         ];
     }
 
     public function fetch_ohlcv ($symbol, $timeframe = '5m', $since = null, $limit = null, $params = array ()) {
         $this->load_markets();
         $market = $this->market ($symbol);
-        $response = $this->publicGetCandlestickTimeSymbolTradingPair (array_merge (array (
+        $request = array (
             'trading_pair' => $market['id'],
             'timeSymbol' => $this->timeframes[$timeframe],
-        ), $params));
+        );
+        $response = $this->publicGetCandlestickTimeSymbolTradingPair (array_merge ($request, $params));
         return $this->parse_ohlcvs($response['result'], $market, $timeframe, $since, $limit);
     }
 
@@ -401,31 +404,20 @@ class rightbtc extends Exchange {
         //     }
         //
         $result = array( 'info' => $response );
-        $balances = $response['result'];
+        $balances = $this->safe_value($response, 'result', array());
         for ($i = 0; $i < count ($balances); $i++) {
             $balance = $balances[$i];
-            $currencyId = $balance['asset'];
-            $code = $this->common_currency_code($currencyId);
+            $currencyId = $this->safe_string($balance, 'asset');
+            $code = $currencyId;
             if (is_array($this->currencies_by_id) && array_key_exists($currencyId, $this->currencies_by_id)) {
                 $code = $this->currencies_by_id[$currencyId]['code'];
+            } else {
+                $code = $this->common_currency_code($currencyId);
             }
-            $free = $this->divide_safe_float ($balance, 'balance', 1e8);
-            $used = $this->divide_safe_float ($balance, 'frozen', 1e8);
-            $total = $this->sum ($free, $used);
-            //
+            $account = $this->account ();
             // https://github.com/ccxt/ccxt/issues/3873
-            //
-            //     if ($total !== null) {
-            //         if ($used !== null) {
-            //             $free = $total - $used;
-            //         }
-            //     }
-            //
-            $account = array (
-                'free' => $free,
-                'used' => $used,
-                'total' => $total,
-            );
+            $account['free'] = $this->divide_safe_float ($balance, 'balance', 1e8);
+            $account['used'] = $this->divide_safe_float ($balance, 'frozen', 1e8);
             $result[$code] = $account;
         }
         return $this->parse_balance($result);

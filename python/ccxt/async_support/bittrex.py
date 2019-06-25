@@ -305,8 +305,10 @@ class bittrex (Exchange):
             }
             # bittrex uses boolean values, bleutrade uses strings
             active = self.safe_value(market, 'IsActive', False)
-            if (active != 'false') or active:
+            if (active != 'false') and active:
                 active = True
+            else:
+                active = False
             result.append({
                 'id': id,
                 'symbol': symbol,
@@ -581,7 +583,8 @@ class bittrex (Exchange):
             market = self.market(symbol)
             request['market'] = market['id']
         response = await self.marketGetOpenorders(self.extend(request, params))
-        orders = self.parse_orders(response['result'], market, since, limit)
+        result = self.safe_value(response, 'result', [])
+        orders = self.parse_orders(result, market, since, limit)
         return self.filter_by_symbol(orders, symbol)
 
     async def create_order(self, symbol, type, side, amount, price=None, params={}):
@@ -1074,7 +1077,7 @@ class bittrex (Exchange):
         if limit is not None:
             request['pageSize'] = limit
         if since is not None:
-            request['startDate'] = since
+            request['startDate'] = self.ymdhms(since) + 'Z'
         market = None
         if symbol is not None:
             market = self.market(symbol)
@@ -1163,8 +1166,8 @@ class bittrex (Exchange):
         elif api == 'v3':
             url += path
             if params:
-                url += '?' + self.urlencode(params)
-            contentHash = self.hash('', 'sha512', 'hex')
+                url += '?' + self.rawencode(params)
+            contentHash = self.hash(self.encode(''), 'sha512', 'hex')
             timestamp = str(self.milliseconds())
             auth = timestamp + url + method + contentHash
             subaccountId = self.safe_value(self.options, 'subaccountId')
@@ -1201,55 +1204,61 @@ class bittrex (Exchange):
         #
         #     {success: False, message: "message"}
         #
-        success = self.safe_value(response, 'success')
-        if success is None:
-            raise ExchangeError(self.id + ': malformed response: ' + self.json(response))
-        if isinstance(success, basestring):
-            # bleutrade uses string instead of boolean
-            success = True if (success == 'true') else False
-        if not success:
-            message = self.safe_string(response, 'message')
-            feedback = self.id + ' ' + self.json(response)
-            exceptions = self.exceptions
-            if message == 'APIKEY_INVALID':
-                if self.options['hasAlreadyAuthenticatedSuccessfully']:
-                    raise DDoSProtection(feedback)
-                else:
-                    raise AuthenticationError(feedback)
-            # https://github.com/ccxt/ccxt/issues/4932
-            # the following two lines are now redundant, see line 171 in describe()
-            #
-            #     if message == 'DUST_TRADE_DISALLOWED_MIN_VALUE_50K_SAT':
-            #         raise InvalidOrder(self.id + ' order cost should be over 50k satoshi ' + self.json(response))
-            #
-            if message == 'INVALID_ORDER':
-                # Bittrex will return an ambiguous INVALID_ORDER message
-                # upon canceling already-canceled and closed orders
-                # therefore self special case for cancelOrder
-                # url = 'https://bittrex.com/api/v1.1/market/cancel?apikey=API_KEY&uuid=ORDER_UUID'
-                cancel = 'cancel'
-                indexOfCancel = url.find(cancel)
-                if indexOfCancel >= 0:
-                    parts = url.split('&')
-                    orderId = None
-                    for i in range(0, len(parts)):
-                        part = parts[i]
-                        keyValue = part.split('=')
-                        if keyValue[0] == 'uuid':
-                            orderId = keyValue[1]
-                            break
-                    if orderId is not None:
-                        raise OrderNotFound(self.id + ' cancelOrder ' + orderId + ' ' + self.json(response))
+        if body[0] == '{':
+            success = self.safe_value(response, 'success')
+            if success is None:
+                raise ExchangeError(self.id + ': malformed response: ' + self.json(response))
+            if isinstance(success, basestring):
+                # bleutrade uses string instead of boolean
+                success = True if (success == 'true') else False
+            if not success:
+                message = self.safe_string(response, 'message')
+                feedback = self.id + ' ' + self.json(response)
+                exceptions = self.exceptions
+                if message == 'APIKEY_INVALID':
+                    if self.options['hasAlreadyAuthenticatedSuccessfully']:
+                        raise DDoSProtection(feedback)
                     else:
-                        raise OrderNotFound(self.id + ' cancelOrder ' + self.json(response))
-            if message in exceptions:
-                raise exceptions[message](feedback)
-            if message is not None:
-                if message.find('throttled. Try again') >= 0:
-                    raise DDoSProtection(feedback)
-                if message.find('problem') >= 0:
-                    raise ExchangeNotAvailable(feedback)  # 'There was a problem processing your request.  If self problem persists, please contact...')
-            raise ExchangeError(feedback)
+                        raise AuthenticationError(feedback)
+                # https://github.com/ccxt/ccxt/issues/4932
+                # the following two lines are now redundant, see line 171 in describe()
+                #
+                #     if message == 'DUST_TRADE_DISALLOWED_MIN_VALUE_50K_SAT':
+                #         raise InvalidOrder(self.id + ' order cost should be over 50k satoshi ' + self.json(response))
+                #
+                if message == 'INVALID_ORDER':
+                    # Bittrex will return an ambiguous INVALID_ORDER message
+                    # upon canceling already-canceled and closed orders
+                    # therefore self special case for cancelOrder
+                    # url = 'https://bittrex.com/api/v1.1/market/cancel?apikey=API_KEY&uuid=ORDER_UUID'
+                    cancel = 'cancel'
+                    indexOfCancel = url.find(cancel)
+                    if indexOfCancel >= 0:
+                        urlParts = url.split('?')
+                        numParts = len(urlParts)
+                        if numParts > 1:
+                            query = urlParts[1]
+                            params = query.split('&')
+                            numParams = len(params)
+                            orderId = None
+                            for i in range(0, numParams):
+                                param = params[i]
+                                keyValue = param.split('=')
+                                if keyValue[0] == 'uuid':
+                                    orderId = keyValue[1]
+                                    break
+                            if orderId is not None:
+                                raise OrderNotFound(self.id + ' cancelOrder ' + orderId + ' ' + self.json(response))
+                            else:
+                                raise OrderNotFound(self.id + ' cancelOrder ' + self.json(response))
+                if message in exceptions:
+                    raise exceptions[message](feedback)
+                if message is not None:
+                    if message.find('throttled. Try again') >= 0:
+                        raise DDoSProtection(feedback)
+                    if message.find('problem') >= 0:
+                        raise ExchangeNotAvailable(feedback)  # 'There was a problem processing your request.  If self problem persists, please contact...')
+                raise ExchangeError(feedback)
 
     async def request(self, path, api='public', method='GET', params={}, headers=None, body=None):
         response = await self.fetch2(path, api, method, params, headers, body)

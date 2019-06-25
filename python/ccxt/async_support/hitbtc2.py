@@ -699,13 +699,14 @@ class hitbtc2 (hitbtc):
         for i in range(0, len(response)):
             balance = response[i]
             currencyId = self.safe_string(balance, 'currency')
-            code = self.common_currency_code(currencyId)
-            account = {
-                'free': float(balance['available']),
-                'used': float(balance['reserved']),
-                'total': 0.0,
-            }
-            account['total'] = self.sum(account['free'], account['used'])
+            code = currencyId.upper()
+            if currencyId in self.currencies_by_id:
+                code = self.currencies_by_id[currencyId]['code']
+            else:
+                code = self.common_currency_code(code)
+            account = self.account()
+            account['free'] = self.safe_float(balance, 'available')
+            account['used'] = self.safe_float(balance, 'reserved')
             result[code] = account
         return self.parse_balance(result)
 
@@ -861,6 +862,7 @@ class hitbtc2 (hitbtc):
             'symbol': symbol,
             'type': None,
             'side': side,
+            'takerOrMaker': None,
             'price': price,
             'amount': amount,
             'cost': cost,

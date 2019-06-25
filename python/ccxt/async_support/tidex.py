@@ -263,23 +263,26 @@ class tidex (Exchange):
         response = await self.privatePostGetInfo(params)
         balances = self.safe_value(response, 'return')
         result = {'info': balances}
-        funds = balances['funds']
-        currencies = list(funds.keys())
-        for i in range(0, len(currencies)):
-            currency = currencies[i]
-            uppercase = currency.upper()
-            uppercase = self.common_currency_code(uppercase)
+        funds = self.safe_value(balances, 'funds', {})
+        currencyIds = list(funds.keys())
+        for i in range(0, len(currencyIds)):
+            currencyId = currencyIds[i]
+            code = currencyId
+            if currencyId in self.currencies_by_id:
+                code = self.currencies_by_id[currencyId]['code']
+            else:
+                code = self.common_currency_code(currencyId.upper())
             total = None
             used = None
             if balances['open_orders'] == 0:
-                total = funds[currency]
+                total = funds[currencyId]
                 used = 0.0
             account = {
-                'free': funds[currency],
+                'free': funds[currencyId],
                 'used': used,
                 'total': total,
             }
-            result[uppercase] = account
+            result[code] = account
         return self.parse_balance(result)
 
     async def fetch_order_book(self, symbol, limit=None, params={}):
@@ -439,6 +442,10 @@ class tidex (Exchange):
                 takerOrMaker = 'maker'
             if fee is None:
                 fee = self.calculate_fee(symbol, type, side, amount, price, takerOrMaker)
+        cost = None
+        if amount is not None:
+            if price is not None:
+                cost = amount * price
         return {
             'id': id,
             'order': orderId,
@@ -450,6 +457,7 @@ class tidex (Exchange):
             'takerOrMaker': takerOrMaker,
             'price': price,
             'amount': amount,
+            'cost': cost,
             'fee': fee,
             'info': trade,
         }
@@ -537,10 +545,14 @@ class tidex (Exchange):
     def parse_order(self, order, market=None):
         id = self.safe_string(order, 'id')
         status = self.parse_order_status(self.safe_string(order, 'status'))
-        timestamp = int(order['timestamp_created']) * 1000
+        timestamp = self.safe_integer(order, 'timestamp_created')
+        if timestamp is not None:
+            timestamp *= 1000
         symbol = None
         if market is None:
-            market = self.markets_by_id[order['pair']]
+            marketId = self.safe_string(order, 'pair')
+            if marketId in self.markets_by_id:
+                market = self.markets_by_id[marketId]
         if market is not None:
             symbol = market['symbol']
         remaining = None
@@ -640,7 +652,7 @@ class tidex (Exchange):
         if 'fetchOrdersRequiresSymbol' in self.options:
             if self.options['fetchOrdersRequiresSymbol']:
                 if symbol is None:
-                    raise ArgumentsRequired(self.id + ' fetchOrders requires a symbol argument')
+                    raise ArgumentsRequired(self.id + ' fetchOrders requires a `symbol` argument')
         await self.load_markets()
         request = {}
         market = None

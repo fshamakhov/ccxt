@@ -86,7 +86,6 @@ class foxbit (Exchange):
                     account = self.account()
                     account['used'] = float(balances[currencyId + '_locked']) * 1e-8
                     account['total'] = float(balances[currencyId]) * 1e-8
-                    account['free'] = account['total'] - account['used']
                     result[code] = account
         return self.parse_balance(result)
 
@@ -135,18 +134,35 @@ class foxbit (Exchange):
             'info': ticker,
         }
 
-    def parse_trade(self, trade, market):
-        timestamp = self.safe_integer(trade, 'date') * 1000
+    def parse_trade(self, trade, market=None):
+        timestamp = self.safe_integer(trade, 'date')
+        if timestamp is not None:
+            timestamp *= 1000
+        id = self.safe_string(trade, 'tid')
+        symbol = None
+        if market is not None:
+            symbol = market['symbol']
+        side = self.safe_string(trade, 'side')
+        price = self.safe_float(trade, 'price')
+        amount = self.safe_float(trade, 'amount')
+        cost = None
+        if price is not None:
+            if amount is not None:
+                cost = amount * price
         return {
-            'id': self.safe_string(trade, 'tid'),
+            'id': id,
             'info': trade,
             'timestamp': timestamp,
             'datetime': self.iso8601(timestamp),
-            'symbol': market['symbol'],
+            'symbol': symbol,
             'type': None,
-            'side': self.safe_string(trade, 'side'),
-            'price': self.safe_float(trade, 'price'),
-            'amount': self.safe_float(trade, 'amount'),
+            'side': side,
+            'order': None,
+            'takerOrMaker': None,
+            'price': price,
+            'amount': amount,
+            'cost': cost,
+            'fee': None,
         }
 
     def fetch_trades(self, symbol, since=None, limit=None, params={}):

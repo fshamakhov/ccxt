@@ -202,8 +202,6 @@ module.exports = class crypton extends Exchange {
         const marketId = this.safeString (trade, 'market');
         if (marketId in this.markets_by_id) {
             market = this.markets_by_id[marketId];
-        } else {
-            symbol = this.parseSymbol (marketId);
         }
         if (symbol === undefined) {
             if (market !== undefined) {
@@ -222,6 +220,15 @@ module.exports = class crypton extends Exchange {
         }
         const id = this.safeString (trade, 'id');
         const side = this.safeString (trade, 'side');
+        const orderId = this.safeString (trade, 'orderId');
+        const price = this.safeFloat (trade, 'price');
+        const amount = this.safeFloat (trade, 'size');
+        let cost = undefined;
+        if (price !== undefined) {
+            if (amount !== undefined) {
+                cost = amount * price;
+            }
+        }
         return {
             'id': id,
             'info': trade,
@@ -230,9 +237,11 @@ module.exports = class crypton extends Exchange {
             'symbol': symbol,
             'type': undefined,
             'side': side,
-            'price': this.safeFloat (trade, 'price'),
-            'amount': this.safeFloat (trade, 'size'),
-            'order': this.safeString (trade, 'orderId'),
+            'order': orderId,
+            'takerOrMaker': undefined,
+            'price': price,
+            'amount': amount,
+            'cost': cost,
             'fee': fee,
         };
     }
@@ -247,6 +256,20 @@ module.exports = class crypton extends Exchange {
             request['limit'] = limit;
         }
         const response = await this.publicGetMarketsIdTrades (this.extend (request, params));
+        //
+        //     {
+        //         "result":[
+        //             {
+        //                 "id":4256381,
+        //                 "price":7901.56,
+        //                 "side":"buy",
+        //                 "size":0.75708114,
+        //                 "time":"2019-05-14T16:15:46.781653+00:00"
+        //             }
+        //         ],
+        //         "success":true
+        //     }
+        //
         return this.parseTrades (response['result'], market, since, limit);
     }
 
@@ -323,7 +346,7 @@ module.exports = class crypton extends Exchange {
     async fetchOpenOrders (symbol = undefined, since = undefined, limit = undefined, params = {}) {
         await this.loadMarkets ();
         const request = {};
-        let market = undefined;
+        const market = undefined;
         if (symbol !== undefined) {
             request['market'] = this.marketId (symbol);
         }

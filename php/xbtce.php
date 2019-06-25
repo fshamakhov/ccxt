@@ -20,8 +20,10 @@ class xbtce extends Exchange {
                 'CORS' => false,
                 'fetchTickers' => true,
                 'createMarketOrder' => false,
+                'fetchOHLCV' => false,
             ),
             'urls' => array (
+                'referral' => 'https://xbtce.com/?agent=XX97BTCXXXG687021000B',
                 'logo' => 'https://user-images.githubusercontent.com/1294454/28059414-e235970c-662c-11e7-8c3a-08e31f78684b.jpg',
                 'api' => 'https://cryptottlivewebapi.xbtce.net:8443/api',
                 'www' => 'https://www.xbtce.com',
@@ -140,12 +142,16 @@ class xbtce extends Exchange {
         for ($i = 0; $i < count ($balances); $i++) {
             $balance = $balances[$i];
             $currencyId = $this->safe_string($balance, 'Currency');
-            $uppercase = strtoupper($currencyId);
-            $code = $this->common_currency_code($uppercase);
+            $code = $currencyId;
+            if (is_array($this->currencies_by_id) && array_key_exists($currencyId, $this->currencies_by_id)) {
+                $code = $this->currencies_by_id[$currencyId]['code'];
+            } else {
+                $code = $this->common_currency_code(strtoupper($currencyId));
+            }
             $account = array (
-                'free' => $balance['FreeAmount'],
-                'used' => $balance['LockedAmount'],
-                'total' => $balance['Amount'],
+                'free' => $this->safe_float($balance, 'FreeAmount'),
+                'used' => $this->safe_float($balance, 'LockedAmount'),
+                'total' => $this->safe_float($balance, 'Amount'),
             );
             $result[$code] = $account;
         }
@@ -224,8 +230,8 @@ class xbtce extends Exchange {
                 $market = $this->markets_by_id[$id];
                 $symbol = $market['symbol'];
             } else {
-                $baseId = mb_substr ($id, 0, 3);
-                $quoteId = mb_substr ($id, 3, 6);
+                $baseId = mb_substr($id, 0, 3 - 0);
+                $quoteId = mb_substr($id, 3, 6 - 3);
                 $base = $this->common_currency_code($baseId);
                 $quote = $this->common_currency_code($quoteId);
                 $symbol = $base . '/' . $quote;

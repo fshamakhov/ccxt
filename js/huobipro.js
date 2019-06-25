@@ -55,7 +55,7 @@ module.exports = class huobipro extends Exchange {
                     'zendesk': 'https://huobiglobal.zendesk.com/hc/en-us/articles',
                 },
                 'www': 'https://www.huobi.pro',
-                'referral': 'https://www.huobi.br.com/en-us/topic/invited/?invite_code=rwrd3',
+                'referral': 'https://www.huobi.co/en-us/topic/invited/?invite_code=rwrd3',
                 'doc': 'https://github.com/huobiapi/API_Docs/wiki/REST_api_reference',
                 'fees': 'https://www.huobi.pro/about/fee/',
             },
@@ -249,6 +249,8 @@ module.exports = class huobipro extends Exchange {
             };
             const maker = (base === 'OMG') ? 0 : 0.2 / 100;
             const taker = (base === 'OMG') ? 0 : 0.2 / 100;
+            const minAmount = this.safeFloat (market, 'min-order-amt', Math.pow (10, -precision['amount']));
+            const minCost = this.safeFloat (market, 'min-order-value', 0);
             result.push ({
                 'id': id,
                 'symbol': symbol,
@@ -262,7 +264,7 @@ module.exports = class huobipro extends Exchange {
                 'maker': maker,
                 'limits': {
                     'amount': {
-                        'min': Math.pow (10, -precision['amount']),
+                        'min': minAmount,
                         'max': undefined,
                     },
                     'price': {
@@ -270,7 +272,7 @@ module.exports = class huobipro extends Exchange {
                         'max': undefined,
                     },
                     'cost': {
-                        'min': 0,
+                        'min': minCost,
                         'max': undefined,
                     },
                 },
@@ -411,7 +413,7 @@ module.exports = class huobipro extends Exchange {
         let side = this.safeString (trade, 'direction');
         let type = this.safeString (trade, 'type');
         if (type !== undefined) {
-            let typeParts = type.split ('-');
+            const typeParts = type.split ('-');
             side = typeParts[0];
             type = typeParts[1];
         }
@@ -429,7 +431,7 @@ module.exports = class huobipro extends Exchange {
         if (market !== undefined) {
             feeCurrency = (side === 'buy') ? market['base'] : market['quote'];
         }
-        let filledPoints = this.safeFloat (trade, 'filled-points');
+        const filledPoints = this.safeFloat (trade, 'filled-points');
         if (filledPoints !== undefined) {
             if ((feeCost === undefined) || (feeCost === 0.0)) {
                 feeCost = filledPoints;
@@ -442,15 +444,17 @@ module.exports = class huobipro extends Exchange {
                 'currency': feeCurrency,
             };
         }
+        const id = this.safeString (trade, 'id');
         return {
+            'id': id,
             'info': trade,
-            'id': this.safeString (trade, 'id'),
             'order': order,
             'timestamp': timestamp,
             'datetime': this.iso8601 (timestamp),
             'symbol': symbol,
             'type': type,
             'side': side,
+            'takerOrMaker': undefined,
             'price': price,
             'amount': amount,
             'cost': cost,
@@ -484,7 +488,7 @@ module.exports = class huobipro extends Exchange {
         for (let i = 0; i < data.length; i++) {
             const trades = this.safeValue (data[i], 'data', []);
             for (let j = 0; j < trades.length; j++) {
-                let trade = this.parseTrade (trades[j], market);
+                const trade = this.parseTrade (trades[j], market);
                 result.push (trade);
             }
         }
@@ -605,13 +609,17 @@ module.exports = class huobipro extends Exchange {
             'id': this.accounts[0]['id'],
         };
         const response = await this[method] (this.extend (request, params));
-        const balances = this.safeValue (response['data'], 'list');
+        const balances = this.safeValue (response['data'], 'list', []);
         const result = { 'info': response };
         for (let i = 0; i < balances.length; i++) {
             const balance = balances[i];
             const currencyId = this.safeString (balance, 'currency');
-            const uppercase = currencyId.toUpperCase ();
-            const code = this.commonCurrencyCode (uppercase);
+            let code = currencyId;
+            if (currencyId in this.currencies_by_id) {
+                code = this.currencies_by_id[currencyId]['code'];
+            } else {
+                code = this.commonCurrencyCode (currencyId.toUpperCase ());
+            }
             let account = undefined;
             if (code in result) {
                 account = result[code];
@@ -624,7 +632,6 @@ module.exports = class huobipro extends Exchange {
             if (balance['type'] === 'frozen') {
                 account['used'] = this.safeFloat (balance, 'balance');
             }
-            account['total'] = this.sum (account['free'], account['used']);
             result[code] = account;
         }
         return this.parseBalance (result);
@@ -740,7 +747,7 @@ module.exports = class huobipro extends Exchange {
         if (market === undefined) {
             if ('symbol' in order) {
                 if (order['symbol'] in this.markets_by_id) {
-                    let marketId = order['symbol'];
+                    const marketId = order['symbol'];
                     market = this.markets_by_id[marketId];
                 }
             }
@@ -750,7 +757,7 @@ module.exports = class huobipro extends Exchange {
         }
         const timestamp = this.safeInteger (order, 'created-at');
         let amount = this.safeFloat (order, 'amount');
-        let filled = this.safeFloat (order, 'field-amount'); // typo in their API, filled amount
+        const filled = this.safeFloat (order, 'field-amount'); // typo in their API, filled amount
         if ((type === 'market') && (side === 'buy')) {
             amount = (status === 'closed') ? filled : undefined;
         }
@@ -927,8 +934,8 @@ module.exports = class huobipro extends Exchange {
     }
 
     calculateFee (symbol, type, side, amount, price, takerOrMaker = 'taker', params = {}) {
-        let market = this.markets[symbol];
-        let rate = market[takerOrMaker];
+        const market = this.markets[symbol];
+        const rate = market[takerOrMaker];
         let cost = amount * rate;
         let key = 'quote';
         if (side === 'sell') {

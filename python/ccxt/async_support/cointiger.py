@@ -49,7 +49,7 @@ class cointiger (huobipro):
                     'v2': 'https://api.{hostname}/exchange/trading/api/v2',
                 },
                 'www': 'https://www.cointiger.pro',
-                'referral': 'https://www.cointiger.pro/exchange/register.html?refCode=FfvDtt',
+                'referral': 'https://www.cointiger.one/#/register?refCode=FfvDtt',
                 'doc': 'https://github.com/cointiger/api-docs-en/wiki',
             },
             'api': {
@@ -357,14 +357,15 @@ class cointiger (huobipro):
         if market is not None:
             symbol = market['symbol']
         return {
-            'info': trade,
             'id': id,
+            'info': trade,
             'order': orderId,
             'timestamp': timestamp,
             'datetime': self.iso8601(timestamp),
             'symbol': symbol,
             'type': type,
             'side': side,
+            'takerOrMaker': None,
             'price': price,
             'amount': amount,
             'cost': cost,
@@ -462,15 +463,15 @@ class cointiger (huobipro):
         result = {'info': response}
         for i in range(0, len(balances)):
             balance = balances[i]
-            id = balance['coin']
-            code = id.upper()
-            code = self.common_currency_code(code)
-            if id in self.currencies_by_id:
-                code = self.currencies_by_id[id]['code']
+            currencyId = self.safe_string(balance, 'coin')
+            code = currencyId
+            if currencyId in self.currencies_by_id:
+                code = self.currencies_by_id[currencyId]['code']
+            else:
+                code = currencyId.upper()
             account = self.account()
             account['used'] = self.safe_float(balance, 'lock')
             account['free'] = self.safe_float(balance, 'normal')
-            account['total'] = self.sum(account['used'], account['free'])
             result[code] = account
         return self.parse_balance(result)
 

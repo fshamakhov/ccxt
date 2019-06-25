@@ -144,7 +144,7 @@ class rightbtc (Exchange):
         })
 
     async def fetch_markets(self, params={}):
-        response = await self.publicGetTradingPairs()
+        response = await self.publicGetTradingPairs(params)
         # zh = await self.publicGetGetAssetsTradingPairsZh()
         markets = self.extend(response['status']['message'])
         marketIds = list(markets.keys())
@@ -152,14 +152,14 @@ class rightbtc (Exchange):
         for i in range(0, len(marketIds)):
             id = marketIds[i]
             market = markets[id]
-            baseId = market['bid_asset_symbol']
-            quoteId = market['ask_asset_symbol']
+            baseId = self.safe_string(market, 'bid_asset_symbol')
+            quoteId = self.safe_string(market, 'ask_asset_symbol')
             base = self.common_currency_code(baseId)
             quote = self.common_currency_code(quoteId)
             symbol = base + '/' + quote
             precision = {
-                'amount': int(market['bid_asset_decimals']),
-                'price': int(market['ask_asset_decimals']),
+                'amount': self.safe_integer(market, 'bid_asset_decimals'),
+                'price': self.safe_integer(market, 'ask_asset_decimals'),
             }
             result.append({
                 'id': id,
@@ -316,45 +316,48 @@ class rightbtc (Exchange):
         elif side == 's':
             side = 'sell'
         return {
+            'id': id,
+            'info': trade,
             'timestamp': timestamp,
             'datetime': self.iso8601(timestamp),
             'symbol': symbol,
-            'id': id,
             'order': orderId,
             'type': 'limit',
             'side': side,
+            'takerOrMaker': None,
             'price': price,
             'amount': amount,
             'cost': cost,
             'fee': None,
-            'info': trade,
         }
 
     async def fetch_trades(self, symbol, since=None, limit=None, params={}):
         await self.load_markets()
         market = self.market(symbol)
-        response = await self.publicGetTradesTradingPair(self.extend({
+        request = {
             'trading_pair': market['id'],
-        }, params))
+        }
+        response = await self.publicGetTradesTradingPair(self.extend(request, params))
         return self.parse_trades(response['result'], market, since, limit)
 
     def parse_ohlcv(self, ohlcv, market=None, timeframe='5m', since=None, limit=None):
         return [
-            ohlcv[0],
-            ohlcv[2] / 1e8,
-            ohlcv[3] / 1e8,
-            ohlcv[4] / 1e8,
-            ohlcv[5] / 1e8,
-            ohlcv[1] / 1e8,
+            int(ohlcv[0]),
+            float(ohlcv[2]) / 1e8,
+            float(ohlcv[3]) / 1e8,
+            float(ohlcv[4]) / 1e8,
+            float(ohlcv[5]) / 1e8,
+            float(ohlcv[1]) / 1e8,
         ]
 
     async def fetch_ohlcv(self, symbol, timeframe='5m', since=None, limit=None, params={}):
         await self.load_markets()
         market = self.market(symbol)
-        response = await self.publicGetCandlestickTimeSymbolTradingPair(self.extend({
+        request = {
             'trading_pair': market['id'],
             'timeSymbol': self.timeframes[timeframe],
-        }, params))
+        }
+        response = await self.publicGetCandlestickTimeSymbolTradingPair(self.extend(request, params))
         return self.parse_ohlcvs(response['result'], market, timeframe, since, limit)
 
     async def fetch_balance(self, params={}):
@@ -383,30 +386,19 @@ class rightbtc (Exchange):
         #     }
         #
         result = {'info': response}
-        balances = response['result']
+        balances = self.safe_value(response, 'result', [])
         for i in range(0, len(balances)):
             balance = balances[i]
-            currencyId = balance['asset']
-            code = self.common_currency_code(currencyId)
+            currencyId = self.safe_string(balance, 'asset')
+            code = currencyId
             if currencyId in self.currencies_by_id:
                 code = self.currencies_by_id[currencyId]['code']
-            free = self.divide_safe_float(balance, 'balance', 1e8)
-            used = self.divide_safe_float(balance, 'frozen', 1e8)
-            total = self.sum(free, used)
-            #
+            else:
+                code = self.common_currency_code(currencyId)
+            account = self.account()
             # https://github.com/ccxt/ccxt/issues/3873
-            #
-            #     if total is not None:
-            #         if used is not None:
-            #             free = total - used
-            #         }
-            #     }
-            #
-            account = {
-                'free': free,
-                'used': used,
-                'total': total,
-            }
+            account['free'] = self.divide_safe_float(balance, 'balance', 1e8)
+            account['used'] = self.divide_safe_float(balance, 'frozen', 1e8)
             result[code] = account
         return self.parse_balance(result)
 

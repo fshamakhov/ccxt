@@ -23,8 +23,10 @@ class xbtce (Exchange):
                 'CORS': False,
                 'fetchTickers': True,
                 'createMarketOrder': False,
+                'fetchOHLCV': False,
             },
             'urls': {
+                'referral': 'https://xbtce.com/?agent=XX97BTCXXXG687021000B',
                 'logo': 'https://user-images.githubusercontent.com/1294454/28059414-e235970c-662c-11e7-8c3a-08e31f78684b.jpg',
                 'api': 'https://cryptottlivewebapi.xbtce.net:8443/api',
                 'www': 'https://www.xbtce.com',
@@ -140,12 +142,15 @@ class xbtce (Exchange):
         for i in range(0, len(balances)):
             balance = balances[i]
             currencyId = self.safe_string(balance, 'Currency')
-            uppercase = currencyId.upper()
-            code = self.common_currency_code(uppercase)
+            code = currencyId
+            if currencyId in self.currencies_by_id:
+                code = self.currencies_by_id[currencyId]['code']
+            else:
+                code = self.common_currency_code(currencyId.upper())
             account = {
-                'free': balance['FreeAmount'],
-                'used': balance['LockedAmount'],
-                'total': balance['Amount'],
+                'free': self.safe_float(balance, 'FreeAmount'),
+                'used': self.safe_float(balance, 'LockedAmount'),
+                'total': self.safe_float(balance, 'Amount'),
             }
             result[code] = account
         return self.parse_balance(result)

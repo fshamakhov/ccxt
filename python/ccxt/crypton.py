@@ -193,8 +193,6 @@ class crypton (Exchange):
         marketId = self.safe_string(trade, 'market')
         if marketId in self.markets_by_id:
             market = self.markets_by_id[marketId]
-        else:
-            symbol = self.parse_symbol(marketId)
         if symbol is None:
             if market is not None:
                 symbol = market['symbol']
@@ -209,6 +207,13 @@ class crypton (Exchange):
             }
         id = self.safe_string(trade, 'id')
         side = self.safe_string(trade, 'side')
+        orderId = self.safe_string(trade, 'orderId')
+        price = self.safe_float(trade, 'price')
+        amount = self.safe_float(trade, 'size')
+        cost = None
+        if price is not None:
+            if amount is not None:
+                cost = amount * price
         return {
             'id': id,
             'info': trade,
@@ -217,9 +222,11 @@ class crypton (Exchange):
             'symbol': symbol,
             'type': None,
             'side': side,
-            'price': self.safe_float(trade, 'price'),
-            'amount': self.safe_float(trade, 'size'),
-            'order': self.safe_string(trade, 'orderId'),
+            'order': orderId,
+            'takerOrMaker': None,
+            'price': price,
+            'amount': amount,
+            'cost': cost,
             'fee': fee,
         }
 
@@ -232,6 +239,20 @@ class crypton (Exchange):
         if limit is not None:
             request['limit'] = limit
         response = self.publicGetMarketsIdTrades(self.extend(request, params))
+        #
+        #     {
+        #         "result":[
+        #             {
+        #                 "id":4256381,
+        #                 "price":7901.56,
+        #                 "side":"buy",
+        #                 "size":0.75708114,
+        #                 "time":"2019-05-14T16:15:46.781653+00:00"
+        #             }
+        #         ],
+        #         "success":true
+        #     }
+        #
         return self.parse_trades(response['result'], market, since, limit)
 
     def fetch_my_trades(self, symbol=None, since=None, limit=None, params={}):

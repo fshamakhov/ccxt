@@ -284,7 +284,7 @@ module.exports = class cex extends Exchange {
             const quoteAmount = this.safeFloat (item, 'a:' + quoteId + ':cds');
             const fee = this.safeFloat (item, 'f:' + quoteId + ':cds');
             const amount = this.safeFloat (item, 'amount');
-            let price = this.safeFloat (item, 'price');
+            const price = this.safeFloat (item, 'price');
             const remaining = this.safeFloat (item, 'remains');
             const filled = amount - remaining;
             let orderAmount = undefined;
@@ -395,12 +395,9 @@ module.exports = class cex extends Exchange {
         for (let i = 0; i < currencyIds.length; i++) {
             const currencyId = currencyIds[i];
             const balance = this.safeValue (balances, currencyId, {});
-            const account = {
-                'free': this.safeFloat (balance, 'available', 0.0),
-                'used': this.safeFloat (balance, 'orders', 0.0),
-                'total': 0.0,
-            };
-            account['total'] = this.sum (account['free'], account['used']);
+            const account = this.account ();
+            account['free'] = this.safeFloat (balance, 'available');
+            account['used'] = this.safeFloat (balance, 'orders');
             const code = this.commonCurrencyCode (currencyId);
             result[code] = account;
         }
@@ -543,17 +540,24 @@ module.exports = class cex extends Exchange {
                 cost = amount * price;
             }
         }
+        let symbol = undefined;
+        if (market !== undefined) {
+            symbol = market['symbol'];
+        }
         return {
             'info': trade,
             'id': id,
             'timestamp': timestamp,
             'datetime': this.iso8601 (timestamp),
-            'symbol': market['symbol'],
+            'symbol': symbol,
             'type': type,
             'side': side,
+            'order': undefined,
+            'takerOrMaker': undefined,
             'price': price,
             'amount': amount,
             'cost': cost,
+            'fee': undefined,
         };
     }
 
@@ -630,9 +634,14 @@ module.exports = class cex extends Exchange {
         }
         const status = this.parseOrderStatus (this.safeString (order, 'status'));
         const price = this.safeFloat (order, 'price');
-        const amount = this.safeFloat (order, 'amount');
+        let amount = this.safeFloat (order, 'amount');
+        // sell orders can have a negative amount
+        // https://github.com/ccxt/ccxt/issues/5338
+        if (amount !== undefined) {
+            amount = Math.abs (amount);
+        }
         const remaining = this.safeFloat2 (order, 'pending', 'remains');
-        let filled = amount - remaining;
+        const filled = amount - remaining;
         let fee = undefined;
         let cost = undefined;
         if (market !== undefined) {
@@ -848,7 +857,7 @@ module.exports = class cex extends Exchange {
 
     async fetchClosedOrders (symbol = undefined, since = undefined, limit = undefined, params = {}) {
         await this.loadMarkets ();
-        let method = 'privatePostArchivedOrdersPair';
+        const method = 'privatePostArchivedOrdersPair';
         if (symbol === undefined) {
             throw new ArgumentsRequired (this.id + ' fetchClosedOrders requires a symbol argument');
         }
@@ -897,6 +906,9 @@ module.exports = class cex extends Exchange {
 
     async request (path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
         const response = await this.fetch2 (path, api, method, params, headers, body);
+        if (Array.isArray (response)) {
+            return response; // public endpoints may return []-arrays
+        }
         if (!response) {
             throw new NullResponse (this.id + ' returned ' + this.json (response));
         } else if (response === true || response === 'true') {

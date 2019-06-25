@@ -400,12 +400,9 @@ class cex (Exchange):
         for i in range(0, len(currencyIds)):
             currencyId = currencyIds[i]
             balance = self.safe_value(balances, currencyId, {})
-            account = {
-                'free': self.safe_float(balance, 'available', 0.0),
-                'used': self.safe_float(balance, 'orders', 0.0),
-                'total': 0.0,
-            }
-            account['total'] = self.sum(account['free'], account['used'])
+            account = self.account()
+            account['free'] = self.safe_float(balance, 'available')
+            account['used'] = self.safe_float(balance, 'orders')
             code = self.common_currency_code(currencyId)
             result[code] = account
         return self.parse_balance(result)
@@ -529,17 +526,23 @@ class cex (Exchange):
         if amount is not None:
             if price is not None:
                 cost = amount * price
+        symbol = None
+        if market is not None:
+            symbol = market['symbol']
         return {
             'info': trade,
             'id': id,
             'timestamp': timestamp,
             'datetime': self.iso8601(timestamp),
-            'symbol': market['symbol'],
+            'symbol': symbol,
             'type': type,
             'side': side,
+            'order': None,
+            'takerOrMaker': None,
             'price': price,
             'amount': amount,
             'cost': cost,
+            'fee': None,
         }
 
     def fetch_trades(self, symbol, since=None, limit=None, params={}):
@@ -605,6 +608,10 @@ class cex (Exchange):
         status = self.parse_order_status(self.safe_string(order, 'status'))
         price = self.safe_float(order, 'price')
         amount = self.safe_float(order, 'amount')
+        # sell orders can have a negative amount
+        # https://github.com/ccxt/ccxt/issues/5338
+        if amount is not None:
+            amount = abs(amount)
         remaining = self.safe_float_2(order, 'pending', 'remains')
         filled = amount - remaining
         fee = None
@@ -848,6 +855,8 @@ class cex (Exchange):
 
     def request(self, path, api='public', method='GET', params={}, headers=None, body=None):
         response = self.fetch2(path, api, method, params, headers, body)
+        if isinstance(response, list):
+            return response  # public endpoints may return []-arrays
         if not response:
             raise NullResponse(self.id + ' returned ' + self.json(response))
         elif response is True or response == 'true':

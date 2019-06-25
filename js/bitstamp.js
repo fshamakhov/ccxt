@@ -177,8 +177,8 @@ module.exports = class bitstamp extends Exchange {
             const market = response[i];
             const name = this.safeString (market, 'name');
             let [ base, quote ] = name.split ('/');
-            let baseId = base.toLowerCase ();
-            let quoteId = quote.toLowerCase ();
+            const baseId = base.toLowerCase ();
+            const quoteId = quote.toLowerCase ();
             base = this.commonCurrencyCode (base);
             quote = this.commonCurrencyCode (quote);
             const symbol = base + '/' + quote;
@@ -390,7 +390,7 @@ module.exports = class bitstamp extends Exchange {
         let price = this.safeFloat (trade, 'price');
         let amount = this.safeFloat (trade, 'amount');
         const orderId = this.safeString (trade, 'order_id');
-        let type = undefined;
+        const type = undefined;
         let cost = this.safeFloat (trade, 'cost');
         if (market === undefined) {
             const keys = Object.keys (trade);
@@ -472,6 +472,7 @@ module.exports = class bitstamp extends Exchange {
             'order': orderId,
             'type': type,
             'side': side,
+            'takerOrMaker': undefined,
             'price': price,
             'amount': amount,
             'cost': cost,
@@ -517,14 +518,11 @@ module.exports = class bitstamp extends Exchange {
             const code = codes[i];
             const currency = this.currency (code);
             const currencyId = currency['id'];
-            const total = currencyId + '_balance';
-            const free = currencyId + '_available';
-            const used = currencyId + '_reserved';
             const account = this.account ();
-            account['free'] = this.safeFloat (balance, free);
-            account['used'] = this.safeFloat (balance, used);
-            account['total'] = this.safeFloat (balance, total);
-            result[currency] = account;
+            account['free'] = this.safeFloat (balance, currencyId + '_available');
+            account['used'] = this.safeFloat (balance, currencyId + '_reserved');
+            account['total'] = this.safeFloat (balance, currencyId + '_balance');
+            result[code] = account;
         }
         return this.parseBalance (result);
     }
@@ -855,8 +853,8 @@ module.exports = class bitstamp extends Exchange {
         }
         let amount = this.safeFloat (order, 'amount');
         let filled = 0.0;
-        let trades = [];
-        let transactions = this.safeValue (order, 'transactions', []);
+        const trades = [];
+        const transactions = this.safeValue (order, 'transactions', []);
         let feeCost = undefined;
         let cost = undefined;
         const numTransactions = transactions.length;

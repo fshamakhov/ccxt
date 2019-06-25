@@ -134,7 +134,6 @@ module.exports = class btcchina extends Exchange {
             if (currencyId in balances['frozen']) {
                 account['used'] = parseFloat (balances['frozen'][currencyId]['amount']);
             }
-            account['free'] = account['total'] - account['used'];
             result[code] = account;
         }
         return this.parseBalance (result);
@@ -357,14 +356,14 @@ module.exports = class btcchina extends Exchange {
             };
             p = p.join (',');
             body = this.json (request);
-            const query = (
-                'tonce=' + nonce +
-                '&accesskey=' + this.apiKey +
-                '&requestmethod=' + method.toLowerCase () +
-                '&id=' + nonce +
-                '&method=' + path +
-                '&params=' + p
-            );
+            const query = [
+                'tonce=' + nonce,
+                'accesskey=' + this.apiKey,
+                'requestmethod=' + method.toLowerCase (),
+                'id=' + nonce,
+                'method=' + path,
+                'params=' + p,
+            ].join ('&');
             const signature = this.hmac (this.encode (query), this.encode (this.secret), 'sha1');
             const auth = this.encode (this.apiKey + ':' + signature);
             headers = {

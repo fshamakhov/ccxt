@@ -368,12 +368,12 @@ module.exports = class buda extends Exchange {
         //
         let timestamp = undefined;
         let side = undefined;
-        let type = undefined;
+        const type = undefined;
         let price = undefined;
         let amount = undefined;
         let id = undefined;
-        let order = undefined;
-        let fee = undefined;
+        const order = undefined;
+        const fee = undefined;
         let symbol = undefined;
         let cost = undefined;
         if (market) {
@@ -396,6 +396,7 @@ module.exports = class buda extends Exchange {
             'symbol': symbol,
             'type': type,
             'side': side,
+            'takerOrMaker': undefined,
             'price': price,
             'amount': amount,
             'cost': cost,
@@ -439,13 +440,9 @@ module.exports = class buda extends Exchange {
             const balance = balances[i];
             const currencyId = this.safeString (balance, 'id');
             const code = this.commonCurrencyCode (currencyId);
-            const total = parseFloat (balance['amount'][0]);
-            const free = parseFloat (balance['available_amount'][0]);
-            let account = {
-                'free': free,
-                'used': total - free,
-                'total': total,
-            };
+            const account = this.account ();
+            account['free'] = parseFloat (balance['available_amount'][0]);
+            account['total'] = parseFloat (balance['amount'][0]);
             result[code] = account;
         }
         return this.parseBalance (result);

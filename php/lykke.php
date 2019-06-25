@@ -138,6 +138,7 @@ class lykke extends Exchange {
             'type' => null,
             'order' => null,
             'side' => $side,
+            'takerOrMaker' => null,
             'price' => $price,
             'amount' => $amount,
             'cost' => $cost,
@@ -162,19 +163,21 @@ class lykke extends Exchange {
 
     public function fetch_balance ($params = array ()) {
         $this->load_markets();
-        $balances = $this->privateGetWallets ();
-        $result = array( 'info' => $balances );
-        for ($i = 0; $i < count ($balances); $i++) {
-            $balance = $balances[$i];
-            $currency = $balance['AssetId'];
-            $total = $balance['Balance'];
-            $used = $balance['Reserved'];
-            $free = $total - $used;
-            $result[$currency] = array (
-                'free' => $free,
-                'used' => $used,
-                'total' => $total,
-            );
+        $response = $this->privateGetWallets ($params);
+        $result = array( 'info' => $response );
+        for ($i = 0; $i < count ($response); $i++) {
+            $balance = $response[$i];
+            $currencyId = $this->safe_string($balance, 'AssetId');
+            $code = $currencyId;
+            if (is_array($this->currencies_by_id) && array_key_exists($currencyId, $this->currencies_by_id)) {
+                $code = $this->currencies_by_id[$currencyId]['code'];
+            } else {
+                $code = $this->common_currency_code($currencyId);
+            }
+            $account = $this->account ();
+            $account['total'] = $this->safe_float($balance, 'Balance');
+            $account['used'] = $this->safe_float($balance, 'Reserved');
+            $result[$code] = $account;
         }
         return $this->parse_balance($result);
     }
@@ -227,15 +230,15 @@ class lykke extends Exchange {
         $result = array();
         for ($i = 0; $i < count ($markets); $i++) {
             $market = $markets[$i];
-            $id = $market['Id'];
-            $name = $market['Name'];
+            $id = $this->safe_string($market, 'Id');
+            $name = $this->safe_string($market, 'Name');
             list($baseId, $quoteId) = explode('/', $name);
             $base = $this->common_currency_code($baseId);
             $quote = $this->common_currency_code($quoteId);
             $symbol = $base . '/' . $quote;
             $precision = array (
-                'amount' => $market['Accuracy'],
-                'price' => $market['InvertedAccuracy'],
+                'amount' => $this->safe_integer($market, 'Accuracy'),
+                'price' => $this->safe_integer($market, 'InvertedAccuracy'),
             );
             $result[] = array (
                 'id' => $id,
@@ -270,16 +273,16 @@ class lykke extends Exchange {
         if ($market) {
             $symbol = $market['symbol'];
         }
-        $close = floatval ($ticker['lastPrice']);
+        $close = $this->safe_float($ticker, 'lastPrice');
         return array (
             'symbol' => $symbol,
             'timestamp' => $timestamp,
             'datetime' => $this->iso8601 ($timestamp),
             'high' => null,
             'low' => null,
-            'bid' => floatval ($ticker['bid']),
+            'bid' => $this->safe_float($ticker, 'bid'),
             'bidVolume' => null,
-            'ask' => floatval ($ticker['ask']),
+            'ask' => $this->safe_float($ticker, 'ask'),
             'askVolume' => null,
             'vwap' => null,
             'open' => null,
@@ -290,7 +293,7 @@ class lykke extends Exchange {
             'percentage' => null,
             'average' => null,
             'baseVolume' => null,
-            'quoteVolume' => floatval ($ticker['volume24H']),
+            'quoteVolume' => $this->safe_float($ticker, 'volume24H'),
             'info' => $ticker,
         );
     }
@@ -298,9 +301,10 @@ class lykke extends Exchange {
     public function fetch_ticker ($symbol, $params = array ()) {
         $this->load_markets();
         $market = $this->market ($symbol);
-        $ticker = $this->mobileGetMarketMarket (array_merge (array (
+        $request = array (
             'market' => $market['id'],
-        ), $params));
+        );
+        $ticker = $this->mobileGetMarketMarket (array_merge ($request, $params));
         return $this->parse_ticker($ticker, $market);
     }
 
@@ -360,31 +364,34 @@ class lykke extends Exchange {
 
     public function fetch_order ($id, $symbol = null, $params = array ()) {
         $this->load_markets();
-        $response = $this->privateGetOrdersId (array_merge (array (
+        $request = array (
             'id' => $id,
-        ), $params));
+        );
+        $response = $this->privateGetOrdersId (array_merge ($request, $params));
         return $this->parse_order($response);
     }
 
     public function fetch_orders ($symbol = null, $since = null, $limit = null, $params = array ()) {
         $this->load_markets();
-        $response = $this->privateGetOrders ();
+        $response = $this->privateGetOrders ($params);
         return $this->parse_orders($response, null, $since, $limit);
     }
 
     public function fetch_open_orders ($symbol = null, $since = null, $limit = null, $params = array ()) {
         $this->load_markets();
-        $response = $this->privateGetOrders (array_merge (array (
+        $request = array (
             'status' => 'InOrderBook',
-        ), $params));
+        );
+        $response = $this->privateGetOrders (array_merge ($request, $params));
         return $this->parse_orders($response, null, $since, $limit);
     }
 
     public function fetch_closed_orders ($symbol = null, $since = null, $limit = null, $params = array ()) {
         $this->load_markets();
-        $response = $this->privateGetOrders (array_merge (array (
+        $request = array (
             'status' => 'Matched',
-        ), $params));
+        );
+        $response = $this->privateGetOrders (array_merge ($request, $params));
         return $this->parse_orders($response, null, $since, $limit);
     }
 

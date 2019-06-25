@@ -135,13 +135,13 @@ class coinmate (Exchange):
         await self.load_markets()
         response = await self.privatePostBalances(params)
         balances = self.safe_value(response, 'data')
-        result = {'info': balances}
-        currencies = list(self.currencies.keys())
-        for i in range(0, len(currencies)):
-            code = currencies[i]
-            currencyId = self.currencyId(code)
+        result = {'info': response}
+        currencyIds = list(balances.keys())
+        for i in range(0, len(currencyIds)):
+            currencyId = currencyIds[i]
+            code = self.common_currency_code(currencyId)
+            balance = self.safe_value(balances, currencyId)
             account = self.account()
-            balance = self.safe_value(balances, currencyId, {})
             account['free'] = self.safe_float(balance, 'available')
             account['used'] = self.safe_float(balance, 'reserved')
             account['total'] = self.safe_float(balance, 'balance')
@@ -219,9 +219,12 @@ class coinmate (Exchange):
             'symbol': symbol,
             'type': None,
             'side': None,
+            'order': None,
+            'takerOrMaker': None,
             'price': price,
             'amount': amount,
             'cost': cost,
+            'fee': None,
         }
 
     async def fetch_trades(self, symbol, since=None, limit=None, params={}):

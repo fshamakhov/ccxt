@@ -26,6 +26,7 @@ module.exports = class bitsane extends Exchange {
                 'www': 'https://bitsane.com',
                 'doc': 'https://bitsane.com/help/api',
                 'fees': 'https://bitsane.com/help/fees',
+                'referral': 'https://bitsane.com?ref=CGOvuPA2LR3GcdOUOKjc',
             },
             'api': {
                 'public': {
@@ -137,15 +138,15 @@ module.exports = class bitsane extends Exchange {
             const quoteId = this.safeString (market, 'quote');
             const base = this.commonCurrencyCode (baseId);
             const quote = this.commonCurrencyCode (quoteId);
-            let symbol = base + '/' + quote;
-            let limits = this.safeValue (market, 'limits');
+            const symbol = base + '/' + quote;
+            const limits = this.safeValue (market, 'limits');
             let minLimit = undefined;
             let maxLimit = undefined;
             if (limits !== undefined) {
                 minLimit = this.safeFloat (limits, 'minimum');
                 maxLimit = this.safeFloat (limits, 'maximum');
             }
-            let precision = {
+            const precision = {
                 'amount': this.safeInteger (market, 'precision'),
                 'price': 8,
             };

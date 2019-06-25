@@ -255,24 +255,28 @@ class tidex extends Exchange {
         $response = $this->privatePostGetInfo ($params);
         $balances = $this->safe_value($response, 'return');
         $result = array( 'info' => $balances );
-        $funds = $balances['funds'];
-        $currencies = is_array($funds) ? array_keys($funds) : array();
-        for ($i = 0; $i < count ($currencies); $i++) {
-            $currency = $currencies[$i];
-            $uppercase = strtoupper($currency);
-            $uppercase = $this->common_currency_code($uppercase);
+        $funds = $this->safe_value($balances, 'funds', array());
+        $currencyIds = is_array($funds) ? array_keys($funds) : array();
+        for ($i = 0; $i < count ($currencyIds); $i++) {
+            $currencyId = $currencyIds[$i];
+            $code = $currencyId;
+            if (is_array($this->currencies_by_id) && array_key_exists($currencyId, $this->currencies_by_id)) {
+                $code = $this->currencies_by_id[$currencyId]['code'];
+            } else {
+                $code = $this->common_currency_code(strtoupper($currencyId));
+            }
             $total = null;
             $used = null;
             if ($balances['open_orders'] === 0) {
-                $total = $funds[$currency];
+                $total = $funds[$currencyId];
                 $used = 0.0;
             }
             $account = array (
-                'free' => $funds[$currency],
+                'free' => $funds[$currencyId],
                 'used' => $used,
                 'total' => $total,
             );
-            $result[$uppercase] = $account;
+            $result[$code] = $account;
         }
         return $this->parse_balance($result);
     }
@@ -459,6 +463,12 @@ class tidex extends Exchange {
                 $fee = $this->calculate_fee($symbol, $type, $side, $amount, $price, $takerOrMaker);
             }
         }
+        $cost = null;
+        if ($amount !== null) {
+            if ($price !== null) {
+                $cost = $amount * $price;
+            }
+        }
         return array (
             'id' => $id,
             'order' => $orderId,
@@ -470,6 +480,7 @@ class tidex extends Exchange {
             'takerOrMaker' => $takerOrMaker,
             'price' => $price,
             'amount' => $amount,
+            'cost' => $cost,
             'fee' => $fee,
             'info' => $trade,
         );
@@ -569,10 +580,16 @@ class tidex extends Exchange {
     public function parse_order ($order, $market = null) {
         $id = $this->safe_string($order, 'id');
         $status = $this->parse_order_status($this->safe_string($order, 'status'));
-        $timestamp = intval ($order['timestamp_created']) * 1000;
+        $timestamp = $this->safe_integer($order, 'timestamp_created');
+        if ($timestamp !== null) {
+            $timestamp *= 1000;
+        }
         $symbol = null;
         if ($market === null) {
-            $market = $this->markets_by_id[$order['pair']];
+            $marketId = $this->safe_string($order, 'pair');
+            if (is_array($this->markets_by_id) && array_key_exists($marketId, $this->markets_by_id)) {
+                $market = $this->markets_by_id[$marketId];
+            }
         }
         if ($market !== null) {
             $symbol = $market['symbol'];
@@ -691,7 +708,7 @@ class tidex extends Exchange {
         if (is_array($this->options) && array_key_exists('fetchOrdersRequiresSymbol', $this->options)) {
             if ($this->options['fetchOrdersRequiresSymbol']) {
                 if ($symbol === null) {
-                    throw new ArgumentsRequired($this->id . ' fetchOrders requires a $symbol argument');
+                    throw new ArgumentsRequired($this->id . ' fetchOrders requires a `$symbol` argument');
                 }
             }
         }

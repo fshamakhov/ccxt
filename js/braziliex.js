@@ -364,19 +364,21 @@ module.exports = class braziliex extends Exchange {
         const orderId = this.safeString (trade, 'order_number');
         const type = 'limit';
         const side = this.safeString (trade, 'type');
+        const id = this.safeString (trade, '_id');
         return {
+            'id': id,
+            'info': trade,
             'timestamp': timestamp,
             'datetime': this.iso8601 (timestamp),
             'symbol': symbol,
-            'id': this.safeString (trade, '_id'),
             'order': orderId,
             'type': type,
             'side': side,
+            'takerOrMaker': undefined,
             'price': price,
             'amount': amount,
             'cost': cost,
             'fee': undefined,
-            'info': trade,
         };
     }
 
@@ -399,12 +401,9 @@ module.exports = class braziliex extends Exchange {
             const currencyId = currencyIds[i];
             const balance = balances[currencyId];
             const code = this.commonCurrencyCode (currencyId);
-            const account = {
-                'free': this.safeFloat (balance, 'available'),
-                'used': 0.0,
-                'total': this.safeFloat (balance, 'total'),
-            };
-            account['used'] = account['total'] - account['free'];
+            const account = this.account ();
+            account['free'] = this.safeFloat (balance, 'available');
+            account['total'] = this.safeFloat (balance, 'total');
             result[code] = account;
         }
         return this.parseBalance (result);
@@ -571,6 +570,9 @@ module.exports = class braziliex extends Exchange {
 
     async request (path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
         const response = await this.fetch2 (path, api, method, params, headers, body);
+        if ((typeof response === 'string') && (response.length < 1)) {
+            throw new ExchangeError (this.id + ' returned empty response');
+        }
         if ('success' in response) {
             const success = this.safeInteger (response, 'success');
             if (success === 0) {

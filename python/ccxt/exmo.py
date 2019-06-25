@@ -18,6 +18,7 @@ from ccxt.base.errors import ArgumentsRequired
 from ccxt.base.errors import InsufficientFunds
 from ccxt.base.errors import InvalidOrder
 from ccxt.base.errors import OrderNotFound
+from ccxt.base.errors import NotSupported
 from ccxt.base.errors import ExchangeNotAvailable
 from ccxt.base.errors import InvalidNonce
 
@@ -413,12 +414,12 @@ class exmo (Exchange):
             parts = response.split('<td class="th_fees_2" colspan="2">')
             numParts = len(parts)
             if numParts != 2:
-                raise ExchangeError(self.id + ' fetchTradingFees format has changed')
+                raise NotSupported(self.id + ' fetchTradingFees format has changed')
             rest = parts[1]
             parts = rest.split('</td>')
             numParts = len(parts)
             if numParts < 2:
-                raise ExchangeError(self.id + ' fetchTradingFees format has changed')
+                raise NotSupported(self.id + ' fetchTradingFees format has changed')
             fee = float(parts[0].replace('%', '')) * 0.01
             taker = fee
             maker = fee
@@ -599,7 +600,6 @@ class exmo (Exchange):
                 account['free'] = self.safe_float(response['balances'], currency)
             if currency in response['reserved']:
                 account['used'] = self.safe_float(response['reserved'], currency)
-            account['total'] = self.sum(account['free'], account['used'])
             result[currency] = account
         return self.parse_balance(result)
 
@@ -723,6 +723,7 @@ class exmo (Exchange):
             'order': orderId,
             'type': type,
             'side': side,
+            'takerOrMaker': None,
             'price': price,
             'amount': amount,
             'cost': cost,
