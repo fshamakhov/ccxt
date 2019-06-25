@@ -16,21 +16,10 @@ class idex extends Exchange {
             'countries' => array ( 'JP', 'MT' ), // Japan, Malta
             'rateLimit' => 500,
             'has' => array (
-                'fetchDepositAddress' => false,
-                'CORS' => false,
-                'fetchBidsAsks' => true,
+                'createLimitOrder' => false,
+                'createMarketOrder' => false,
                 'fetchTickers' => true,
-                'fetchOHLCV' => false,
-                'fetchMyTrades' => false,
-                'fetchOrder' => true,
-                'fetchOrders' => false,
-                'fetchOpenOrders' => true,
-                'fetchClosedOrders' => true,
-                'withdraw' => false,
-                'fetchFundingFees' => false,
-                'fetchDeposits' => false,
-                'fetchWithdrawals' => false,
-                'fetchTransactions' => false,
+                'withdraw' => true,
             ),
             'urls' => array (
                 'logo' => 'https://idex.market/assets/IDEX_sf-color.svg',
@@ -55,6 +44,8 @@ class idex extends Exchange {
                         'returnCurrencies',
                         'return24Volume',
                         'returnOrderBook', // "market" => "ETH_AURA", "count" => 1
+                        'returnContractAddress',
+                        'returnTradeHistory', // "market" => "ETH_AURA", "address" => "0x2dbdcec64db33e673140fbd0ceef610a273b84db", "start" => 5000, "end" => 10000, "sort" => "desc", "count" => 10, "cursor" => "1000"
                     ),
                 ),
                 'private' => array (
@@ -65,8 +56,6 @@ class idex extends Exchange {
                         'returnOpenOrders', // "market" => "ETH_AURA", "address" => "0x2a0c0dbecc7e4d658f48e01e3fa353f44050c208", "count" => 10, "cursor" => "2228127"
                         'returnOrderStatus', // "orderHash" => "0x22a9ba7f8dd37ed24ae327b14a8a941b0eb072d60e54bcf24640c2af819fc7ec"
                         'returnOrderTrades', // "orderHash" => "0x22a9ba7f8dd37ed24ae327b14a8a941b0eb072d60e54bcf24640c2af819fc7ec"
-                        'returnTradeHistory', // "market" => "ETH_AURA", "address" => "0x2dbdcec64db33e673140fbd0ceef610a273b84db", "start" => 5000, "end" => 10000, "sort" => "desc", "count" => 10, "cursor" => "1000"
-                        'returnContractAddress', // "address" => "0x2a0c0dbecc7e4d658f48e01e3fa353f44050c208"
                         'returnNextNonce', // "address" => "0x2a0c0dbecc7e4d658f48e01e3fa353f44050c208"
                         'order', // https://github.com/AuroraDAO/idex-api-docs/blob/master/scripts/generate-order-payload.js
                         'cancel', // https://github.com/AuroraDAO/idex-api-docs/blob/master/scripts/generate-cancel-payload.js
@@ -128,12 +117,21 @@ class idex extends Exchange {
                 'WCT' => 'Wealth Chain Token',
             ),
             'currencyAddresses' => null,
+            'enableLastResponseHeaders' => true,
+            'requiresWeb3' => true,
         ));
+    }
+
+    public function fetch_contract_address () {
+        $response = $this->publicPostReturnContractAddress ();
+        if (is_array($response) && array_key_exists('address', $response)) {
+            $this->idexContractAddress = $response['address'];
+        }
     }
 
     public function get_currency ($currency = '') {
         if (is_array($this->currencyAddresses) && array_key_exists($currency, $this->currencyAddresses)) {
-            return $this->currencyAddresses[$currency];
+            return array_merge (array( 'symbol' => $currency ), $this->currencyAddresses[$currency]);
         }
         throw new ExchangeError('Exchange ' . $this->id . 'currency ' . $currency . ' not found');
     }
@@ -141,6 +139,7 @@ class idex extends Exchange {
     public function fetch_markets ($params = array ()) {
         $this->currencyAddresses = $this->publicGetReturnCurrencies ($params);
         $response = $this->publicGetReturnTicker ();
+        $this->fetch_contract_address ();
         $symbols = is_array($response) ? array_keys($response) : array();
         $result = array();
         for ($i = 0; $i < count ($symbols); $i++) {
@@ -199,8 +198,8 @@ class idex extends Exchange {
             'market' => $market['id'],
             'count' => $limit,
         );
-        $order_book = $this->publicGetReturnOrderBook (array_merge ($request, $params));
-        return $this->parse_order_book($order_book, null, 'bids', 'asks', 'price', 'amount');
+        $orderbook = $this->publicGetReturnOrderBook (array_merge ($request, $params));
+        return $this->parse_order_book($orderbook, null, 'bids', 'asks', 'price', 'amount');
     }
 
     public function parse_ticker ($symbol, $ticker, $market = null) {
@@ -263,19 +262,330 @@ class idex extends Exchange {
         return $this->parse_tickers ($rawTickers, $symbols);
     }
 
+    public function parse_trade ($trade, $market = null) {
+        $id = $this->safe_string($trade, 'uuid');
+        $timestamp = $this->safe_string($trade, 'timestamp');
+        $datetime = $this->safe_string($trade, 'date');
+        $symbol = null;
+        if ($market !== null) {
+            $symbol = $market['symbol'];
+        }
+        $order = $this->safe_string($trade, 'tid');
+        $type = $this->safe_string($trade, 'type');
+        if ($type) {
+            $type = strtolower($type);
+        }
+        $side = null;
+        $price = $this->safe_float($trade, 'price');
+        $amount = $this->safe_float($trade, 'amount');
+        $cost = $this->safe_float($trade, 'total');
+        return array (
+            'info' => $trade,
+            'id' => $id,
+            'timestamp' => $timestamp,
+            'datetime' => $datetime,
+            'symbol' => $symbol,
+            'order' => $order,
+            'type' => $type,
+            'side' => $side,
+            'price' => $price,
+            'amount' => $amount,
+            'cost' => $cost,
+        );
+    }
+
+    public function fetch_balance ($params = array ()) {
+        $this->load_markets();
+        $request = array( 'address' => $this->walletAddress );
+        $response = $this->privatePostReturnCompleteBalances (array_merge ($request, $params));
+        $result = array( 'info' => $response );
+        $currencies = is_array($response) ? array_keys($response) : array();
+        for ($i = 0; $i < count ($currencies); $i++) {
+            $currency = $currencies[$i];
+            $balance = $response[$currency];
+            $account = array (
+                'free' => floatval ($balance['available']),
+                'used' => floatval ($balance['onOrders']),
+                'total' => 0,
+            );
+            $account['total'] = $this->sum ($account['free'], $account['used']);
+            $result[$currency] = $account;
+        }
+        return $this->parse_balance($result);
+    }
+
+    public function fetch_trades ($symbol, $since = null, $limit = null, $params = array ()) {
+        $this->load_markets();
+        $market = $this->market ($symbol);
+        $request = array (
+            'market' => $market['id'],
+        );
+        if ($since !== null) {
+            $request['start'] = $since;
+        }
+        if ($limit !== null) {
+            $request['count'] = $limit; // default = 10, maximum = 100
+        }
+        $response = $this->publicPostReturnTradeHistory (array_merge ($request, $params));
+        return $this->parse_trades($response, $market, $since, $limit);
+    }
+
+    public function parse_order ($order, $market = null) {
+        $status = null;
+        $symbol = $this->find_symbol($this->safe_string($order, 'market'), $market);
+        $timestamp = null;
+        $datetime = null;
+        if (is_array($order) && array_key_exists('timestamp', $order)) {
+            $timestamp = $this->safe_integer($order, 'timestamp');
+        } else if (is_array($order) && array_key_exists('date', $order)) {
+            $datetime = $this->safe_string($order, 'date');
+            $timestamp = $this->parse8601 ($datetime);
+        }
+        $price = $this->safe_float($order, 'price');
+        $amount = $this->safe_float($order, 'amount');
+        $filled = null;
+        $remaining = null;
+        $cost = $this->safe_float($order, 'total');
+        $id = $this->safe_string($order, 'orderHash');
+        $type = null;
+        $side = $this->safe_string($order, 'type');
+        if ($side !== null) {
+            $side = strtolower($side);
+        }
+        $fee = null;
+        return array (
+            'info' => $order,
+            'id' => $id,
+            'timestamp' => $timestamp,
+            'datetime' => $datetime,
+            'lastTradeTimestamp' => null,
+            'symbol' => $symbol,
+            'type' => $type,
+            'side' => $side,
+            'price' => $price,
+            'amount' => $amount,
+            'cost' => $cost,
+            'filled' => $filled,
+            'remaining' => $remaining,
+            'status' => $status,
+            'fee' => $fee,
+        );
+    }
+
+    public function get_signed_request_params ($args, $raw) {
+        $salted = $this->hashMessage (mb_substr($raw), 2); // according to example $salted message should be without leading 0x substring
+        $vrs = $this->signHash ($salted, $this->privateKey);
+        $request = array_merge ($args, $vrs);
+        return $request;
+    }
+
+    public function idex_order ($base, $quote, $side, $amount, $price, $nonce, $params = array ()) {
+        $amountFloat = floatval ($amount);
+        $priceFloat = floatval ($price);
+        $tokenBuy = null;
+        $tokenSell = null;
+        $amountBuy = null;
+        $amountSell = null;
+        if ($side === 'buy') {
+            $tokenBuy = $base['address'];
+            $tokenSell = $quote['address'];
+            $amountBuy = $this->toWei ($amount);
+            $amountSell = $this->toWei ($amountFloat * $priceFloat);
+        } else if ($side === 'sell') {
+            $tokenBuy = $quote['address'];
+            $tokenSell = $base['address'];
+            $amountBuy = $this->toWei ($amountFloat * $priceFloat);
+            $amountSell = $this->toWei ($amount);
+        } else {
+            throw new InvalidOrder($this->id . ' invalid value for $side => ' . $side);
+        }
+        $expires = 10000;
+        if (is_array($params) && array_key_exists('expires', $params)) {
+            $expires = $params['expires'];
+        }
+        $args = array (
+            'tokenBuy' => $tokenBuy,
+            'amountBuy' => $amountBuy,
+            'tokenSell' => $tokenSell,
+            'amountSell' => $amountSell,
+            'address' => $this->walletAddress,
+            'nonce' => $nonce,
+            'expires' => $expires,
+        );
+        $raw = $this->soliditySha3 ([
+            $this->idexContractAddress,
+            $args['tokenBuy'],
+            $args['amountBuy'],
+            $args['tokenSell'],
+            $args['amountSell'],
+            $args['expires'],
+            $args['nonce'],
+            $args['address'],
+        ]);
+        $request = $this->get_signed_request_params ($args, $raw);
+        return $this->privatePostOrder ($request);
+    }
+
+    public function prepare_order_for_trade ($orderAmount, $openOrder, $nonce) {
+        $args = array (
+            'orderHash' => $openOrder['orderHash'],
+            'amount' => $this->toWei ($orderAmount),
+            'nonce' => $nonce,
+            'address' => $this->walletAddress,
+        );
+        $raw = $this->soliditySha3 ([
+            $args['orderHash'],
+            $args['amount'],
+            $args['address'],
+            $args['nonce'],
+        ]);
+        $request = $this->get_signed_request_params ($args, $raw);
+        // var_dump ('args => ', $args, 'raw => ', $raw, 'request => ', $request);
+        return $request;
+    }
+
+    public function idex_trade ($base, $quote, $side, $amount, $nonce, $params = array ()) {
+        $amountFloat = floatval ($amount);
+        $symbol = $base['symbol'] . '/' . $quote['symbol'];
+        $market = $this->market ($symbol);
+        $request = array (
+            'market' => $market['id'],
+            'count' => 100,
+        );
+        $orderbook = $this->publicGetReturnOrderBook ($request);
+        $orderbookKey = null;
+        if ($side === 'buy') {
+            $orderbookKey = 'asks';
+        } else if ($side === 'sell') {
+            $orderbookKey = 'bids';
+        } else {
+            throw new InvalidOrder($this->id . ' invalid $side value => ' . $side);
+        }
+        $totalAmount = 0;
+        $orders = array();
+        for ($i = 0; $i < count ($orderbook[$orderbookKey]); $i++) {
+            if ($totalAmount >= $amountFloat) {
+                break;
+            }
+            $openOrder = $orderbook[$orderbookKey][$i];
+            $orderAmount = $this->safe_float($openOrder, 'amount');
+            if ($orderAmount === null) {
+                continue;
+            }
+            if ($totalAmount . $orderAmount > $amount) {
+                $orderAmount = $amount - $totalAmount;
+            }
+            $totalAmount .= $orderAmount;
+            $newOrder = $this->prepare_order_for_trade ($orderAmount, $openOrder, $nonce);
+            $orders[] = $newOrder;
+        }
+        return $this->privatePostTrade ($orders);
+    }
+
+    public function fetch_next_nonce () {
+        $nonce = null;
+        $nonceResponse = $this->privatePostReturnNextNonce (array( 'address' => $this->walletAddress ));
+        if (is_array($nonceResponse) && array_key_exists('nonce', $nonceResponse)) {
+            $nonce = $nonceResponse['nonce'];
+        }
+        return $nonce;
+    }
+
+    public function create_order ($symbol, $type, $side, $amount, $price = null, $params = array ()) {
+        $this->load_markets();
+        $market = $this->market ($symbol);
+        $nonce = $this->fetch_next_nonce ();
+        $currencies = explode('/', $symbol);
+        $base = $this->get_currency ($currencies[0]);
+        $quote = $this->get_currency ($currencies[1]);
+        $uppercaseType = strtoupper($type);
+        $response = null;
+        $result = null;
+        if (($uppercaseType === 'LIMIT') && ($price !== null)) {
+            $response = $this->idex_order ($base, $quote, $side, $amount, $price, $nonce, $params);
+            $result = $this->parse_order($response, $market);
+        } else if ($uppercaseType === 'MARKET') {
+            $response = $this->idex_trade ($base, $quote, $side, $amount, $nonce, $params);
+            $result = array();
+            for ($i = 0; $i < count ($response); $i++) {
+                $order = $this->parse_order($response[$i], $market);
+                $result[] = $order;
+            }
+        } else {
+            throw new InvalidOrder($this->id . ' Invalid $order $type => ' . $type);
+        }
+        return $result;
+    }
+
+    public function cancel_order ($orderHash, $symbol = null, $params = array ()) {
+        $nonce = $this->fetch_next_nonce ();
+        $args = array (
+            'orderHash' => $orderHash,
+            'nonce' => $nonce,
+            'address' => $this->walletAddress,
+        );
+        $raw = $this->soliditySha3 (array (
+            $args->orderHash,
+            $args->nonce,
+        ));
+        $request = $this->get_signed_request_params ($args, $raw);
+        return $this->privatePostCancel ($request);
+    }
+
+    public function withdraw ($code, $amount, $address = null, $tag = null, $params = array ()) {
+        if ($address !== null) {
+            $this->check_address($address);
+        }
+        $currency = $this->get_currency ($code);
+        $withdrawAddress = null;
+        if ($address !== null) {
+            $withdrawAddress = $address;
+        } else {
+            $withdrawAddress = $this->walletAddress;
+        }
+        $nonce = $this->fetch_next_nonce ();
+        $args = array (
+            'address' => $withdrawAddress,
+            'amount' => $this->toWei ($amount),
+            'token' => $currency['address'],
+            'nonce' => $nonce,
+        );
+        $raw = $this->soliditySha3 ([
+            $this->idexContractAddress,
+            $args['token'],
+            $args['amount'],
+            $args['address'],
+            $args['nonce'],
+        ]);
+        $request = $this->get_signed_request_params ($args, $raw);
+        return $this->privatePostWithdraw ($request);
+    }
+
     public function sign ($path, $api = 'public', $method = 'GET', $params = array (), $headers = null, $body = null) {
         $url = $this->urls['api'][$api];
         $url .= '/' . $path;
         if ($method === 'GET') {
-            if ($params)
+            if ($params) {
                 $url .= '?' . $this->urlencode ($params);
+            }
         } else {
-            $headers['Content-Type'] = 'application/json';
+            $headers = array( 'Content-Type' => 'application/json' );
             if ($api !== 'public') {
                 $this->check_required_credentials();
             }
             $body = $this->json ($params);
         }
         return array( 'url' => $url, 'method' => $method, 'body' => $body, 'headers' => $headers );
+    }
+
+    public function handle_errors ($code, $reason, $url, $method, $headers, $body, $response) {
+        if (strlen ($body) > 0) {
+            if ($body[0] === '{') {
+                $error = $this->safe_string($response, 'error');
+                if ($error) {
+                    throw new ExchangeError($this->id . ' ' . $error);
+                }
+            }
+        }
     }
 }

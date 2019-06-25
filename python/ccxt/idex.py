@@ -5,6 +5,7 @@
 
 from ccxt.base.exchange import Exchange
 from ccxt.base.errors import ExchangeError
+from ccxt.base.errors import InvalidOrder
 
 
 class idex (Exchange):
@@ -16,21 +17,10 @@ class idex (Exchange):
             'countries': ['JP', 'MT'],  # Japan, Malta
             'rateLimit': 500,
             'has': {
-                'fetchDepositAddress': False,
-                'CORS': False,
-                'fetchBidsAsks': True,
+                'createLimitOrder': False,
+                'createMarketOrder': False,
                 'fetchTickers': True,
-                'fetchOHLCV': False,
-                'fetchMyTrades': False,
-                'fetchOrder': True,
-                'fetchOrders': False,
-                'fetchOpenOrders': True,
-                'fetchClosedOrders': True,
-                'withdraw': False,
-                'fetchFundingFees': False,
-                'fetchDeposits': False,
-                'fetchWithdrawals': False,
-                'fetchTransactions': False,
+                'withdraw': True,
             },
             'urls': {
                 'logo': 'https://idex.market/assets/IDEX_sf-color.svg',
@@ -55,6 +45,8 @@ class idex (Exchange):
                         'returnCurrencies',
                         'return24Volume',
                         'returnOrderBook',  # "market": "ETH_AURA", "count": 1
+                        'returnContractAddress',
+                        'returnTradeHistory',  # "market": "ETH_AURA", "address": "0x2dbdcec64db33e673140fbd0ceef610a273b84db", "start": 5000, "end": 10000, "sort": "desc", "count": 10, "cursor": "1000"
                     ],
                 },
                 'private': {
@@ -65,8 +57,6 @@ class idex (Exchange):
                         'returnOpenOrders',  # "market": "ETH_AURA", "address": "0x2a0c0dbecc7e4d658f48e01e3fa353f44050c208", "count": 10, "cursor": "2228127"
                         'returnOrderStatus',  # "orderHash": "0x22a9ba7f8dd37ed24ae327b14a8a941b0eb072d60e54bcf24640c2af819fc7ec"
                         'returnOrderTrades',  # "orderHash": "0x22a9ba7f8dd37ed24ae327b14a8a941b0eb072d60e54bcf24640c2af819fc7ec"
-                        'returnTradeHistory',  # "market": "ETH_AURA", "address": "0x2dbdcec64db33e673140fbd0ceef610a273b84db", "start": 5000, "end": 10000, "sort": "desc", "count": 10, "cursor": "1000"
-                        'returnContractAddress',  # "address": "0x2a0c0dbecc7e4d658f48e01e3fa353f44050c208"
                         'returnNextNonce',  # "address": "0x2a0c0dbecc7e4d658f48e01e3fa353f44050c208"
                         'order',  # https://github.com/AuroraDAO/idex-api-docs/blob/master/scripts/generate-order-payload.js
                         'cancel',  # https://github.com/AuroraDAO/idex-api-docs/blob/master/scripts/generate-cancel-payload.js
@@ -128,16 +118,24 @@ class idex (Exchange):
                 'WCT': 'Wealth Chain Token',
             },
             'currencyAddresses': None,
+            'enableLastResponseHeaders': True,
+            'requiresWeb3': True,
         })
+
+    def fetch_contract_address(self):
+        response = self.publicPostReturnContractAddress()
+        if 'address' in response:
+            self.idexContractAddress = response['address']
 
     def get_currency(self, currency=''):
         if currency in self.currencyAddresses:
-            return self.currencyAddresses[currency]
+            return self.extend({'symbol': currency}, self.currencyAddresses[currency])
         raise ExchangeError('Exchange ' + self.id + 'currency ' + currency + ' not found')
 
     def fetch_markets(self, params={}):
         self.currencyAddresses = self.publicGetReturnCurrencies(params)
         response = self.publicGetReturnTicker()
+        self.fetch_contract_address()
         symbols = list(response.keys())
         result = []
         for i in range(0, len(symbols)):
@@ -193,8 +191,8 @@ class idex (Exchange):
             'market': market['id'],
             'count': limit,
         }
-        order_book = self.publicGetReturnOrderBook(self.extend(request, params))
-        return self.parse_order_book(order_book, None, 'bids', 'asks', 'price', 'amount')
+        orderbook = self.publicGetReturnOrderBook(self.extend(request, params))
+        return self.parse_order_book(orderbook, None, 'bids', 'asks', 'price', 'amount')
 
     def parse_ticker(self, symbol, ticker, market=None):
         last = self.safe_float(ticker, 'last')
@@ -251,6 +249,274 @@ class idex (Exchange):
         rawTickers = self.publicGetReturnTicker(params)
         return self.parse_tickers(rawTickers, symbols)
 
+    def parse_trade(self, trade, market=None):
+        id = self.safe_string(trade, 'uuid')
+        timestamp = self.safe_string(trade, 'timestamp')
+        datetime = self.safe_string(trade, 'date')
+        symbol = None
+        if market is not None:
+            symbol = market['symbol']
+        order = self.safe_string(trade, 'tid')
+        type = self.safe_string(trade, 'type')
+        if type:
+            type = type.lower()
+        side = None
+        price = self.safe_float(trade, 'price')
+        amount = self.safe_float(trade, 'amount')
+        cost = self.safe_float(trade, 'total')
+        return {
+            'info': trade,
+            'id': id,
+            'timestamp': timestamp,
+            'datetime': datetime,
+            'symbol': symbol,
+            'order': order,
+            'type': type,
+            'side': side,
+            'price': price,
+            'amount': amount,
+            'cost': cost,
+        }
+
+    def fetch_balance(self, params={}):
+        self.load_markets()
+        request = {'address': self.walletAddress}
+        response = self.privatePostReturnCompleteBalances(self.extend(request, params))
+        result = {'info': response}
+        currencies = list(response.keys())
+        for i in range(0, len(currencies)):
+            currency = currencies[i]
+            balance = response[currency]
+            account = {
+                'free': float(balance['available']),
+                'used': float(balance['onOrders']),
+                'total': 0,
+            }
+            account['total'] = self.sum(account['free'], account['used'])
+            result[currency] = account
+        return self.parse_balance(result)
+
+    def fetch_trades(self, symbol, since=None, limit=None, params={}):
+        self.load_markets()
+        market = self.market(symbol)
+        request = {
+            'market': market['id'],
+        }
+        if since is not None:
+            request['start'] = since
+        if limit is not None:
+            request['count'] = limit  # default = 10, maximum = 100
+        response = self.publicPostReturnTradeHistory(self.extend(request, params))
+        return self.parse_trades(response, market, since, limit)
+
+    def parse_order(self, order, market=None):
+        status = None
+        symbol = self.find_symbol(self.safe_string(order, 'market'), market)
+        timestamp = None
+        datetime = None
+        if 'timestamp' in order:
+            timestamp = self.safe_integer(order, 'timestamp')
+        elif 'date' in order:
+            datetime = self.safe_string(order, 'date')
+            timestamp = self.parse8601(datetime)
+        price = self.safe_float(order, 'price')
+        amount = self.safe_float(order, 'amount')
+        filled = None
+        remaining = None
+        cost = self.safe_float(order, 'total')
+        id = self.safe_string(order, 'orderHash')
+        type = None
+        side = self.safe_string(order, 'type')
+        if side is not None:
+            side = side.lower()
+        fee = None
+        return {
+            'info': order,
+            'id': id,
+            'timestamp': timestamp,
+            'datetime': datetime,
+            'lastTradeTimestamp': None,
+            'symbol': symbol,
+            'type': type,
+            'side': side,
+            'price': price,
+            'amount': amount,
+            'cost': cost,
+            'filled': filled,
+            'remaining': remaining,
+            'status': status,
+            'fee': fee,
+        }
+
+    def get_signed_request_params(self, args, raw):
+        salted = self.hashMessage(raw)[2:]  # according to example salted message should be without leading 0x substring
+        vrs = self.signHash(salted, self.privateKey)
+        request = self.extend(args, vrs)
+        return request
+
+    def idex_order(self, base, quote, side, amount, price, nonce, params={}):
+        amountFloat = float(amount)
+        priceFloat = float(price)
+        tokenBuy = None
+        tokenSell = None
+        amountBuy = None
+        amountSell = None
+        if side == 'buy':
+            tokenBuy = base['address']
+            tokenSell = quote['address']
+            amountBuy = self.toWei(amount)
+            amountSell = self.toWei(amountFloat * priceFloat)
+        elif side == 'sell':
+            tokenBuy = quote['address']
+            tokenSell = base['address']
+            amountBuy = self.toWei(amountFloat * priceFloat)
+            amountSell = self.toWei(amount)
+        else:
+            raise InvalidOrder(self.id + ' invalid value for side: ' + side)
+        expires = 10000
+        if 'expires' in params:
+            expires = params['expires']
+        args = {
+            'tokenBuy': tokenBuy,
+            'amountBuy': amountBuy,
+            'tokenSell': tokenSell,
+            'amountSell': amountSell,
+            'address': self.walletAddress,
+            'nonce': nonce,
+            'expires': expires,
+        }
+        raw = self.soliditySha3([
+            self.idexContractAddress,
+            args['tokenBuy'],
+            args['amountBuy'],
+            args['tokenSell'],
+            args['amountSell'],
+            args['expires'],
+            args['nonce'],
+            args['address'],
+        ])
+        request = self.get_signed_request_params(args, raw)
+        return self.privatePostOrder(request)
+
+    def prepare_order_for_trade(self, orderAmount, openOrder, nonce):
+        args = {
+            'orderHash': openOrder['orderHash'],
+            'amount': self.toWei(orderAmount),
+            'nonce': nonce,
+            'address': self.walletAddress,
+        }
+        raw = self.soliditySha3([
+            args['orderHash'],
+            args['amount'],
+            args['address'],
+            args['nonce'],
+        ])
+        request = self.get_signed_request_params(args, raw)
+        # print('args: ', args, 'raw: ', raw, 'request: ', request)
+        return request
+
+    def idex_trade(self, base, quote, side, amount, nonce, params={}):
+        amountFloat = float(amount)
+        symbol = base['symbol'] + '/' + quote['symbol']
+        market = self.market(symbol)
+        request = {
+            'market': market['id'],
+            'count': 100,
+        }
+        orderbook = self.publicGetReturnOrderBook(request)
+        orderbookKey = None
+        if side == 'buy':
+            orderbookKey = 'asks'
+        elif side == 'sell':
+            orderbookKey = 'bids'
+        else:
+            raise InvalidOrder(self.id + ' invalid side value: ' + side)
+        totalAmount = 0
+        orders = []
+        for i in range(0, len(orderbook[orderbookKey])):
+            if totalAmount >= amountFloat:
+                break
+            openOrder = orderbook[orderbookKey][i]
+            orderAmount = self.safe_float(openOrder, 'amount')
+            if orderAmount is None:
+                continue
+            if totalAmount + orderAmount > amount:
+                orderAmount = amount - totalAmount
+            totalAmount += orderAmount
+            newOrder = self.prepare_order_for_trade(orderAmount, openOrder, nonce)
+            orders.append(newOrder)
+        return self.privatePostTrade(orders)
+
+    def fetch_next_nonce(self):
+        nonce = None
+        nonceResponse = self.privatePostReturnNextNonce({'address': self.walletAddress})
+        if 'nonce' in nonceResponse:
+            nonce = nonceResponse['nonce']
+        return nonce
+
+    def create_order(self, symbol, type, side, amount, price=None, params={}):
+        self.load_markets()
+        market = self.market(symbol)
+        nonce = self.fetch_next_nonce()
+        currencies = symbol.split('/')
+        base = self.get_currency(currencies[0])
+        quote = self.get_currency(currencies[1])
+        uppercaseType = type.upper()
+        response = None
+        result = None
+        if (uppercaseType == 'LIMIT') and(price is not None):
+            response = self.idex_order(base, quote, side, amount, price, nonce, params)
+            result = self.parse_order(response, market)
+        elif uppercaseType == 'MARKET':
+            response = self.idex_trade(base, quote, side, amount, nonce, params)
+            result = []
+            for i in range(0, len(response)):
+                order = self.parse_order(response[i], market)
+                result.append(order)
+        else:
+            raise InvalidOrder(self.id + ' Invalid order type: ' + type)
+        return result
+
+    def cancel_order(self, orderHash, symbol=None, params={}):
+        nonce = self.fetch_next_nonce()
+        args = {
+            'orderHash': orderHash,
+            'nonce': nonce,
+            'address': self.walletAddress,
+        }
+        raw = self.soliditySha3([
+            args.orderHash,
+            args.nonce,
+        ])
+        request = self.get_signed_request_params(args, raw)
+        return self.privatePostCancel(request)
+
+    def withdraw(self, code, amount, address=None, tag=None, params={}):
+        if address is not None:
+            self.check_address(address)
+        currency = self.get_currency(code)
+        withdrawAddress = None
+        if address is not None:
+            withdrawAddress = address
+        else:
+            withdrawAddress = self.walletAddress
+        nonce = self.fetch_next_nonce()
+        args = {
+            'address': withdrawAddress,
+            'amount': self.toWei(amount),
+            'token': currency['address'],
+            'nonce': nonce,
+        }
+        raw = self.soliditySha3([
+            self.idexContractAddress,
+            args['token'],
+            args['amount'],
+            args['address'],
+            args['nonce'],
+        ])
+        request = self.get_signed_request_params(args, raw)
+        return self.privatePostWithdraw(request)
+
     def sign(self, path, api='public', method='GET', params={}, headers=None, body=None):
         url = self.urls['api'][api]
         url += '/' + path
@@ -258,8 +524,15 @@ class idex (Exchange):
             if params:
                 url += '?' + self.urlencode(params)
         else:
-            headers['Content-Type'] = 'application/json'
+            headers = {'Content-Type': 'application/json'}
             if api != 'public':
                 self.check_required_credentials()
             body = self.json(params)
         return {'url': url, 'method': method, 'body': body, 'headers': headers}
+
+    def handle_errors(self, code, reason, url, method, headers, body, response):
+        if len(body) > 0:
+            if body[0] == '{':
+                error = self.safe_string(response, 'error')
+                if error:
+                    raise ExchangeError(self.id + ' ' + error)
