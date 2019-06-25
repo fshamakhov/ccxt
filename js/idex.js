@@ -526,9 +526,8 @@ module.exports = class idex extends Exchange {
             args.orderHash,
             args.nonce,
         ]);
-        const salted = this.hashMessage (raw);
-        const vrs = this.signMessage (salted, this.privateKey);
-        return await this.privatePostCancel (this.extend (args, vrs));
+        const request = this.getSignedRequestParams (args, raw);
+        return await this.privatePostCancel (request);
     }
 
     async withdraw (code, amount, address = undefined, tag = undefined, params = {}) {
