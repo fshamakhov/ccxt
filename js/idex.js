@@ -136,27 +136,27 @@ module.exports = class idex extends Exchange {
 
     async fetchMarkets (params = {}) {
         this.currencyAddresses = await this.publicGetReturnCurrencies (params);
-        let response = await this.publicGetReturnTicker ();
+        const response = await this.publicGetReturnTicker ();
         await this.fetchContractAddress ();
-        let symbols = Object.keys (response);
-        let result = [];
+        const symbols = Object.keys (response);
+        const result = [];
         for (let i = 0; i < symbols.length; i++) {
-            let id = symbols[i];
-            let market = response[id];
-            let ids = id.split ('_');
-            let baseId = ids[1].toUpperCase ();
-            let quoteId = ids[0].toUpperCase ();
-            let baseCurrency = this.getCurrency (baseId);
-            let quoteCurrency = this.getCurrency (quoteId);
-            let base = this.commonCurrencyCode (baseId);
-            let quote = this.commonCurrencyCode (quoteId);
-            let symbol = base + '/' + quote;
-            let precision = {
+            const id = symbols[i];
+            const market = response[id];
+            const ids = id.split ('_');
+            const baseId = ids[1].toUpperCase ();
+            const quoteId = ids[0].toUpperCase ();
+            const baseCurrency = this.getCurrency (baseId);
+            const quoteCurrency = this.getCurrency (quoteId);
+            const base = this.commonCurrencyCode (baseId);
+            const quote = this.commonCurrencyCode (quoteId);
+            const symbol = base + '/' + quote;
+            const precision = {
                 'base': baseCurrency['decimals'],
                 'quote': quoteCurrency['decimals'],
             };
-            let active = true;
-            let entry = {
+            const active = true;
+            const entry = {
                 'id': id,
                 'symbol': symbol,
                 'base': base,
@@ -191,17 +191,17 @@ module.exports = class idex extends Exchange {
             limit = 100;
         }
         await this.loadMarkets ();
-        let market = this.market (symbol);
-        let request = {
+        const market = this.market (symbol);
+        const request = {
             'market': market['id'],
             'count': limit,
         };
-        let orderbook = await this.publicGetReturnOrderBook (this.extend (request, params));
+        const orderbook = await this.publicGetReturnOrderBook (this.extend (request, params));
         return this.parseOrderBook (orderbook, undefined, 'bids', 'asks', 'price', 'amount');
     }
 
     parseTicker (symbol, ticker, market = undefined) {
-        let last = this.safeFloat (ticker, 'last');
+        const last = this.safeFloat (ticker, 'last');
         return {
             'symbol': symbol,
             'timestamp': undefined,
@@ -228,27 +228,27 @@ module.exports = class idex extends Exchange {
 
     async fetchTicker (symbol, params = {}) {
         await this.loadMarkets ();
-        let market = this.market (symbol);
-        let request = {
+        const market = this.market (symbol);
+        const request = {
             'market': market['id'],
         };
-        let response = await this.publicGetReturnTicker (this.extend (request, params));
+        const response = await this.publicGetReturnTicker (this.extend (request, params));
         return this.parseTicker (symbol, response, market);
     }
 
     async parseTickers (rawTickers, symbols = undefined) {
         await this.loadMarkets ();
-        let keys = Object.keys (rawTickers);
-        let tickers = [];
+        const keys = Object.keys (rawTickers);
+        const tickers = [];
         for (let i = 0; i < keys.length; i++) {
-            let id = keys[i];
-            let ids = id.split ('_');
-            let baseId = ids[1].toUpperCase ();
-            let quoteId = ids[0].toUpperCase ();
-            let base = this.commonCurrencyCode (baseId);
-            let quote = this.commonCurrencyCode (quoteId);
-            let symbol = base + '/' + quote;
-            let market = this.market (symbol);
+            const id = keys[i];
+            const ids = id.split ('_');
+            const baseId = ids[1].toUpperCase ();
+            const quoteId = ids[0].toUpperCase ();
+            const base = this.commonCurrencyCode (baseId);
+            const quote = this.commonCurrencyCode (quoteId);
+            const symbol = base + '/' + quote;
+            const market = this.market (symbol);
             tickers.push (this.parseTicker (symbol, rawTickers[id], market));
         }
         return this.filterByArray (tickers, 'symbol', symbols);
@@ -256,7 +256,7 @@ module.exports = class idex extends Exchange {
 
     async fetchTickers (symbols = undefined, params = {}) {
         await this.loadMarkets ();
-        let rawTickers = await this.publicGetReturnTicker (params);
+        const rawTickers = await this.publicGetReturnTicker (params);
         return await this.parseTickers (rawTickers, symbols);
     }
 
@@ -295,13 +295,13 @@ module.exports = class idex extends Exchange {
     async fetchBalance (params = {}) {
         await this.loadMarkets ();
         const request = { 'address': this.walletAddress };
-        let response = await this.privatePostReturnCompleteBalances (this.extend (request, params));
-        let result = { 'info': response };
+        const response = await this.privatePostReturnCompleteBalances (this.extend (request, params));
+        const result = { 'info': response };
         const currencies = Object.keys (response);
         for (let i = 0; i < currencies.length; i++) {
             const currency = currencies[i];
             const balance = response[currency];
-            let account = {
+            const account = {
                 'free': parseFloat (balance['available']),
                 'used': parseFloat (balance['onOrders']),
                 'total': 0,
@@ -339,18 +339,18 @@ module.exports = class idex extends Exchange {
             datetime = this.safeString (order, 'date');
             timestamp = this.parse8601 (datetime);
         }
-        let price = this.safeFloat (order, 'price');
+        const price = this.safeFloat (order, 'price');
         const amount = this.safeFloat (order, 'amount');
         const filled = undefined;
-        let remaining = undefined;
-        let cost = this.safeFloat (order, 'total');
+        const remaining = undefined;
+        const cost = this.safeFloat (order, 'total');
         const id = this.safeString (order, 'orderHash');
-        let type = undefined;
+        const type = undefined;
         let side = this.safeString (order, 'type');
         if (side !== undefined) {
             side = side.toLowerCase ();
         }
-        let fee = undefined;
+        const fee = undefined;
         return {
             'info': order,
             'id': id,
@@ -445,7 +445,7 @@ module.exports = class idex extends Exchange {
     async idexTrade (base, quote, side, amount, nonce, params = {}) {
         const amountFloat = parseFloat (amount);
         const symbol = base['symbol'] + '/' + quote['symbol'];
-        let market = this.market (symbol);
+        const market = this.market (symbol);
         const request = {
             'market': market['id'],
             'count': 100,
@@ -460,12 +460,12 @@ module.exports = class idex extends Exchange {
             throw new InvalidOrder (this.id + ' invalid side value: ' + side);
         }
         let totalAmount = 0;
-        let orders = [];
+        const orders = [];
         for (let i = 0; i < orderbook[orderbookKey].length; i++) {
             if (totalAmount >= amountFloat) {
                 break;
             }
-            let openOrder = orderbook[orderbookKey][i];
+            const openOrder = orderbook[orderbookKey][i];
             let orderAmount = this.safeFloat (openOrder, 'amount');
             if (orderAmount === undefined) {
                 continue;
@@ -493,7 +493,7 @@ module.exports = class idex extends Exchange {
         await this.loadMarkets ();
         const market = this.market (symbol);
         const nonce = await this.fetchNextNonce ();
-        let currencies = symbol.split ('/');
+        const currencies = symbol.split ('/');
         const base = this.getCurrency (currencies[0]);
         const quote = this.getCurrency (currencies[1]);
         const uppercaseType = type.toUpperCase ();
@@ -563,8 +563,9 @@ module.exports = class idex extends Exchange {
         let url = this.urls['api'][api];
         url += '/' + path;
         if (method === 'GET') {
-            if (Object.keys (params).length)
+            if (Object.keys (params).length) {
                 url += '?' + this.urlencode (params);
+            }
         } else {
             headers = { 'Content-Type': 'application/json' };
             if (api !== 'public') {
