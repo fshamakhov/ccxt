@@ -471,14 +471,13 @@ module.exports = class idex extends Exchange {
                 continue;
             }
             if (totalAmount + orderAmount > amount) {
-                orderAmount = totalAmount - amount;
+                orderAmount = amount - totalAmount;
             }
             totalAmount += orderAmount;
             const newOrder = this.prepareOrderForTrade (orderAmount, openOrder, nonce);
             orders.push (newOrder);
         }
-        console.log ('totalAmount: ', totalAmount);
-        // return await this.privatePostTrade (orders);
+        return await this.privatePostTrade (orders);
     }
 
     async fetchNextNonce () {
@@ -493,7 +492,6 @@ module.exports = class idex extends Exchange {
     async createOrder (symbol, type, side, amount, price = undefined, params = {}) {
         await this.loadMarkets ();
         const market = this.market (symbol);
-        // the next 5 lines are added to support for testing orders
         const nonce = await this.fetchNextNonce ();
         let currencies = symbol.split ('/');
         const base = this.getCurrency (currencies[0]);
