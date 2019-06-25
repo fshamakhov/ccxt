@@ -112,26 +112,26 @@ module.exports = class bilaxy extends Exchange {
     }
 
     async fetchMarkets (params = {}) {
-        let response = await this.publicGetCoins ();
-        let markets = response['data'];
-        let result = [];
+        const response = await this.publicGetCoins ();
+        const markets = response['data'];
+        const result = [];
         for (let i = 0; i < markets.length; i++) {
-            let market = markets[i];
-            let id = market['name'] + market['group'];
-            let baseId = market['name'];
-            let quoteId = market['group'];
-            let base = this.commonCurrencyCode (baseId);
-            let quote = this.commonCurrencyCode (quoteId);
-            let symbol = base + '/' + quote;
-            let precision = {
+            const market = markets[i];
+            const id = market['name'] + market['group'];
+            const baseId = market['name'];
+            const quoteId = market['group'];
+            const base = this.commonCurrencyCode (baseId);
+            const quote = this.commonCurrencyCode (quoteId);
+            const symbol = base + '/' + quote;
+            const precision = {
                 'base': market['priceDecimals'],
                 'quote': market['priceDecimals'],
                 'amount': market['priceDecimals'],
                 'price': market['priceDecimals'],
             };
-            let active = true;
+            const active = true;
             this.bilaxySymbols[symbol] = market['symbol'];
-            let entry = {
+            const entry = {
                 'id': id,
                 'symbol': symbol,
                 'base': base,
@@ -175,9 +175,9 @@ module.exports = class bilaxy extends Exchange {
         if (this.bilaxySymbols === undefined) {
             throw new ExchangeError (this.id + ' markets not loaded');
         }
-        let keys = Object.keys (this.bilaxySymbols);
+        const keys = Object.keys (this.bilaxySymbols);
         for (let i = 0; i < keys.length; i++) {
-            let id = keys[i];
+            const id = keys[i];
             if (this.bilaxySymbols[id] === symbol) {
                 return id;
             }
@@ -186,16 +186,16 @@ module.exports = class bilaxy extends Exchange {
     }
 
     async fetchOrderBook (symbol, limit = undefined, params = {}) {
-        let bilaxy_symbol = this.getBilaxySymbol (symbol);
-        let request = {
+        const bilaxy_symbol = this.getBilaxySymbol (symbol);
+        const request = {
             'symbol': bilaxy_symbol,
         };
-        let response = await this.publicGetDepth (this.extend (request, params));
+        const response = await this.publicGetDepth (this.extend (request, params));
         return this.parseOrderBook (response['data']);
     }
 
     parseTicker (symbol, ticker, market = undefined) {
-        let last = this.safeFloat (ticker, 'last');
+        const last = this.safeFloat (ticker, 'last');
         return {
             'symbol': symbol,
             'timestamp': undefined,
@@ -221,21 +221,21 @@ module.exports = class bilaxy extends Exchange {
     }
 
     async fetchTicker (symbol, params = {}) {
-        let bilaxy_symbol = this.getBilaxySymbol (symbol);
-        let response = await this.publicGetTicker (this.extend ({
+        const bilaxy_symbol = this.getBilaxySymbol (symbol);
+        const response = await this.publicGetTicker (this.extend ({
             'symbol': bilaxy_symbol,
         }, params));
         await this.loadMarkets ();
-        let market = this.market (symbol);
+        const market = this.market (symbol);
         return this.parseTicker (symbol, response['data'], market);
     }
 
     async parseTickers (rawTickers, symbols = undefined) {
         await this.loadMarkets ();
-        let tickers = [];
+        const tickers = [];
         for (let i = 0; i < rawTickers.length; i++) {
-            let symbol = this.getSymbolFromBilaxy (rawTickers[i]['symbol']);
-            let market = this.market (symbol);
+            const symbol = this.getSymbolFromBilaxy (rawTickers[i]['symbol']);
+            const market = this.market (symbol);
             tickers.push (this.parseTicker (symbol, rawTickers[i], market));
         }
         return this.filterByArray (tickers, 'symbol', symbols);
@@ -243,7 +243,7 @@ module.exports = class bilaxy extends Exchange {
 
     async fetchTickers (symbols = undefined, params = {}) {
         await this.loadMarkets ();
-        let rawTickers = await this.publicGetTickers (params);
+        const rawTickers = await this.publicGetTickers (params);
         return await this.parseTickers (rawTickers['data'], symbols);
     }
 
@@ -288,15 +288,16 @@ module.exports = class bilaxy extends Exchange {
 
     async fetchBalance (params = {}) {
         await this.loadMarkets ();
-        let response = await this.privateGetBalances (params);
-        let result = { 'info': response['data'] };
-        let balances = response['data'];
+        const response = await this.privateGetBalances (params);
+        const result = { 'info': response['data'] };
+        const balances = response['data'];
         for (let i = 0; i < balances.length; i++) {
-            let balance = balances[i];
+            const balance = balances[i];
             let currency = balance['name'];
-            if (currency in this.currencies_by_id)
+            if (currency in this.currencies_by_id) {
                 currency = this.currencies_by_id[currency]['code'];
-            let account = {
+            }
+            const account = {
                 'free': parseFloat (balance['balance']),
                 'used': parseFloat (balance['frozen']),
                 'total': 0.0,
@@ -389,7 +390,7 @@ module.exports = class bilaxy extends Exchange {
             symbol = market['symbol'];
         }
         let timestamp = undefined;
-        let datetime = this.safeString (order, 'datetime');
+        const datetime = this.safeString (order, 'datetime');
         if (datetime) {
             timestamp = this.parse8601 (datetime);
         }
@@ -416,8 +417,8 @@ module.exports = class bilaxy extends Exchange {
         if (side !== undefined) {
             side = side.toLowerCase ();
         }
-        let fee = undefined;
-        let trades = undefined;
+        const fee = undefined;
+        const trades = undefined;
         return {
             'info': order,
             'id': id,
@@ -482,10 +483,12 @@ module.exports = class bilaxy extends Exchange {
         let url = this.urls['api'][api];
         url += '/' + path;
         if ((api === 'public') || (api === 'v2')) {
-            if (Object.keys (params).length)
+            if (Object.keys (params).length) {
                 url += '?' + this.urlencode (params);
-            if (api === 'v2')
+            }
+            if (api === 'v2') {
                 headers = { 'accept': 'application/json' };
+            }
         } else {
             this.checkRequiredCredentials ();
             const sorted = this.encode (this.urlencode (this.keysort (this.extend ({
