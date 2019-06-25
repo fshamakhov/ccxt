@@ -26,6 +26,7 @@ class kuna (acx):
                 'withdraw': False,
             },
             'urls': {
+                'referral': 'https://kuna.io?r=kunaid-gvfihe8az7o4',
                 'logo': 'https://user-images.githubusercontent.com/1294454/31697638-912824fa-b3c1-11e7-8c36-cf9606eb94ac.jpg',
                 'api': 'https://kuna.io',
                 'www': 'https://kuna.io',
@@ -138,21 +139,25 @@ class kuna (acx):
                 'bid': 'buy',
             }
             side = self.safe_string(sideMap, side)
+        price = self.safe_float(trade, 'price')
+        amount = self.safe_float(trade, 'volume')
         cost = self.safe_float(trade, 'funds')
         orderId = self.safe_string(trade, 'order_id')
         id = self.safe_string(trade, 'id')
         return {
             'id': id,
+            'info': trade,
             'timestamp': timestamp,
             'datetime': self.iso8601(timestamp),
             'symbol': symbol,
             'type': None,
             'side': side,
-            'price': self.safe_float(trade, 'price'),
-            'amount': self.safe_float(trade, 'volume'),
-            'cost': cost,
             'order': orderId,
-            'info': trade,
+            'takerOrMaker': None,
+            'price': price,
+            'amount': amount,
+            'cost': cost,
+            'fee': None,
         }
 
     def fetch_trades(self, symbol, since=None, limit=None, params={}):

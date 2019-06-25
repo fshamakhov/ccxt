@@ -180,7 +180,7 @@ class gdax (Exchange):
                 'max': None,
             }
             precision = {
-                'amount': 8,
+                'amount': self.precision_from_string(self.safe_string(market, 'base_increment')),
                 'price': self.precision_from_string(self.safe_string(market, 'quote_increment')),
             }
             taker = self.fees['trading']['taker']  # does not seem right
@@ -437,11 +437,17 @@ class gdax (Exchange):
             if filled is not None:
                 remaining = amount - filled
         cost = self.safe_float(order, 'executed_value')
-        fee = {
-            'cost': self.safe_float(order, 'fill_fees'),
-            'currency': None,
-            'rate': None,
-        }
+        feeCost = self.safe_float(order, 'fill_fees')
+        fee = None
+        if feeCost is not None:
+            feeCurrencyCode = None
+            if market is not None:
+                feeCurrencyCode = market['quote']
+            fee = {
+                'cost': feeCost,
+                'currency': feeCurrencyCode,
+                'rate': None,
+            }
         if market is not None:
             symbol = market['symbol']
         id = self.safe_string(order, 'id')
@@ -635,7 +641,7 @@ class gdax (Exchange):
             return 'canceled'
         processed = self.safe_value(transaction, 'processed_at')
         completed = self.safe_value(transaction, 'completed_at')
-        if processed and completed:
+        if completed:
             return 'ok'
         elif processed and not completed:
             return 'failed'

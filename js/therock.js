@@ -123,7 +123,7 @@ module.exports = class therock extends Exchange {
     }
 
     async fetchMarkets (params = {}) {
-        let response = await this.publicGetFunds ();
+        const response = await this.publicGetFunds (params);
         //
         //     { funds: [ {                      id:   "BTCEUR",
         //                              description:   "Trade Bitcoin with Euro",
@@ -150,24 +150,24 @@ module.exports = class therock extends Exchange {
         //                  trade_currency_decimals:    2,
         //                                leverages: []                            } ] }
         //
-        let markets = this.safeValue (response, 'funds');
-        let result = [];
+        const markets = this.safeValue (response, 'funds');
+        const result = [];
         if (markets === undefined) {
             throw new ExchangeError (this.id + ' fetchMarkets got an unexpected response');
         } else {
             for (let i = 0; i < markets.length; i++) {
-                let market = markets[i];
-                let id = this.safeString (market, 'id');
-                let baseId = this.safeString (market, 'trade_currency');
-                let quoteId = this.safeString (market, 'base_currency');
-                let base = this.commonCurrencyCode (baseId);
-                let quote = this.commonCurrencyCode (quoteId);
-                let symbol = base + '/' + quote;
-                let buy_fee = this.safeFloat (market, 'buy_fee');
-                let sell_fee = this.safeFloat (market, 'sell_fee');
+                const market = markets[i];
+                const id = this.safeString (market, 'id');
+                const baseId = this.safeString (market, 'trade_currency');
+                const quoteId = this.safeString (market, 'base_currency');
+                const base = this.commonCurrencyCode (baseId);
+                const quote = this.commonCurrencyCode (quoteId);
+                const symbol = base + '/' + quote;
+                const buy_fee = this.safeFloat (market, 'buy_fee');
+                const sell_fee = this.safeFloat (market, 'sell_fee');
                 let taker = Math.max (buy_fee, sell_fee);
                 taker = taker / 100;
-                let maker = taker;
+                const maker = taker;
                 result.push ({
                     'id': id,
                     'symbol': symbol,
@@ -206,25 +206,20 @@ module.exports = class therock extends Exchange {
     async fetchBalance (params = {}) {
         await this.loadMarkets ();
         const response = await this.privateGetBalances (params);
-        const balances = this.safeValue (response, 'balances');
+        const balances = this.safeValue (response, 'balances', []);
         const result = { 'info': response };
         for (let i = 0; i < balances.length; i++) {
             const balance = balances[i];
             const currencyId = this.safeString (balance, 'currency');
-            const code = this.commonCurrencyCode (currencyId);
-            const free = this.safeFloat (balance, 'trading_balance');
-            const total = this.safeFloat (balance, 'balance');
-            let used = undefined;
-            if (total !== undefined) {
-                if (free !== undefined) {
-                    used = total - free;
-                }
+            let code = currencyId;
+            if (currencyId in this.currencies_by_id) {
+                code = this.currencies_by_id[currencyId]['code'];
+            } else {
+                code = this.commonCurrencyCode (currencyId);
             }
-            const account = {
-                'free': free,
-                'used': used,
-                'total': total,
-            };
+            const account = this.account ();
+            account['free'] = this.safeFloat (balance, 'trading_balance');
+            account['total'] = this.safeFloat (balance, 'balance');
             result[code] = account;
         }
         return this.parseBalance (result);
@@ -273,15 +268,15 @@ module.exports = class therock extends Exchange {
 
     async fetchTickers (symbols = undefined, params = {}) {
         await this.loadMarkets ();
-        let response = await this.publicGetFundsTickers (params);
-        let tickers = this.indexBy (response['tickers'], 'fund_id');
-        let ids = Object.keys (tickers);
-        let result = {};
+        const response = await this.publicGetFundsTickers (params);
+        const tickers = this.indexBy (response['tickers'], 'fund_id');
+        const ids = Object.keys (tickers);
+        const result = {};
         for (let i = 0; i < ids.length; i++) {
-            let id = ids[i];
-            let market = this.markets_by_id[id];
-            let symbol = market['symbol'];
-            let ticker = tickers[id];
+            const id = ids[i];
+            const market = this.markets_by_id[id];
+            const symbol = market['symbol'];
+            const ticker = tickers[id];
             result[symbol] = this.parseTicker (ticker, market);
         }
         return result;
@@ -289,8 +284,8 @@ module.exports = class therock extends Exchange {
 
     async fetchTicker (symbol, params = {}) {
         await this.loadMarkets ();
-        let market = this.market (symbol);
-        let ticker = await this.publicGetFundsIdTicker (this.extend ({
+        const market = this.market (symbol);
+        const ticker = await this.publicGetFundsIdTicker (this.extend ({
             'id': market['id'],
         }, params));
         return this.parseTicker (ticker, market);
@@ -367,15 +362,20 @@ module.exports = class therock extends Exchange {
                 'currency': market['quote'],
             };
         }
+        let symbol = undefined;
+        if (market !== undefined) {
+            symbol = market['symbol'];
+        }
         return {
             'info': trade,
             'id': id,
             'order': orderId,
             'timestamp': timestamp,
             'datetime': this.iso8601 (timestamp),
-            'symbol': market['symbol'],
+            'symbol': symbol,
             'type': undefined,
             'side': side,
+            'takerOrMaker': undefined,
             'price': price,
             'amount': amount,
             'cost': cost,
@@ -655,6 +655,24 @@ module.exports = class therock extends Exchange {
         //         }
         //     }
         //
+        //     {
+        //         "id": 12564223,
+        //         "date": "2017-08-07T08:13:50.023Z",
+        //         "note": "GB7IDL401573388",
+        //         "type": "withdraw",
+        //         "price": 4345.93,
+        //         "fund_id": null,
+        //         "currency": "EUR",
+        //         "order_id": null,
+        //         "trade_id": null,
+        //         "transfer_detail": {
+        //             "id": "EXECUTEDBUTUNCHECKED",
+        //             "method": "wire_transfer",
+        //             "recipient": "GB7IDL401573388",
+        //             "confirmations": 0
+        //         }
+        //     }
+        //
         //     // crypto
         //
         //     {
@@ -720,8 +738,15 @@ module.exports = class therock extends Exchange {
         const id = this.safeString (transaction, 'id');
         const type = this.parseTransactionType (this.safeString (transaction, 'type'));
         const detail = this.safeValue (transaction, 'transfer_detail', {});
-        const txid = this.safeString (detail, 'id');
-        const address = this.safeString (detail, 'recipient');
+        const method = this.safeString (detail, 'method');
+        let txid = undefined;
+        let address = undefined;
+        if (method !== undefined) {
+            if (method !== 'wire_transfer') {
+                txid = this.safeString (detail, 'id');
+                address = this.safeString (detail, 'recipient');
+            }
+        }
         let currencyId = this.safeString (transaction, 'currency');
         let code = undefined;
         if (currencyId !== undefined) {
@@ -757,14 +782,14 @@ module.exports = class therock extends Exchange {
         const request = {
             'type': 'withdraw',
         };
-        return await this.fetchTransactions ('withdraw', code, since, limit, this.extend (request, params));
+        return await this.fetchTransactions (code, since, limit, this.extend (request, params));
     }
 
     async fetchDeposits (code = undefined, since = undefined, limit = undefined, params = {}) {
         const request = {
             'type': 'atm_payment',
         };
-        return await this.fetchTransactions ('atm_payment', code, since, limit, this.extend (request, params));
+        return await this.fetchTransactions (code, since, limit, this.extend (request, params));
     }
 
     async fetchTransactions (code = undefined, since = undefined, limit = undefined, params = {}) {
@@ -1155,7 +1180,7 @@ module.exports = class therock extends Exchange {
 
     sign (path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
         let url = this.urls['api'] + '/' + this.version + '/' + this.implodeParams (path, params);
-        let query = this.omit (params, this.extractParams (path));
+        const query = this.omit (params, this.extractParams (path));
         if (api === 'private') {
             this.checkRequiredCredentials ();
             if (Object.keys (query).length) {
@@ -1169,8 +1194,8 @@ module.exports = class therock extends Exchange {
                     }
                 }
             }
-            let nonce = this.nonce ().toString ();
-            let auth = nonce + url;
+            const nonce = this.nonce ().toString ();
+            const auth = nonce + url;
             headers = {
                 'X-TRT-KEY': this.apiKey,
                 'X-TRT-NONCE': nonce,

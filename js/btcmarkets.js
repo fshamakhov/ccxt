@@ -392,9 +392,11 @@ module.exports = class btcmarkets extends Exchange {
             'symbol': symbol,
             'type': undefined,
             'side': undefined,
+            'takerOrMaker': undefined,
             'price': price,
             'amount': amount,
             'cost': cost,
+            'fee': undefined,
         };
     }
 
@@ -449,8 +451,8 @@ module.exports = class btcmarkets extends Exchange {
     }
 
     calculateFee (symbol, type, side, amount, price, takerOrMaker = 'taker', params = {}) {
-        let market = this.markets[symbol];
-        let rate = market[takerOrMaker];
+        const market = this.markets[symbol];
+        const rate = market[takerOrMaker];
         let currency = undefined;
         let cost = undefined;
         if (market['quote'] === 'AUD') {
@@ -654,23 +656,23 @@ module.exports = class btcmarkets extends Exchange {
     }
 
     sign (path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
-        let uri = '/' + this.implodeParams (path, params);
+        const uri = '/' + this.implodeParams (path, params);
         let url = this.urls['api'][api] + uri;
         if (api === 'private') {
             this.checkRequiredCredentials ();
-            let nonce = this.nonce ().toString ();
+            const nonce = this.nonce ().toString ();
             let auth = undefined;
             headers = {
                 'apikey': this.apiKey,
                 'timestamp': nonce,
             };
-            if (method === 'post') {
+            if (method === 'POST') {
                 headers['Content-Type'] = 'application/json';
                 auth = uri + "\n" + nonce + "\n"; // eslint-disable-line quotes
                 body = this.json (params);
                 auth += body;
             } else {
-                let query = this.ksort (this.omit (params, this.extractParams (path)));
+                const query = this.keysort (this.omit (params, this.extractParams (path)));
                 let queryString = '';
                 if (Object.keys (query).length) {
                     queryString = this.urlencode (query);
@@ -679,8 +681,8 @@ module.exports = class btcmarkets extends Exchange {
                 }
                 auth = uri + "\n" + queryString + nonce + "\n"; // eslint-disable-line quotes
             }
-            let secret = this.base64ToBinary (this.secret);
-            let signature = this.hmac (this.encode (auth), secret, 'sha512', 'base64');
+            const secret = this.base64ToBinary (this.secret);
+            const signature = this.hmac (this.encode (auth), secret, 'sha512', 'base64');
             headers['signature'] = this.decode (signature);
         } else {
             if (Object.keys (params).length) {
@@ -696,10 +698,10 @@ module.exports = class btcmarkets extends Exchange {
         }
         if ('success' in response) {
             if (!response['success']) {
-                let error = this.safeString (response, 'errorCode');
-                let message = this.id + ' ' + this.json (response);
+                const error = this.safeString (response, 'errorCode');
+                const message = this.id + ' ' + this.json (response);
                 if (error in this.exceptions) {
-                    let ExceptionClass = this.exceptions[error];
+                    const ExceptionClass = this.exceptions[error];
                     throw new ExceptionClass (message);
                 } else {
                     throw new ExchangeError (message);

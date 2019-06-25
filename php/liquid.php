@@ -268,16 +268,25 @@ class liquid extends Exchange {
 
     public function fetch_balance ($params = array ()) {
         $this->load_markets();
-        $balances = $this->privateGetAccountsBalance ($params);
-        $result = array( 'info' => $balances );
-        for ($b = 0; $b < count ($balances); $b++) {
-            $balance = $balances[$b];
-            $currencyId = $balance['currency'];
+        $response = $this->privateGetAccountsBalance ($params);
+        //
+        //     array (
+        //         array("currency":"USD","$balance":"0.0"),
+        //         array("currency":"BTC","$balance":"0.0"),
+        //         array("currency":"ETH","$balance":"0.1651354")
+        //     )
+        //
+        $result = array( 'info' => $response );
+        for ($i = 0; $i < count ($response); $i++) {
+            $balance = $response[$i];
+            $currencyId = $this->safe_string($balance, 'currency');
             $code = $currencyId;
             if (is_array($this->currencies_by_id) && array_key_exists($currencyId, $this->currencies_by_id)) {
                 $code = $this->currencies_by_id[$currencyId]['code'];
+            } else {
+                $code = $this->common_currency_code(strtoupper($currencyId));
             }
-            $total = floatval ($balance['balance']);
+            $total = $this->safe_float($balance, 'balance');
             $account = array (
                 'free' => $total,
                 'used' => 0.0,
@@ -290,10 +299,11 @@ class liquid extends Exchange {
 
     public function fetch_order_book ($symbol, $limit = null, $params = array ()) {
         $this->load_markets();
-        $orderbook = $this->publicGetProductsIdPriceLevels (array_merge (array (
+        $request = array (
             'id' => $this->market_id($symbol),
-        ), $params));
-        return $this->parse_order_book($orderbook, null, 'buy_price_levels', 'sell_price_levels');
+        );
+        $response = $this->publicGetProductsIdPriceLevels (array_merge ($request, $params));
+        return $this->parse_order_book($response, null, 'buy_price_levels', 'sell_price_levels');
     }
 
     public function parse_ticker ($ticker, $market = null) {
@@ -611,7 +621,7 @@ class liquid extends Exchange {
             $symbol = $market['symbol'];
             $feeCurrency = $market['quote'];
         }
-        $type = $order['order_type'];
+        $type = $this->safe_string($order, 'order_type');
         $tradeCost = 0;
         $tradeFilled = 0;
         $average = $this->safe_float($order, 'average_price');
@@ -769,7 +779,7 @@ class liquid extends Exchange {
                 'token_id' => $this->apiKey,
                 'iat' => (int) floor($nonce / 1000), // issued at
             );
-            $headers['X-Quoine-Auth'] = $this->jwt ($request, $this->secret);
+            $headers['X-Quoine-Auth'] = $this->jwt ($request, $this->encode ($this->secret));
         } else {
             if ($query) {
                 $url .= '?' . $this->urlencode ($query);

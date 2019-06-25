@@ -93,7 +93,7 @@ module.exports = class luno extends Exchange {
             const quoteId = id.slice (3, 6);
             const base = this.commonCurrencyCode (baseId);
             const quote = this.commonCurrencyCode (quoteId);
-            let symbol = base + '/' + quote;
+            const symbol = base + '/' + quote;
             result.push ({
                 'id': id,
                 'symbol': symbol,
@@ -115,16 +115,18 @@ module.exports = class luno extends Exchange {
         for (let i = 0; i < wallets.length; i++) {
             const wallet = wallets[i];
             const currencyId = this.safeString (wallet, 'asset');
-            const code = this.commonCurrencyCode (currencyId);
+            let code = currencyId;
+            if (currencyId in this.currencies_by_id) {
+                code = this.currencies_by_id[currencyId]['code'];
+            } else {
+                code = this.commonCurrencyCode (currencyId);
+            }
             const reserved = this.safeFloat (wallet, 'reserved');
             const unconfirmed = this.safeFloat (wallet, 'unconfirmed');
             const balance = this.safeFloat (wallet, 'balance');
-            const account = {
-                'free': 0.0,
-                'used': this.sum (reserved, unconfirmed),
-                'total': this.sum (balance, unconfirmed),
-            };
-            account['free'] = account['total'] - account['used'];
+            const account = this.account ();
+            account['used'] = this.sum (reserved, unconfirmed);
+            account['total'] = this.sum (balance, unconfirmed);
             result[code] = account;
         }
         return this.parseBalance (result);

@@ -128,7 +128,7 @@ class therock (Exchange):
         })
 
     async def fetch_markets(self, params={}):
-        response = await self.publicGetFunds()
+        response = await self.publicGetFunds(params)
         #
         #     {funds: [{                     id:   "BTCEUR",
         #                              description:   "Trade Bitcoin with Euro",
@@ -208,23 +208,19 @@ class therock (Exchange):
     async def fetch_balance(self, params={}):
         await self.load_markets()
         response = await self.privateGetBalances(params)
-        balances = self.safe_value(response, 'balances')
+        balances = self.safe_value(response, 'balances', [])
         result = {'info': response}
         for i in range(0, len(balances)):
             balance = balances[i]
             currencyId = self.safe_string(balance, 'currency')
-            code = self.common_currency_code(currencyId)
-            free = self.safe_float(balance, 'trading_balance')
-            total = self.safe_float(balance, 'balance')
-            used = None
-            if total is not None:
-                if free is not None:
-                    used = total - free
-            account = {
-                'free': free,
-                'used': used,
-                'total': total,
-            }
+            code = currencyId
+            if currencyId in self.currencies_by_id:
+                code = self.currencies_by_id[currencyId]['code']
+            else:
+                code = self.common_currency_code(currencyId)
+            account = self.account()
+            account['free'] = self.safe_float(balance, 'trading_balance')
+            account['total'] = self.safe_float(balance, 'balance')
             result[code] = account
         return self.parse_balance(result)
 
@@ -353,15 +349,19 @@ class therock (Exchange):
                 'cost': feeCost,
                 'currency': market['quote'],
             }
+        symbol = None
+        if market is not None:
+            symbol = market['symbol']
         return {
             'info': trade,
             'id': id,
             'order': orderId,
             'timestamp': timestamp,
             'datetime': self.iso8601(timestamp),
-            'symbol': market['symbol'],
+            'symbol': symbol,
             'type': None,
             'side': side,
+            'takerOrMaker': None,
             'price': price,
             'amount': amount,
             'cost': cost,
@@ -631,6 +631,24 @@ class therock (Exchange):
         #         }
         #     }
         #
+        #     {
+        #         "id": 12564223,
+        #         "date": "2017-08-07T08:13:50.023Z",
+        #         "note": "GB7IDL401573388",
+        #         "type": "withdraw",
+        #         "price": 4345.93,
+        #         "fund_id": null,
+        #         "currency": "EUR",
+        #         "order_id": null,
+        #         "trade_id": null,
+        #         "transfer_detail": {
+        #             "id": "EXECUTEDBUTUNCHECKED",
+        #             "method": "wire_transfer",
+        #             "recipient": "GB7IDL401573388",
+        #             "confirmations": 0
+        #         }
+        #     }
+        #
         #     # crypto
         #
         #     {
@@ -696,8 +714,13 @@ class therock (Exchange):
         id = self.safe_string(transaction, 'id')
         type = self.parse_transaction_type(self.safe_string(transaction, 'type'))
         detail = self.safe_value(transaction, 'transfer_detail', {})
-        txid = self.safe_string(detail, 'id')
-        address = self.safe_string(detail, 'recipient')
+        method = self.safe_string(detail, 'method')
+        txid = None
+        address = None
+        if method is not None:
+            if method != 'wire_transfer':
+                txid = self.safe_string(detail, 'id')
+                address = self.safe_string(detail, 'recipient')
         currencyId = self.safe_string(transaction, 'currency')
         code = None
         if currencyId is not None:
@@ -731,13 +754,13 @@ class therock (Exchange):
         request = {
             'type': 'withdraw',
         }
-        return await self.fetch_transactions('withdraw', code, since, limit, self.extend(request, params))
+        return await self.fetch_transactions(code, since, limit, self.extend(request, params))
 
     async def fetch_deposits(self, code=None, since=None, limit=None, params={}):
         request = {
             'type': 'atm_payment',
         }
-        return await self.fetch_transactions('atm_payment', code, since, limit, self.extend(request, params))
+        return await self.fetch_transactions(code, since, limit, self.extend(request, params))
 
     async def fetch_transactions(self, code=None, since=None, limit=None, params={}):
         await self.load_markets()

@@ -41,7 +41,7 @@ class gateio (Exchange):
                 'fetchTransactions': True,
                 'createDepositAddress': True,
                 'fetchDepositAddress': True,
-                'fetchClosedOrders': True,
+                'fetchClosedOrders': False,
                 'fetchOHLCV': True,
                 'fetchOpenOrders': True,
                 'fetchOrderTrades': True,
@@ -234,18 +234,17 @@ class gateio (Exchange):
         await self.load_markets()
         response = await self.privatePostBalances(params)
         result = {'info': response}
-        codes = list(self.currencies.keys())
         available = self.safe_value(response, 'available', {})
+        if isinstance(available, list):
+            available = {}
         locked = self.safe_value(response, 'locked', {})
-        for i in range(0, len(codes)):
-            code = codes[i]
-            currency = self.currencies[code]
-            currencyId = currency['id']
-            uppercaseId = currencyId.upper()
+        currencyIds = list(available.keys())
+        for i in range(0, len(currencyIds)):
+            currencyId = currencyIds[i]
+            code = self.common_currency_code(currencyId.upper())
             account = self.account()
-            account['free'] = self.safe_float(available, uppercaseId)
-            account['used'] = self.safe_float(locked, uppercaseId)
-            account['total'] = self.sum(account['free'], account['used'])
+            account['free'] = self.safe_float(available, currencyId)
+            account['used'] = self.safe_float(locked, currencyId)
             result[code] = account
         return self.parse_balance(result)
 
@@ -385,11 +384,8 @@ class gateio (Exchange):
         }, params))
         return self.parse_ticker(ticker, market)
 
-    def parse_trade(self, trade, market):
-        # public fetchTrades
-        timestamp = self.safe_integer(trade, 'timestamp')
-        # private fetchMyTrades
-        timestamp = self.safe_integer(trade, 'time_unix', timestamp)
+    def parse_trade(self, trade, market=None):
+        timestamp = self.safe_integer_2(trade, 'timestamp', 'time_unix')
         if timestamp is not None:
             timestamp *= 1000
         id = self.safe_string_2(trade, 'tradeID', 'id')
@@ -402,15 +398,19 @@ class gateio (Exchange):
         if price is not None:
             if amount is not None:
                 cost = price * amount
+        symbol = None
+        if market is not None:
+            symbol = market['symbol']
         return {
             'id': id,
             'info': trade,
             'timestamp': timestamp,
             'datetime': self.iso8601(timestamp),
-            'symbol': market['symbol'],
+            'symbol': symbol,
             'order': orderId,
             'type': None,
             'side': type,
+            'takerOrMaker': None,
             'price': price,
             'amount': amount,
             'cost': cost,

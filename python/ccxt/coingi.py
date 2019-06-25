@@ -162,12 +162,9 @@ class coingi (Exchange):
             currencyId = self.safe_string(balance['currency'], 'name')
             code = currencyId.upper()
             code = self.common_currency_code(code)
-            account = {
-                'free': balance['available'],
-                'used': balance['blocked'] + balance['inOrders'] + balance['withdrawing'],
-                'total': 0.0,
-            }
-            account['total'] = self.sum(account['free'], account['used'])
+            account = self.account()
+            account['free'] = balance['available']
+            account['used'] = balance['blocked'] + balance['inOrders'] + balance['withdrawing']
             result[code] = account
         return self.parse_balance(result)
 
@@ -234,8 +231,6 @@ class coingi (Exchange):
         raise ExchangeError(self.id + ' return did not contain ' + symbol)
 
     def parse_trade(self, trade, market=None):
-        if market is None:
-            market = self.markets_by_id[trade['currencyPair']]
         price = self.safe_float(trade, 'price')
         amount = self.safe_float(trade, 'amount')
         cost = None
@@ -244,17 +239,26 @@ class coingi (Exchange):
                 cost = price * amount
         timestamp = self.safe_integer(trade, 'timestamp')
         id = self.safe_string(trade, 'id')
+        marketId = self.safe_string(trade, 'currencyPair')
+        if marketId in self.markets_by_id:
+            market = self.markets_by_id[marketId]
+        symbol = None
+        if market is not None:
+            symbol = market['symbol']
         return {
             'id': id,
             'info': trade,
             'timestamp': timestamp,
             'datetime': self.iso8601(timestamp),
-            'symbol': market['symbol'],
+            'symbol': symbol,
             'type': None,
             'side': None,  # type
+            'order': None,
+            'takerOrMaker': None,
             'price': price,
             'amount': amount,
             'cost': cost,
+            'fee': None,
         }
 
     def fetch_trades(self, symbol, since=None, limit=None, params={}):

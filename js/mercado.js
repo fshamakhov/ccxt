@@ -118,7 +118,10 @@ module.exports = class mercado extends Exchange {
         };
         const response = await this.publicGetCoinTicker (this.extend (request, params));
         const ticker = this.safeValue (response, 'ticker', {});
-        const timestamp = this.safeInteger (ticker, 'date') * 1000;
+        let timestamp = this.safeInteger (ticker, 'date');
+        if (timestamp !== undefined) {
+            timestamp *= 1000;
+        }
         const last = this.safeFloat (ticker, 'last');
         return {
             'symbol': symbol,
@@ -144,19 +147,40 @@ module.exports = class mercado extends Exchange {
         };
     }
 
-    parseTrade (trade, market) {
-        let timestamp = trade['date'] * 1000;
+    parseTrade (trade, market = undefined) {
+        let timestamp = this.safeInteger (trade, 'date');
+        if (timestamp !== undefined) {
+            timestamp *= 1000;
+        }
+        let symbol = undefined;
+        if (market !== undefined) {
+            symbol = market['symbol'];
+        }
+        const id = this.safeString (trade, 'tid');
+        const type = undefined;
+        const side = this.safeString (trade, 'type');
+        const price = this.safeFloat (trade, 'price');
+        const amount = this.safeFloat (trade, 'amount');
+        let cost = undefined;
+        if (price !== undefined) {
+            if (amount !== undefined) {
+                cost = price * amount;
+            }
+        }
         return {
+            'id': id,
             'info': trade,
             'timestamp': timestamp,
             'datetime': this.iso8601 (timestamp),
-            'symbol': market['symbol'],
-            'id': trade['tid'].toString (),
+            'symbol': symbol,
             'order': undefined,
-            'type': undefined,
-            'side': trade['type'],
-            'price': trade['price'],
-            'amount': trade['amount'],
+            'type': type,
+            'side': side,
+            'takerOrMaker': undefined,
+            'price': price,
+            'amount': amount,
+            'cost': cost,
+            'fee': undefined,
         };
     }
 
@@ -182,20 +206,27 @@ module.exports = class mercado extends Exchange {
     async fetchBalance (params = {}) {
         await this.loadMarkets ();
         const response = await this.privatePostGetAccountInfo (params);
-        const balances = this.safeValue (response['response_data'], 'balance');
+        const data = this.safeValue (response, 'response_data', {});
+        const balances = this.safeValue (data, 'balance', {});
         const result = { 'info': response };
-        const currencies = Object.keys (this.currencies);
-        for (let i = 0; i < currencies.length; i++) {
-            const code = currencies[i];
-            const currencyId = this.currencyId (code);
-            let lowercase = currencyId.toLowerCase ();
-            let account = this.account ();
-            if (lowercase in balances) {
-                account['free'] = parseFloat (balances[lowercase]['available']);
-                account['total'] = parseFloat (balances[lowercase]['total']);
-                account['used'] = account['total'] - account['free'];
+        const currencyIds = Object.keys (balances);
+        for (let i = 0; i < currencyIds.length; i++) {
+            const currencyId = currencyIds[i];
+            let code = currencyId;
+            if (currencyId in this.currencies_by_id) {
+                code = this.currencies_by_id[currencyId]['code'];
+            } else {
+                code = this.commonCurrencyCode (currencyId.toUpperCase ());
             }
-            result[code] = account;
+            // const currencyId = this.currencyId (code);
+            const lowercase = currencyId.toLowerCase ();
+            if (lowercase in balances) {
+                const balance = this.safeValue (balances, lowercase, {});
+                const account = this.account ();
+                account['free'] = parseFloat (balance, 'available');
+                account['total'] = this.safeFloat (balance, 'total');
+                result[code] = account;
+            }
         }
         return this.parseBalance (result);
     }
@@ -311,7 +342,7 @@ module.exports = class mercado extends Exchange {
         const status = this.parseOrderStatus (this.safeString (order, 'status'));
         let symbol = undefined;
         if (market === undefined) {
-            let marketId = this.safeString (order, 'coin_pair');
+            const marketId = this.safeString (order, 'coin_pair');
             market = this.safeValue (this.markets_by_id, marketId);
         }
         if (market !== undefined) {
@@ -376,7 +407,7 @@ module.exports = class mercado extends Exchange {
     async withdraw (code, amount, address, tag = undefined, params = {}) {
         this.checkAddress (address);
         await this.loadMarkets ();
-        let currency = this.currency (code);
+        const currency = this.currency (code);
         const request = {
             'coin': currency['id'],
             'quantity': amount.toFixed (10),

@@ -27,7 +27,7 @@ class coinspot extends Exchange {
                 ),
                 'www' => 'https://www.coinspot.com.au',
                 'doc' => 'https://www.coinspot.com.au/api',
-                'referral' => 'https://www.coinspot.com.au/join/FSM11C',
+                'referral' => 'https://www.coinspot.com.au/register?code=PJURCU',
             ),
             'api' => array (
                 'public' => array (
@@ -67,20 +67,19 @@ class coinspot extends Exchange {
         $this->load_markets();
         $response = $this->privatePostMyBalances ($params);
         $result = array( 'info' => $response );
-        if (is_array($response) && array_key_exists('balance', $response)) {
-            $balances = $response['balance'];
-            $currencyIds = is_array($balances) ? array_keys($balances) : array();
-            for ($i = 0; $i < count ($currencyIds); $i++) {
-                $currencyId = $currencyIds[$i];
-                $uppercase = strtoupper($currencyId);
-                $code = $this->common_currency_code($uppercase);
-                $account = array (
-                    'free' => $balances[$currencyId],
-                    'used' => 0.0,
-                    'total' => $balances[$currencyId],
-                );
-                $result[$code] = $account;
-            }
+        $balances = $this->safe_value($response, 'balance', array());
+        $currencyIds = is_array($balances) ? array_keys($balances) : array();
+        for ($i = 0; $i < count ($currencyIds); $i++) {
+            $currencyId = $currencyIds[$i];
+            $uppercase = strtoupper($currencyId);
+            $code = $this->common_currency_code($uppercase);
+            $total = $this->safe_float($balances, $currencyId);
+            $account = array (
+                'free' => $total,
+                'used' => 0.0,
+                'total' => $total,
+            );
+            $result[$code] = $account;
         }
         return $this->parse_balance($result);
     }
@@ -129,10 +128,13 @@ class coinspot extends Exchange {
 
     public function fetch_trades ($symbol, $since = null, $limit = null, $params = array ()) {
         $this->load_markets();
+        $market = $this->market ($symbol);
         $request = array (
-            'cointype' => $this->market_id($symbol),
+            'cointype' => $market['id'],
         );
-        return $this->privatePostOrdersHistory (array_merge ($request, $params));
+        $response = $this->privatePostOrdersHistory (array_merge ($request, $params));
+        $trades = $this->safe_value($response, 'orders', array());
+        return $this->parse_trades($trades, $market, $since, $limit);
     }
 
     public function create_order ($symbol, $type, $side, $amount, $price = null, $params = array ()) {

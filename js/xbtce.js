@@ -19,8 +19,10 @@ module.exports = class xbtce extends Exchange {
                 'CORS': false,
                 'fetchTickers': true,
                 'createMarketOrder': false,
+                'fetchOHLCV': false,
             },
             'urls': {
+                'referral': 'https://xbtce.com/?agent=XX97BTCXXXG687021000B',
                 'logo': 'https://user-images.githubusercontent.com/1294454/28059414-e235970c-662c-11e7-8c3a-08e31f78684b.jpg',
                 'api': 'https://cryptottlivewebapi.xbtce.net:8443/api',
                 'www': 'https://www.xbtce.com',
@@ -139,12 +141,16 @@ module.exports = class xbtce extends Exchange {
         for (let i = 0; i < balances.length; i++) {
             const balance = balances[i];
             const currencyId = this.safeString (balance, 'Currency');
-            const uppercase = currencyId.toUpperCase ();
-            const code = this.commonCurrencyCode (uppercase);
+            let code = currencyId;
+            if (currencyId in this.currencies_by_id) {
+                code = this.currencies_by_id[currencyId]['code'];
+            } else {
+                code = this.commonCurrencyCode (currencyId.toUpperCase ());
+            }
             const account = {
-                'free': balance['FreeAmount'],
-                'used': balance['LockedAmount'],
-                'total': balance['Amount'],
+                'free': this.safeFloat (balance, 'FreeAmount'),
+                'used': this.safeFloat (balance, 'LockedAmount'),
+                'total': this.safeFloat (balance, 'Amount'),
             };
             result[code] = account;
         }
@@ -159,7 +165,7 @@ module.exports = class xbtce extends Exchange {
         };
         const response = await this.privateGetLevel2Filter (this.extend (request, params));
         const orderbook = response[0];
-        let timestamp = this.safeInteger (orderbook, 'Timestamp');
+        const timestamp = this.safeInteger (orderbook, 'Timestamp');
         return this.parseOrderBook (orderbook, timestamp, 'Bids', 'Asks', 'Price', 'Volume');
     }
 
@@ -329,7 +335,7 @@ module.exports = class xbtce extends Exchange {
             url += '/' + api;
         }
         url += '/' + this.implodeParams (path, params);
-        let query = this.omit (params, this.extractParams (path));
+        const query = this.omit (params, this.extractParams (path));
         if (api === 'public') {
             if (Object.keys (query).length) {
                 url += '?' + this.urlencode (query);
@@ -337,7 +343,7 @@ module.exports = class xbtce extends Exchange {
         } else {
             this.checkRequiredCredentials ();
             headers = { 'Accept-Encoding': 'gzip, deflate' };
-            let nonce = this.nonce ().toString ();
+            const nonce = this.nonce ().toString ();
             if (method === 'POST') {
                 if (Object.keys (query).length) {
                     headers['Content-Type'] = 'application/json';
@@ -350,8 +356,8 @@ module.exports = class xbtce extends Exchange {
             if (body) {
                 auth += body;
             }
-            let signature = this.hmac (this.encode (auth), this.encode (this.secret), 'sha256', 'base64');
-            let credentials = this.uid + ':' + this.apiKey + ':' + nonce + ':' + this.decode (signature);
+            const signature = this.hmac (this.encode (auth), this.encode (this.secret), 'sha256', 'base64');
+            const credentials = this.uid + ':' + this.apiKey + ':' + nonce + ':' + this.decode (signature);
             headers['Authorization'] = 'HMAC ' + credentials;
         }
         return { 'url': url, 'method': method, 'body': body, 'headers': headers };

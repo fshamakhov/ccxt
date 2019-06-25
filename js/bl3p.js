@@ -57,8 +57,8 @@ module.exports = class bl3p extends Exchange {
                 },
             },
             'markets': {
-                'BTC/EUR': { 'id': 'BTCEUR', 'symbol': 'BTC/EUR', 'base': 'BTC', 'quote': 'EUR', 'maker': 0.0025, 'taker': 0.0025 },
-                'LTC/EUR': { 'id': 'LTCEUR', 'symbol': 'LTC/EUR', 'base': 'LTC', 'quote': 'EUR', 'maker': 0.0025, 'taker': 0.0025 },
+                'BTC/EUR': { 'id': 'BTCEUR', 'symbol': 'BTC/EUR', 'base': 'BTC', 'quote': 'EUR', 'baseId': 'BTC', 'quoteId': 'EUR', 'maker': 0.0025, 'taker': 0.0025 },
+                'LTC/EUR': { 'id': 'LTCEUR', 'symbol': 'LTC/EUR', 'base': 'LTC', 'quote': 'EUR', 'baseId': 'LTC', 'quoteId': 'EUR', 'maker': 0.0025, 'taker': 0.0025 },
             },
         });
     }
@@ -66,29 +66,26 @@ module.exports = class bl3p extends Exchange {
     async fetchBalance (params = {}) {
         await this.loadMarkets ();
         const response = await this.privatePostGENMKTMoneyInfo (params);
-        let data = response['data'];
-        let balance = data['wallets'];
-        let result = { 'info': data };
-        let currencies = Object.keys (this.currencies);
-        for (let i = 0; i < currencies.length; i++) {
-            let currency = currencies[i];
-            let account = this.account ();
-            if (currency in balance) {
-                if ('available' in balance[currency]) {
-                    account['free'] = parseFloat (balance[currency]['available']['value']);
-                }
-            }
-            if (currency in balance) {
-                if ('balance' in balance[currency]) {
-                    account['total'] = parseFloat (balance[currency]['balance']['value']);
-                }
-            }
+        const data = this.safeValue (response, 'data', {});
+        const wallets = this.safeValue (data, 'wallets');
+        const result = { 'info': data };
+        const codes = Object.keys (this.currencies);
+        for (let i = 0; i < codes.length; i++) {
+            const code = codes[i];
+            const currency = this.currency (code);
+            const currencyId = currency['id'];
+            const wallet = this.safeValue (wallets, currencyId, {});
+            const available = this.safeValue (wallet, 'available', {});
+            const balance = this.safeValue (wallet, 'balance', {});
+            const account = this.account ();
+            account['free'] = this.safeFloat (available, 'value');
+            account['total'] = this.safeFloat (balance, 'value');
             if (account['total']) {
                 if (account['free']) {
                     account['used'] = account['total'] - account['free'];
                 }
             }
-            result[currency] = account;
+            result[code] = account;
         }
         return this.parseBalance (result);
     }
@@ -144,18 +141,41 @@ module.exports = class bl3p extends Exchange {
         };
     }
 
-    parseTrade (trade, market) {
+    parseTrade (trade, market = undefined) {
         const id = this.safeString (trade, 'trade_id');
+        const timestamp = this.safeInteger (trade, 'date');
+        let price = this.safeFloat (trade, 'price_int');
+        if (price !== undefined) {
+            price /= 100000.0;
+        }
+        let amount = this.safeFloat (trade, 'amount_int');
+        if (amount !== undefined) {
+            amount /= 100000000.0;
+        }
+        let cost = undefined;
+        if (price !== undefined) {
+            if (amount !== undefined) {
+                cost = amount * price;
+            }
+        }
+        let symbol = undefined;
+        if (market !== undefined) {
+            symbol = market['symbol'];
+        }
         return {
             'id': id,
-            'timestamp': trade['date'],
-            'datetime': this.iso8601 (trade['date']),
-            'symbol': market['symbol'],
+            'info': trade,
+            'timestamp': timestamp,
+            'datetime': this.iso8601 (timestamp),
+            'symbol': symbol,
             'type': undefined,
             'side': undefined,
-            'price': trade['price_int'] / 100000.0,
-            'amount': trade['amount_int'] / 100000000.0,
-            'info': trade,
+            'order': undefined,
+            'takerOrMaker': undefined,
+            'price': price,
+            'amount': amount,
+            'cost': cost,
+            'fee': undefined,
         };
     }
 

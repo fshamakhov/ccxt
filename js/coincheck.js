@@ -116,13 +116,14 @@ module.exports = class coincheck extends Exchange {
         const codes = Object.keys (this.currencies);
         for (let i = 0; i < codes.length; i++) {
             const code = codes[i];
-            const currencyId = this.currency (code);
-            const account = this.account ();
-            const reserved = currencyId + '_reserved';
-            account['free'] = this.safeFloat (balances, currencyId);
-            account['used'] = this.safeFloat (balances, reserved);
-            account['total'] = this.sum (account['free'], account['used']);
-            result[code] = account;
+            const currencyId = this.currencyId (code);
+            if (currencyId in balances) {
+                const account = this.account ();
+                const reserved = currencyId + '_reserved';
+                account['free'] = this.safeFloat (balances, currencyId);
+                account['used'] = this.safeFloat (balances, reserved);
+                result[code] = account;
+            }
         }
         return this.parseBalance (result);
     }
@@ -223,8 +224,11 @@ module.exports = class coincheck extends Exchange {
         }
         await this.loadMarkets ();
         const ticker = await this.publicGetTicker (params);
-        let timestamp = ticker['timestamp'] * 1000;
-        let last = this.safeFloat (ticker, 'last');
+        let timestamp = this.safeInteger (ticker, 'timestamp');
+        if (timestamp !== undefined) {
+            timestamp *= 1000;
+        }
+        const last = this.safeFloat (ticker, 'last');
         return {
             'symbol': symbol,
             'timestamp': timestamp,

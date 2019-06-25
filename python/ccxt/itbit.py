@@ -199,6 +199,7 @@ class itbit (Exchange):
             'order': orderId,
             'type': None,
             'side': side,
+            'takerOrMaker': None,
             'price': price,
             'amount': amount,
             'cost': cost,
@@ -227,6 +228,9 @@ class itbit (Exchange):
                     'cost': feeCost,
                     'currency': feeCurrency,
                 }
+        if not('fee' in list(result.keys())):
+            if not('fees' in list(result.keys())):
+                result['fee'] = None
         return result
 
     def fetch_transactions(self, code=None, since=None, limit=None, params={}):
@@ -369,13 +373,14 @@ class itbit (Exchange):
         for i in range(0, len(balances)):
             balance = balances[i]
             currencyId = self.safe_string(balance, 'currency')
-            code = self.common_currency_code(currencyId)
-            account = {
-                'free': self.safe_float(balance, 'availableBalance'),
-                'used': 0.0,
-                'total': self.safe_float(balance, 'totalBalance'),
-            }
-            account['used'] = account['total'] - account['free']
+            code = currencyId
+            if currencyId in self.currencies_by_id:
+                code = self.currencies_by_id[currencyId]['code']
+            else:
+                code = self.common_currency_code(currencyId)
+            account = self.account()
+            account['free'] = self.safe_float(balance, 'availableBalance')
+            account['total'] = self.safe_float(balance, 'totalBalance')
             result[code] = account
         return self.parse_balance(result)
 
@@ -502,8 +507,6 @@ class itbit (Exchange):
             url += '?' + self.urlencode(query)
         if method == 'POST' and query:
             body = self.json(query)
-        else:
-            body = ''
         if api == 'private':
             self.check_required_credentials()
             nonce = str(self.nonce())

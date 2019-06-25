@@ -66,10 +66,10 @@ class southxchange extends Exchange {
     }
 
     public function fetch_markets ($params = array ()) {
-        $markets = $this->publicGetMarkets ();
+        $markets = $this->publicGetMarkets ($params);
         $result = array();
-        for ($p = 0; $p < count ($markets); $p++) {
-            $market = $markets[$p];
+        for ($i = 0; $i < count ($markets); $i++) {
+            $market = $markets[$i];
             $baseId = $market[0];
             $quoteId = $market[1];
             $base = $this->common_currency_code($baseId);
@@ -93,25 +93,21 @@ class southxchange extends Exchange {
     public function fetch_balance ($params = array ()) {
         $this->load_markets();
         $response = $this->privatePostListBalances ($params);
-        if (!$response) {
-            throw new ExchangeError($this->id . ' fetchBalance got an unrecognized response');
-        }
         $result = array( 'info' => $response );
         for ($i = 0; $i < count ($response); $i++) {
             $balance = $response[$i];
-            $currencyId = $balance['Currency'];
-            $uppercaseId = strtoupper($currencyId);
-            $code = $this->common_currency_code($uppercaseId);
-            $free = $this->safe_float($balance, 'Available');
+            $currencyId = $this->safe_string($balance, 'Currency');
+            $code = $currencyId;
+            if (is_array($this->currencies_by_id) && array_key_exists($currencyId, $this->currencies_by_id)) {
+                $code = $this->currencies_by_id[$currencyId]['code'];
+            } else {
+                $code = $this->common_currency_code(strtoupper($currencyId));
+            }
             $deposited = $this->safe_float($balance, 'Deposited');
             $unconfirmed = $this->safe_float($balance, 'Unconfirmed');
-            $total = $this->sum ($deposited, $unconfirmed);
-            $used = $total - $free;
-            $account = array (
-                'free' => $free,
-                'used' => $used,
-                'total' => $total,
-            );
+            $account = $this->account ();
+            $account['free'] = $this->safe_float($balance, 'Available');
+            $account['total'] = $this->sum ($deposited, $unconfirmed);
             $result[$code] = $account;
         }
         return $this->parse_balance($result);
@@ -192,17 +188,33 @@ class southxchange extends Exchange {
         if ($timestamp !== null) {
             $timestamp = $timestamp * 1000;
         }
+        $price = $this->safe_float($trade, 'Price');
+        $amount = $this->safe_float($trade, 'Amount');
+        $cost = null;
+        if ($price !== null) {
+            if ($amount !== null) {
+                $cost = $price * $amount;
+            }
+        }
+        $side = $this->safe_string($trade, 'Type');
+        $symbol = null;
+        if ($market !== null) {
+            $symbol = $market['symbol'];
+        }
         return array (
             'info' => $trade,
             'timestamp' => $timestamp,
             'datetime' => $this->iso8601 ($timestamp),
-            'symbol' => $market['symbol'],
+            'symbol' => $symbol,
             'id' => null,
             'order' => null,
             'type' => null,
-            'side' => $trade['Type'],
-            'price' => $trade['Price'],
-            'amount' => $trade['Amount'],
+            'side' => $side,
+            'price' => $price,
+            'takerOrMaker' => null,
+            'amount' => $amount,
+            'cost' => $cost,
+            'fee' => null,
         );
     }
 
@@ -218,7 +230,11 @@ class southxchange extends Exchange {
 
     public function parse_order ($order, $market = null) {
         $status = 'open';
-        $symbol = $order['ListingCurrency'] . '/' . $order['ReferenceCurrency'];
+        $baseId = $this->safe_string($order, 'ListingCurrency');
+        $quoteId = $this->safe_string($order, 'ReferenceCurrency');
+        $base = $this->common_currency_code($baseId);
+        $quote = $this->common_currency_code($quoteId);
+        $symbol = $base . '/' . $quote;
         $timestamp = null;
         $price = $this->safe_float($order, 'LimitPrice');
         $amount = $this->safe_float($order, 'OriginalAmount');
@@ -231,16 +247,21 @@ class southxchange extends Exchange {
                 $filled = $amount - $remaining;
             }
         }
-        $orderType = strtolower($order['Type']);
+        $type = 'limit';
+        $side = $this->safe_string($order, 'Type');
+        if ($side !== null) {
+            $side = strtolower($side);
+        }
+        $id = $this->safe_string($order, 'Code');
         $result = array (
             'info' => $order,
-            'id' => (string) $order['Code'],
+            'id' => $id,
             'timestamp' => $timestamp,
             'datetime' => $this->iso8601 ($timestamp),
             'lastTradeTimestamp' => null,
             'symbol' => $symbol,
-            'type' => 'limit',
-            'side' => $orderType,
+            'type' => $type,
+            'side' => $side,
             'price' => $price,
             'amount' => $amount,
             'cost' => $cost,

@@ -459,7 +459,7 @@ class okcoinusd extends Exchange {
                     $active = $market['online'] !== 0;
                 } else {
                     $contractId = $this->safe_string($contract, 'id');
-                    $symbol = $base . '-' . $quote . '-' . mb_substr ($contractId, 2, 8);
+                    $symbol = $base . '-' . $quote . '-' . mb_substr($contractId, 2, 8 - 2);
                     $contractType = $this->safe_string($this->options['contractTypes'], $type);
                     $type = 'future';
                     $spot = false;
@@ -526,7 +526,10 @@ class okcoinusd extends Exchange {
         $request = array();
         $response = $this->publicGetTickers (array_merge ($request, $params));
         $tickers = $response['tickers'];
-        $timestamp = intval ($response['date']) * 1000;
+        $timestamp = $this->safe_integer($response, 'date');
+        if ($timestamp !== null) {
+            $timestamp *= 1000;
+        }
         $result = array();
         for ($i = 0; $i < count ($tickers); $i++) {
             $ticker = $tickers[$i];
@@ -541,7 +544,7 @@ class okcoinusd extends Exchange {
         $this->load_markets();
         $request = array();
         $response = $this->webGetSpotMarketsTickers (array_merge ($request, $params));
-        $tickers = $response['data'];
+        $tickers = $this->safe_value($response, 'data');
         $result = array();
         for ($i = 0; $i < count ($tickers); $i++) {
             $ticker = $this->parse_ticker($tickers[$i]);
@@ -663,17 +666,31 @@ class okcoinusd extends Exchange {
             $symbol = $market['symbol'];
         }
         $timestamp = $this->safe_integer($trade, 'date_ms');
+        $id = $this->safe_string($trade, 'tid');
+        $type = null;
+        $side = $this->safe_string($trade, 'type');
+        $price = $this->safe_float($trade, 'price');
+        $amount = $this->safe_float($trade, 'amount');
+        $cost = null;
+        if ($price !== null) {
+            if ($amount !== null) {
+                $cost = $price * $amount;
+            }
+        }
         return array (
+            'id' => $id,
             'info' => $trade,
             'timestamp' => $timestamp,
             'datetime' => $this->iso8601 ($timestamp),
             'symbol' => $symbol,
-            'id' => $this->safe_string($trade, 'tid'),
             'order' => null,
-            'type' => null,
-            'side' => $trade['type'],
-            'price' => $this->safe_float($trade, 'price'),
-            'amount' => $this->safe_float($trade, 'amount'),
+            'type' => $type,
+            'side' => $side,
+            'takerOrMaker' => null,
+            'price' => $price,
+            'amount' => $amount,
+            'cost' => $cost,
+            'fee' => null,
         );
     }
 
@@ -714,7 +731,7 @@ class okcoinusd extends Exchange {
         }
         if ($limit !== null) {
             if ($this->options['fetchOHLCVWarning']) {
-                throw new ExchangeError($this->id . ' fetchOHLCV counts "$limit" candles from current time backwards, therefore the "$limit" argument for ' . $this->id . ' is disabled. Set ' . $this->id . '.options["fetchOHLCVWarning"] = false to suppress this warning message.');
+                throw new ExchangeError($this->id . ' fetchOHLCV counts "$limit" candles backwards in chronological ascending order, therefore the "$limit" argument for ' . $this->id . ' is disabled. Set ' . $this->id . '.options["fetchOHLCVWarning"] = false to suppress this warning message.');
             }
             $request['size'] = intval ($limit); // max is 1440 candles
         }
@@ -746,9 +763,8 @@ class okcoinusd extends Exchange {
                 $code = $this->common_currency_code($code);
             }
             $account = $this->account ();
-            $account['free'] = $this->safe_float($balances['free'], $id, 0.0);
-            $account['used'] = $this->safe_float($balances[$usedField], $id, 0.0);
-            $account['total'] = $this->sum ($account['free'], $account['used']);
+            $account['free'] = $this->safe_float($balances['free'], $id);
+            $account['used'] = $this->safe_float($balances[$usedField], $id);
             $result[$code] = $account;
         }
         return $this->parse_balance($result);

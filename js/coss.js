@@ -615,18 +615,19 @@ module.exports = class coss extends Exchange {
             }
         }
         const result = {
+            'id': id,
             'info': trade,
             'timestamp': timestamp,
             'datetime': this.iso8601 (timestamp),
             'symbol': symbol,
-            'id': id,
             'order': orderId,
             'type': undefined,
-            'takerOrMaker': undefined,
             'side': side,
+            'takerOrMaker': undefined,
             'price': price,
-            'cost': cost,
             'amount': amount,
+            'cost': cost,
+            'fee': undefined,
         };
         const fee = this.parseTradeFee (this.safeString (trade, 'fee'));
         if (fee !== undefined) {
@@ -726,9 +727,10 @@ module.exports = class coss extends Exchange {
 
     async fetchOrder (id, symbol = undefined, params = {}) {
         await this.loadMarkets ();
-        let response = await this.tradePostOrderDetails (this.extend ({
+        const request = {
             'order_id': id,
-        }, params));
+        };
+        const response = await this.tradePostOrderDetails (this.extend (request, params));
         return this.parseOrder (response);
     }
 

@@ -242,8 +242,8 @@ class poloniex extends Exchange {
         $markets = $this->publicGetReturnTicker ();
         $keys = is_array($markets) ? array_keys($markets) : array();
         $result = array();
-        for ($p = 0; $p < count ($keys); $p++) {
-            $id = $keys[$p];
+        for ($i = 0; $i < count ($keys); $i++) {
+            $id = $keys[$i];
             $market = $markets[$id];
             list($quoteId, $baseId) = explode('_', $id);
             $base = $this->common_currency_code($baseId);
@@ -254,6 +254,8 @@ class poloniex extends Exchange {
                     'min' => $this->safe_value($this->options['limits']['cost']['min'], $quote),
                 ),
             ));
+            $isFrozen = $this->safe_string($market, 'isFrozen');
+            $active = ($isFrozen !== '1');
             $result[] = array_merge ($this->fees['trading'], array (
                 'id' => $id,
                 'symbol' => $symbol,
@@ -261,7 +263,7 @@ class poloniex extends Exchange {
                 'quoteId' => $quoteId,
                 'base' => $base,
                 'quote' => $quote,
-                'active' => $market['isFrozen'] !== '1',
+                'active' => $active,
                 'limits' => $limits,
                 'info' => $market,
             ));
@@ -276,17 +278,19 @@ class poloniex extends Exchange {
         );
         $response = $this->privatePostReturnCompleteBalances (array_merge ($request, $params));
         $result = array( 'info' => $response );
-        $currencies = is_array($response) ? array_keys($response) : array();
-        for ($c = 0; $c < count ($currencies); $c++) {
-            $currencyId = $currencies[$c];
-            $balance = $response[$currencyId];
-            $code = $this->common_currency_code($currencyId);
-            $account = array (
-                'free' => floatval ($balance['available']),
-                'used' => floatval ($balance['onOrders']),
-                'total' => 0.0,
-            );
-            $account['total'] = $this->sum ($account['free'], $account['used']);
+        $currencyIds = is_array($response) ? array_keys($response) : array();
+        for ($i = 0; $i < count ($currencyIds); $i++) {
+            $currencyId = $currencyIds[$i];
+            $balance = $this->safe_value($response, $currencyId, array());
+            $code = $currencyId;
+            if (is_array($this->currencies_by_id) && array_key_exists($currencyId, $this->currencies_by_id)) {
+                $code = $this->currencies_by_id[$currencyId]['code'];
+            } else {
+                $code = $this->common_currency_code($currencyId);
+            }
+            $account = $this->account ();
+            $account['free'] = $this->safe_float($balance, 'available');
+            $account['used'] = $this->safe_float($balance, 'onOrders');
             $result[$code] = $account;
         }
         return $this->parse_balance($result);
@@ -543,14 +547,15 @@ class poloniex extends Exchange {
             );
         }
         return array (
+            'id' => $id,
             'info' => $trade,
             'timestamp' => $timestamp,
             'datetime' => $this->iso8601 ($timestamp),
             'symbol' => $symbol,
-            'id' => $id,
             'order' => $orderId,
             'type' => 'limit',
             'side' => $side,
+            'takerOrMaker' => null,
             'price' => $price,
             'amount' => $amount,
             'cost' => $cost,
@@ -756,9 +761,10 @@ class poloniex extends Exchange {
         if ($type === $side) {
             $type = null;
         }
+        $id = $this->safe_string($order, 'orderNumber');
         return array (
             'info' => $order,
-            'id' => $order['orderNumber'],
+            'id' => $id,
             'timestamp' => $timestamp,
             'datetime' => $this->iso8601 ($timestamp),
             'lastTradeTimestamp' => null,

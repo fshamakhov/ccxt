@@ -37,6 +37,7 @@ class independentreserve (Exchange):
                         'GetValidTransactionTypes',
                         'GetMarketSummary',
                         'GetOrderBook',
+                        'GetAllOrders',
                         'GetTradeHistorySummary',
                         'GetRecentTrades',
                         'GetFxRates',
@@ -59,6 +60,7 @@ class independentreserve (Exchange):
                         'WithdrawDigitalCurrency',
                         'RequestFiatWithdrawal',
                         'GetTrades',
+                        'GetBrokerageFees',
                     ],
                 },
             },
@@ -104,12 +106,14 @@ class independentreserve (Exchange):
         for i in range(0, len(balances)):
             balance = balances[i]
             currencyId = self.safe_string(balance, 'CurrencyCode')
-            uppercase = currencyId.upper()
-            code = self.common_currency_code(uppercase)
+            code = currencyId
+            if currencyId in self.currencies_by_id:
+                code = self.currencies_by_id[currencyId]['code']
+            else:
+                code = self.common_currency_code(currencyId.upper())
             account = self.account()
-            account['free'] = balance['AvailableBalance']
-            account['total'] = balance['TotalBalance']
-            account['used'] = account['total'] - account['free']
+            account['free'] = self.safe_float(balance, 'AvailableBalance')
+            account['total'] = self.safe_float(balance, 'TotalBalance')
             result[code] = account
         return self.parse_balance(result)
 
@@ -121,24 +125,24 @@ class independentreserve (Exchange):
             'secondaryCurrencyCode': market['quoteId'],
         }
         response = self.publicGetGetOrderBook(self.extend(request, params))
-        timestamp = self.parse8601(response['CreatedTimestampUtc'])
+        timestamp = self.parse8601(self.safe_string(response, 'CreatedTimestampUtc'))
         return self.parse_order_book(response, timestamp, 'BuyOrders', 'SellOrders', 'Price', 'Volume')
 
     def parse_ticker(self, ticker, market=None):
-        timestamp = self.parse8601(ticker['CreatedTimestampUtc'])
+        timestamp = self.parse8601(self.safe_string(ticker, 'CreatedTimestampUtc'))
         symbol = None
         if market:
             symbol = market['symbol']
-        last = ticker['LastPrice']
+        last = self.safe_float(ticker, 'LastPrice')
         return {
             'symbol': symbol,
             'timestamp': timestamp,
             'datetime': self.iso8601(timestamp),
-            'high': ticker['DayHighestPrice'],
-            'low': ticker['DayLowestPrice'],
-            'bid': ticker['CurrentHighestBidPrice'],
+            'high': self.safe_float(ticker, 'DayHighestPrice'),
+            'low': self.safe_float(ticker, 'DayLowestPrice'),
+            'bid': self.safe_float(ticker, 'CurrentHighestBidPrice'),
             'bidVolume': None,
-            'ask': ticker['CurrentLowestOfferPrice'],
+            'ask': self.safe_float(ticker, 'CurrentLowestOfferPrice'),
             'askVolume': None,
             'vwap': None,
             'open': None,
@@ -147,8 +151,8 @@ class independentreserve (Exchange):
             'previousClose': None,
             'change': None,
             'percentage': None,
-            'average': ticker['DayAvgPrice'],
-            'baseVolume': ticker['DayVolumeXbtInSecondaryCurrrency'],
+            'average': self.safe_float(ticker, 'DayAvgPrice'),
+            'baseVolume': self.safe_float(ticker, 'DayVolumeXbtInSecondaryCurrrency'),
             'quoteVolume': None,
             'info': ticker,
         }
@@ -268,6 +272,10 @@ class independentreserve (Exchange):
         orderId = self.safe_string(trade, 'OrderGuid')
         price = self.safe_float_2(trade, 'Price', 'SecondaryCurrencyTradePrice')
         amount = self.safe_float_2(trade, 'VolumeTraded', 'PrimaryCurrencyAmount')
+        cost = None
+        if price is not None:
+            if amount is not None:
+                cost = price * amount
         symbol = None
         if market is not None:
             symbol = market['symbol']
@@ -286,8 +294,10 @@ class independentreserve (Exchange):
             'order': orderId,
             'type': None,
             'side': side,
+            'takerOrMaker': None,
             'price': price,
             'amount': amount,
+            'cost': cost,
             'fee': None,
         }
 

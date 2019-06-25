@@ -86,7 +86,6 @@ module.exports = class foxbit extends Exchange {
                     const account = this.account ();
                     account['used'] = parseFloat (balances[currencyId + '_locked']) * 1e-8;
                     account['total'] = parseFloat (balances[currencyId]) * 1e-8;
-                    account['free'] = account['total'] - account['used'];
                     result[code] = account;
                 }
             }
@@ -141,18 +140,39 @@ module.exports = class foxbit extends Exchange {
         };
     }
 
-    parseTrade (trade, market) {
-        const timestamp = this.safeInteger (trade, 'date') * 1000;
+    parseTrade (trade, market = undefined) {
+        let timestamp = this.safeInteger (trade, 'date');
+        if (timestamp !== undefined) {
+            timestamp *= 1000;
+        }
+        const id = this.safeString (trade, 'tid');
+        let symbol = undefined;
+        if (market !== undefined) {
+            symbol = market['symbol'];
+        }
+        const side = this.safeString (trade, 'side');
+        const price = this.safeFloat (trade, 'price');
+        const amount = this.safeFloat (trade, 'amount');
+        let cost = undefined;
+        if (price !== undefined) {
+            if (amount !== undefined) {
+                cost = amount * price;
+            }
+        }
         return {
-            'id': this.safeString (trade, 'tid'),
+            'id': id,
             'info': trade,
             'timestamp': timestamp,
             'datetime': this.iso8601 (timestamp),
-            'symbol': market['symbol'],
+            'symbol': symbol,
             'type': undefined,
-            'side': this.safeString (trade, 'side'),
-            'price': this.safeFloat (trade, 'price'),
-            'amount': this.safeFloat (trade, 'amount'),
+            'side': side,
+            'order': undefined,
+            'takerOrMaker': undefined,
+            'price': price,
+            'amount': amount,
+            'cost': cost,
+            'fee': undefined,
         };
     }
 

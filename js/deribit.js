@@ -26,7 +26,6 @@ module.exports = class deribit extends Exchange {
                 'fetchMyTrades': true,
                 'fetchTickers': false,
             },
-            'timeframes': {},
             'urls': {
                 'test': 'https://test.deribit.com',
                 'logo': 'https://user-images.githubusercontent.com/1294454/41933112-9e2dd65a-798b-11e8-8440-5bab2959fcb8.jpg',
@@ -299,14 +298,15 @@ module.exports = class deribit extends Exchange {
             };
         }
         return {
-            'info': trade,
             'id': id,
+            'info': trade,
             'timestamp': timestamp,
             'datetime': this.iso8601 (timestamp),
             'symbol': symbol,
             'order': orderId,
             'type': undefined,
             'side': side,
+            'takerOrMaker': undefined,
             'price': price,
             'amount': amount,
             'cost': cost,

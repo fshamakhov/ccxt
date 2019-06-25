@@ -38,7 +38,7 @@ module.exports = class cointiger extends huobipro {
                     'v2': 'https://api.{hostname}/exchange/trading/api/v2',
                 },
                 'www': 'https://www.cointiger.pro',
-                'referral': 'https://www.cointiger.pro/exchange/register.html?refCode=FfvDtt',
+                'referral': 'https://www.cointiger.one/#/register?refCode=FfvDtt',
                 'doc': 'https://github.com/cointiger/api-docs-en/wiki',
             },
             'api': {
@@ -369,14 +369,15 @@ module.exports = class cointiger extends huobipro {
             symbol = market['symbol'];
         }
         return {
-            'info': trade,
             'id': id,
+            'info': trade,
             'order': orderId,
             'timestamp': timestamp,
             'datetime': this.iso8601 (timestamp),
             'symbol': symbol,
             'type': type,
             'side': side,
+            'takerOrMaker': undefined,
             'price': price,
             'amount': amount,
             'cost': cost,
@@ -453,15 +454,15 @@ module.exports = class cointiger extends huobipro {
 
     async fetchOHLCV (symbol, timeframe = '1m', since = undefined, limit = 1000, params = {}) {
         await this.loadMarkets ();
-        let market = this.market (symbol);
-        let request = {
+        const market = this.market (symbol);
+        const request = {
             'symbol': market['id'],
             'period': this.timeframes[timeframe],
         };
         if (limit !== undefined) {
             request['size'] = limit;
         }
-        let response = await this.publicGetHistoryKline (this.extend (request, params));
+        const response = await this.publicGetHistoryKline (this.extend (request, params));
         return this.parseOHLCVs (response['data']['kline_data'], market, timeframe, since, limit);
     }
 
@@ -487,16 +488,16 @@ module.exports = class cointiger extends huobipro {
         const result = { 'info': response };
         for (let i = 0; i < balances.length; i++) {
             const balance = balances[i];
-            const id = balance['coin'];
-            let code = id.toUpperCase ();
-            code = this.commonCurrencyCode (code);
-            if (id in this.currencies_by_id) {
-                code = this.currencies_by_id[id]['code'];
+            const currencyId = this.safeString (balance, 'coin');
+            let code = currencyId;
+            if (currencyId in this.currencies_by_id) {
+                code = this.currencies_by_id[currencyId]['code'];
+            } else {
+                code = currencyId.toUpperCase ();
             }
             const account = this.account ();
             account['used'] = this.safeFloat (balance, 'lock');
             account['free'] = this.safeFloat (balance, 'normal');
-            account['total'] = this.sum (account['used'], account['free']);
             result[code] = account;
         }
         return this.parseBalance (result);
@@ -689,7 +690,7 @@ module.exports = class cointiger extends huobipro {
         const lastTradeTimestamp = this.safeInteger2 (order, 'mtime', 'finished-at');
         let symbol = undefined;
         if (market === undefined) {
-            let marketId = this.safeString (order, 'symbol');
+            const marketId = this.safeString (order, 'symbol');
             if (marketId in this.markets_by_id) {
                 market = this.markets_by_id[marketId];
             }
@@ -713,7 +714,7 @@ module.exports = class cointiger extends huobipro {
             average = ('age_price' in order) ? this.safeFloat (order['age_price'], 'amount') : undefined;
         } else {
             if (orderType !== undefined) {
-                let parts = orderType.split ('-');
+                const parts = orderType.split ('-');
                 side = parts[0];
                 type = parts[1];
                 cost = this.safeFloat (order, 'deal_money');
@@ -721,7 +722,7 @@ module.exports = class cointiger extends huobipro {
                 average = this.safeFloat (order, 'avg_price');
                 amount = this.safeFloat2 (order, 'amount', 'volume');
                 filled = this.safeFloat (order, 'deal_volume');
-                let feeCost = this.safeFloat (order, 'fee');
+                const feeCost = this.safeFloat (order, 'fee');
                 if (feeCost !== undefined) {
                     let feeCurrency = undefined;
                     if (market !== undefined) {
@@ -757,7 +758,7 @@ module.exports = class cointiger extends huobipro {
                 }
             }
         }
-        let result = {
+        const result = {
             'info': order,
             'id': id,
             'timestamp': timestamp,
@@ -931,7 +932,7 @@ module.exports = class cointiger extends huobipro {
             //
             //     { "code": "100005", "msg": "request sign illegal", "data": null }
             //
-            let code = this.safeString (response, 'code');
+            const code = this.safeString (response, 'code');
             if (code !== undefined) {
                 const message = this.safeString (response, 'msg');
                 const feedback = this.id + ' ' + this.json (response);

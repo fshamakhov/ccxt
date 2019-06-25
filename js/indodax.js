@@ -110,17 +110,22 @@ module.exports = class indodax extends Exchange {
     async fetchBalance (params = {}) {
         await this.loadMarkets ();
         const response = await this.privatePostGetInfo (params);
-        const balance = response['return'];
-        const result = { 'info': balance };
-        const codes = Object.keys (this.currencies);
-        for (let i = 0; i < codes.length; i++) {
-            const code = codes[i];
-            const currency = this.currencies[code];
-            const lowercase = currency['id'];
+        const balances = this.safeValue (response, 'return', {});
+        const free = this.safeValue (balances, 'balance', {});
+        const used = this.safeValue (balances, 'balance_hold', {});
+        const result = { 'info': response };
+        const currencyIds = Object.keys (free);
+        for (let i = 0; i < currencyIds.length; i++) {
+            const currencyId = currencyIds[i];
+            let code = currencyId;
+            if (code in this.currencies_by_id) {
+                code = this.currencies_by_id[currencyId]['code'];
+            } else {
+                code = this.commonCurrencyCode (currencyId.toUpperCase ());
+            }
             const account = this.account ();
-            account['free'] = this.safeFloat (balance['balance'], lowercase, 0.0);
-            account['used'] = this.safeFloat (balance['balance_hold'], lowercase, 0.0);
-            account['total'] = this.sum (account['free'], account['used']);
+            account['free'] = this.safeFloat (free, currencyId);
+            account['used'] = this.safeFloat (used, currencyId);
             result[code] = account;
         }
         return this.parseBalance (result);
@@ -171,18 +176,40 @@ module.exports = class indodax extends Exchange {
         };
     }
 
-    parseTrade (trade, market) {
-        const timestamp = parseInt (trade['date']) * 1000;
+    parseTrade (trade, market = undefined) {
+        let timestamp = this.safeInteger (trade, 'date');
+        if (timestamp !== undefined) {
+            timestamp *= 1000;
+        }
+        const id = this.safeString (trade, 'tid');
+        let symbol = undefined;
+        if (market !== undefined) {
+            symbol = market['symbol'];
+        }
+        const type = undefined;
+        const side = this.safeString (trade, 'type');
+        const price = this.safeFloat (trade, 'price');
+        const amount = this.safeFloat (trade, 'amount');
+        let cost = undefined;
+        if (price !== undefined) {
+            if (amount !== undefined) {
+                cost = price * amount;
+            }
+        }
         return {
-            'id': trade['tid'],
+            'id': id,
             'info': trade,
             'timestamp': timestamp,
             'datetime': this.iso8601 (timestamp),
-            'symbol': market['symbol'],
-            'type': undefined,
-            'side': trade['type'],
-            'price': this.safeFloat (trade, 'price'),
-            'amount': this.safeFloat (trade, 'amount'),
+            'symbol': symbol,
+            'type': type,
+            'side': side,
+            'order': undefined,
+            'takerOrMaker': undefined,
+            'price': price,
+            'amount': amount,
+            'cost': cost,
+            'fee': undefined,
         };
     }
 
@@ -209,7 +236,7 @@ module.exports = class indodax extends Exchange {
         }
         let symbol = undefined;
         let cost = undefined;
-        let price = this.safeFloat (order, 'price');
+        const price = this.safeFloat (order, 'price');
         let amount = undefined;
         let remaining = undefined;
         let filled = undefined;
@@ -226,7 +253,7 @@ module.exports = class indodax extends Exchange {
             cost = this.safeFloat (order, 'order_' + quoteId);
             if (cost) {
                 amount = cost / price;
-                let remainingCost = this.safeFloat (order, 'remain_' + quoteId);
+                const remainingCost = this.safeFloat (order, 'remain_' + quoteId);
                 if (remainingCost !== undefined) {
                     remaining = remainingCost / price;
                     filled = amount - remaining;

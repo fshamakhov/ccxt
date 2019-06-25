@@ -25,7 +25,7 @@ module.exports = class gateio extends Exchange {
                 'fetchTransactions': true,
                 'createDepositAddress': true,
                 'fetchDepositAddress': true,
-                'fetchClosedOrders': true,
+                'fetchClosedOrders': false,
                 'fetchOHLCV': true,
                 'fetchOpenOrders': true,
                 'fetchOrderTrades': true,
@@ -223,18 +223,18 @@ module.exports = class gateio extends Exchange {
         await this.loadMarkets ();
         const response = await this.privatePostBalances (params);
         const result = { 'info': response };
-        const codes = Object.keys (this.currencies);
-        const available = this.safeValue (response, 'available', {});
+        let available = this.safeValue (response, 'available', {});
+        if (Array.isArray (available)) {
+            available = {};
+        }
         const locked = this.safeValue (response, 'locked', {});
-        for (let i = 0; i < codes.length; i++) {
-            const code = codes[i];
-            const currency = this.currencies[code];
-            const currencyId = currency['id'];
-            const uppercaseId = currencyId.toUpperCase ();
-            let account = this.account ();
-            account['free'] = this.safeFloat (available, uppercaseId);
-            account['used'] = this.safeFloat (locked, uppercaseId);
-            account['total'] = this.sum (account['free'], account['used']);
+        const currencyIds = Object.keys (available);
+        for (let i = 0; i < currencyIds.length; i++) {
+            const currencyId = currencyIds[i];
+            const code = this.commonCurrencyCode (currencyId.toUpperCase ());
+            const account = this.account ();
+            account['free'] = this.safeFloat (available, currencyId);
+            account['used'] = this.safeFloat (locked, currencyId);
             result[code] = account;
         }
         return this.parseBalance (result);
@@ -394,11 +394,8 @@ module.exports = class gateio extends Exchange {
         return this.parseTicker (ticker, market);
     }
 
-    parseTrade (trade, market) {
-        // public fetchTrades
-        let timestamp = this.safeInteger (trade, 'timestamp');
-        // private fetchMyTrades
-        timestamp = this.safeInteger (trade, 'time_unix', timestamp);
+    parseTrade (trade, market = undefined) {
+        let timestamp = this.safeInteger2 (trade, 'timestamp', 'time_unix');
         if (timestamp !== undefined) {
             timestamp *= 1000;
         }
@@ -414,15 +411,20 @@ module.exports = class gateio extends Exchange {
                 cost = price * amount;
             }
         }
+        let symbol = undefined;
+        if (market !== undefined) {
+            symbol = market['symbol'];
+        }
         return {
             'id': id,
             'info': trade,
             'timestamp': timestamp,
             'datetime': this.iso8601 (timestamp),
-            'symbol': market['symbol'],
+            'symbol': symbol,
             'order': orderId,
             'type': undefined,
             'side': type,
+            'takerOrMaker': undefined,
             'price': price,
             'amount': amount,
             'cost': cost,
@@ -583,7 +585,7 @@ module.exports = class gateio extends Exchange {
             throw new InvalidAddress (this.id + ' queryDepositAddress ' + address);
         }
         if (code === 'XRP') {
-            let parts = address.split (' ');
+            const parts = address.split (' ');
             address = parts[0];
             tag = parts[1];
         }

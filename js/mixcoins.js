@@ -15,6 +15,7 @@ module.exports = class mixcoins extends Exchange {
             'countries': [ 'GB', 'HK' ],
             'rateLimit': 1500,
             'version': 'v1',
+            'userAgent': this.userAgents['chrome'],
             'has': {
                 'CORS': false,
             },
@@ -27,9 +28,9 @@ module.exports = class mixcoins extends Exchange {
             'api': {
                 'public': {
                     'get': [
-                        'ticker',
-                        'trades',
-                        'depth',
+                        'ticker/',
+                        'trades/',
+                        'depth/',
                     ],
                 },
                 'private': {
@@ -57,18 +58,21 @@ module.exports = class mixcoins extends Exchange {
     async fetchBalance (params = {}) {
         await this.loadMarkets ();
         const response = await this.privatePostInfo (params);
-        const balance = this.safeValue (response['result'], 'wallet');
-        const result = { 'info': balance };
-        const currencies = Object.keys (this.currencies);
-        for (let i = 0; i < currencies.length; i++) {
-            const code = currencies[i];
-            const currencyId = this.currencyid (code);
-            const account = this.account ();
-            if (currencyId in balance) {
-                account['free'] = this.safeFloat (balance[currencyId], 'avail');
-                account['used'] = this.safeFloat (balance[currencyId], 'lock');
-                account['total'] = this.sum (account['free'], account['used']);
+        const balances = this.safeValue (response['result'], 'wallet');
+        const result = { 'info': response };
+        const currencyIds = Object.keys (balances);
+        for (let i = 0; i < currencyIds.length; i++) {
+            const currencyId = currencyIds[i];
+            let code = currencyId;
+            if (currencyId in this.currencies_by_id) {
+                code = this.currencies_by_id[currencyId]['code'];
+            } else {
+                code = this.commonCurrencyCode (currencyId.toUpperCase ());
             }
+            const balance = this.safeValue (balances, currencyId, {});
+            const account = this.account ();
+            account['free'] = this.safeFloat (balance, 'avail');
+            account['used'] = this.safeFloat (balance, 'lock');
             result[code] = account;
         }
         return this.parseBalance (result);
@@ -116,18 +120,38 @@ module.exports = class mixcoins extends Exchange {
         };
     }
 
-    parseTrade (trade, market) {
-        const timestamp = parseInt (trade['date']) * 1000;
+    parseTrade (trade, market = undefined) {
+        let timestamp = this.safeInteger (trade, 'date');
+        if (timestamp !== undefined) {
+            timestamp *= 1000;
+        }
+        let symbol = undefined;
+        if (market !== undefined) {
+            symbol = market['symbol'];
+        }
+        const id = this.safeString (trade, 'id');
+        const price = this.safeFloat (trade, 'price');
+        const amount = this.safeFloat (trade, 'amount');
+        let cost = undefined;
+        if (price !== undefined) {
+            if (amount !== undefined) {
+                cost = price * amount;
+            }
+        }
         return {
-            'id': trade['id'].toString (),
+            'id': id,
             'info': trade,
             'timestamp': timestamp,
             'datetime': this.iso8601 (timestamp),
-            'symbol': market['symbol'],
+            'symbol': symbol,
             'type': undefined,
             'side': undefined,
-            'price': this.safeFloat (trade, 'price'),
-            'amount': this.safeFloat (trade, 'amount'),
+            'order': undefined,
+            'takerOrMaker': undefined,
+            'price': price,
+            'amount': amount,
+            'cost': cost,
+            'fee': undefined,
         };
     }
 
@@ -177,7 +201,7 @@ module.exports = class mixcoins extends Exchange {
             }
         } else {
             this.checkRequiredCredentials ();
-            let nonce = this.nonce ();
+            const nonce = this.nonce ();
             body = this.urlencode (this.extend ({
                 'nonce': nonce,
             }, params));

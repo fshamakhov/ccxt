@@ -147,8 +147,8 @@ class crex24 extends Exchange {
         //                baseCurrency =>   "$PAC",
         //               quoteCurrency =>   "BTC",
         //                 feeCurrency =>   "BTC",
-        //                    tickSize =>    1e-8,
-        //                    minPrice =>    1e-8,
+        //                    $tickSize =>    1e-8,
+        //                    $minPrice =>    1e-8,
         //                   minVolume =>    1,
         //         supportedOrderTypes => ["limit"],
         //                       state =>   "$active"    ),
@@ -156,8 +156,8 @@ class crex24 extends Exchange {
         //                baseCurrency =>   "ZZC",
         //               quoteCurrency =>   "USD",
         //                 feeCurrency =>   "USD",
-        //                    tickSize =>    0.0001,
-        //                    minPrice =>    0.0001,
+        //                    $tickSize =>    0.0001,
+        //                    $minPrice =>    0.0001,
         //                   minVolume =>    1,
         //         supportedOrderTypes => ["limit"],
         //                       state =>   "$active"   }        ]
@@ -171,9 +171,12 @@ class crex24 extends Exchange {
             $base = $this->common_currency_code($baseId);
             $quote = $this->common_currency_code($quoteId);
             $symbol = $base . '/' . $quote;
+            $tickSize = $this->safe_value($market, 'tickSize');
+            $minPrice = $this->safe_value($market, 'minPrice');
+            $minAmount = $this->safe_float($market, 'minVolume');
             $precision = array (
-                'amount' => $this->precision_from_string($this->truncate_to_string ($market['tickSize'], 8)),
-                'price' => $this->precision_from_string($this->truncate_to_string ($market['minPrice'], 8)),
+                'amount' => $this->precision_from_string($this->number_to_string($minAmount)),
+                'price' => $this->precision_from_string($this->number_to_string($tickSize)),
             );
             $active = ($market['state'] === 'active');
             $result[] = array (
@@ -188,11 +191,11 @@ class crex24 extends Exchange {
                 'precision' => $precision,
                 'limits' => array (
                     'amount' => array (
-                        'min' => $this->safe_float($market, 'minVolume'),
+                        'min' => $minAmount,
                         'max' => null,
                     ),
                     'price' => array (
-                        'min' => pow(10, -$precision['price']),
+                        'min' => $minPrice,
                         'max' => null,
                     ),
                     'cost' => array (
@@ -308,14 +311,10 @@ class crex24 extends Exchange {
             } else {
                 $code = $this->common_currency_code($code);
             }
-            $free = $this->safe_float($balance, 'available');
-            $used = $this->safe_float($balance, 'reserved');
-            $total = $this->sum ($free, $used);
-            $result[$code] = array (
-                'free' => $free,
-                'used' => $used,
-                'total' => $total,
-            );
+            $account = $this->account ();
+            $account['free'] = $this->safe_float($balance, 'available');
+            $account['used'] = $this->safe_float($balance, 'reserved');
+            $result[$code] = $account;
         }
         return $this->parse_balance($result);
     }
@@ -1183,7 +1182,7 @@ class crex24 extends Exchange {
                 $auth .= $body;
             }
             $signature = base64_encode ($this->hmac ($this->encode ($auth), $secret, 'sha512', 'binary'));
-            $headers['X-CREX24-API-SIGN'] = $signature;
+            $headers['X-CREX24-API-SIGN'] = $this->decode ($signature);
         }
         return array( 'url' => $url, 'method' => $method, 'body' => $body, 'headers' => $headers );
     }

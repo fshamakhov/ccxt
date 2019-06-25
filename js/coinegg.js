@@ -17,7 +17,7 @@ module.exports = class coinegg extends Exchange {
                 'fetchOrder': true,
                 'fetchOrders': true,
                 'fetchOpenOrders': 'emulated',
-                'fetchMyTrades': true,
+                'fetchMyTrades': false,
                 'fetchTickers': false,
             },
             'urls': {
@@ -29,7 +29,7 @@ module.exports = class coinegg extends Exchange {
                 'www': 'https://www.coinegg.com',
                 'doc': 'https://www.coinegg.com/explain.api.html',
                 'fees': 'https://www.coinegg.com/fee.html',
-                'referral': 'http://www.coinegg.com/user/register?invite=523218',
+                'referral': 'https://www.coinegg.com/user/register?invite=523218',
             },
             'api': {
                 'web': {
@@ -279,19 +279,21 @@ module.exports = class coinegg extends Exchange {
         }
         const type = 'limit';
         const side = this.safeString (trade, 'type');
+        const id = this.safeString (trade, 'tid');
         return {
+            'id': id,
+            'info': trade,
             'timestamp': timestamp,
             'datetime': this.iso8601 (timestamp),
             'symbol': symbol,
-            'id': this.safeString (trade, 'tid'),
             'order': undefined,
             'type': type,
             'side': side,
+            'takerOrMaker': undefined,
             'price': price,
             'amount': amount,
             'cost': cost,
             'fee': undefined,
-            'info': trade,
         };
     }
 
@@ -309,36 +311,33 @@ module.exports = class coinegg extends Exchange {
     async fetchBalance (params = {}) {
         await this.loadMarkets ();
         const response = await this.privatePostBalance (params);
-        const result = {};
-        const balances = this.omit (response['data'], 'uid');
+        const result = { 'info': response };
+        const data = this.safeValue (response, 'data', {});
+        const balances = this.omit (data, 'uid');
         const keys = Object.keys (balances);
         for (let i = 0; i < keys.length; i++) {
             const key = keys[i];
-            let [ currencyId, accountType ] = key.split ('_');
+            const [ currencyId, accountType ] = key.split ('_');
             let code = currencyId;
             if (currencyId in this.currencies_by_id) {
                 code = this.currencies_by_id[currencyId]['code'];
+            } else {
+                code = this.commonCurrencyCode (currencyId.toUpperCase ());
             }
             if (!(code in result)) {
-                result[code] = {
-                    'free': undefined,
-                    'used': undefined,
-                    'total': undefined,
-                };
+                result[code] = this.account ();
             }
-            accountType = (accountType === 'lock') ? 'used' : 'free';
-            result[code][accountType] = parseFloat (balances[key]);
+            const type = (accountType === 'lock') ? 'used' : 'free';
+            result[code][type] = this.safeFloat (balances, key);
         }
-        const currencies = Object.keys (result);
-        for (let i = 0; i < currencies.length; i++) {
-            const currency = currencies[i];
-            result[currency]['total'] = this.sum (result[currency]['free'], result[currency]['used']);
-        }
-        return this.parseBalance (this.extend ({ 'info': response }, result));
+        return this.parseBalance (result);
     }
 
     parseOrder (order, market = undefined) {
-        const symbol = market['symbol'];
+        let symbol = undefined;
+        if (market !== undefined) {
+            symbol = market['symbol'];
+        }
         const timestamp = this.parse8601 (this.safeString (order, 'datetime'));
         const price = this.safeFloat (order, 'price');
         const amount = this.safeFloat (order, 'amount_original');
@@ -356,15 +355,18 @@ module.exports = class coinegg extends Exchange {
             status = remaining ? 'open' : 'closed';
         }
         const info = this.safeValue (order, 'info', order);
+        const type = 'limit';
+        const side = this.safeString (order, 'type');
+        const id = this.safeString (order, 'id');
         return {
-            'id': this.safeString (order, 'id'),
+            'id': id,
             'datetime': this.iso8601 (timestamp),
             'timestamp': timestamp,
             'lastTradeTimestamp': undefined,
             'status': status,
             'symbol': symbol,
-            'type': 'limit',
-            'side': order['type'],
+            'type': type,
+            'side': side,
             'price': price,
             'cost': undefined,
             'amount': amount,

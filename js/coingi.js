@@ -106,7 +106,7 @@ module.exports = class coingi extends Exchange {
             base = this.commonCurrencyCode (base);
             quote = this.commonCurrencyCode (quote);
             const symbol = base + '/' + quote;
-            let precision = {
+            const precision = {
                 'amount': 8,
                 'price': 8,
             };
@@ -141,7 +141,7 @@ module.exports = class coingi extends Exchange {
 
     async fetchBalance (params = {}) {
         await this.loadMarkets ();
-        let lowercaseCurrencies = [];
+        const lowercaseCurrencies = [];
         const currencies = Object.keys (this.currencies);
         for (let i = 0; i < currencies.length; i++) {
             const currency = currencies[i];
@@ -157,12 +157,9 @@ module.exports = class coingi extends Exchange {
             const currencyId = this.safeString (balance['currency'], 'name');
             let code = currencyId.toUpperCase ();
             code = this.commonCurrencyCode (code);
-            const account = {
-                'free': balance['available'],
-                'used': balance['blocked'] + balance['inOrders'] + balance['withdrawing'],
-                'total': 0.0,
-            };
-            account['total'] = this.sum (account['free'], account['used']);
+            const account = this.account ();
+            account['free'] = balance['available'];
+            account['used'] = balance['blocked'] + balance['inOrders'] + balance['withdrawing'];
             result[code] = account;
         }
         return this.parseBalance (result);
@@ -239,9 +236,6 @@ module.exports = class coingi extends Exchange {
     }
 
     parseTrade (trade, market = undefined) {
-        if (market === undefined) {
-            market = this.markets_by_id[trade['currencyPair']];
-        }
         const price = this.safeFloat (trade, 'price');
         const amount = this.safeFloat (trade, 'amount');
         let cost = undefined;
@@ -252,17 +246,28 @@ module.exports = class coingi extends Exchange {
         }
         const timestamp = this.safeInteger (trade, 'timestamp');
         const id = this.safeString (trade, 'id');
+        const marketId = this.safeString (trade, 'currencyPair');
+        if (marketId in this.markets_by_id) {
+            market = this.markets_by_id[marketId];
+        }
+        let symbol = undefined;
+        if (market !== undefined) {
+            symbol = market['symbol'];
+        }
         return {
             'id': id,
             'info': trade,
             'timestamp': timestamp,
             'datetime': this.iso8601 (timestamp),
-            'symbol': market['symbol'],
+            'symbol': symbol,
             'type': undefined,
             'side': undefined, // type
+            'order': undefined,
+            'takerOrMaker': undefined,
             'price': price,
             'amount': amount,
             'cost': cost,
+            'fee': undefined,
         };
     }
 

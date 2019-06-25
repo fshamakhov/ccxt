@@ -25,6 +25,7 @@ class kuna extends acx {
                 'withdraw' => false,
             ),
             'urls' => array (
+                'referral' => 'https://kuna.io?r=kunaid-gvfihe8az7o4',
                 'logo' => 'https://user-images.githubusercontent.com/1294454/31697638-912824fa-b3c1-11e7-8c36-cf9606eb94ac.jpg',
                 'api' => 'https://kuna.io',
                 'www' => 'https://kuna.io',
@@ -71,7 +72,7 @@ class kuna extends acx {
             for ($j = 0; $j < count ($quotes); $j++) {
                 $quoteId = $quotes[$j];
                 $index = mb_strpos($id, $quoteId);
-                $slice = mb_substr ($id, $index);
+                $slice = mb_substr($id, $index);
                 if (($index > 0) && ($slice === $quoteId)) {
                     $baseId = str_replace($quoteId, '', $id);
                     $base = strtoupper($baseId);
@@ -147,21 +148,25 @@ class kuna extends acx {
             );
             $side = $this->safe_string($sideMap, $side);
         }
+        $price = $this->safe_float($trade, 'price');
+        $amount = $this->safe_float($trade, 'volume');
         $cost = $this->safe_float($trade, 'funds');
         $orderId = $this->safe_string($trade, 'order_id');
         $id = $this->safe_string($trade, 'id');
         return array (
             'id' => $id,
+            'info' => $trade,
             'timestamp' => $timestamp,
             'datetime' => $this->iso8601 ($timestamp),
             'symbol' => $symbol,
             'type' => null,
             'side' => $side,
-            'price' => $this->safe_float($trade, 'price'),
-            'amount' => $this->safe_float($trade, 'volume'),
-            'cost' => $cost,
             'order' => $orderId,
-            'info' => $trade,
+            'takerOrMaker' => null,
+            'price' => $price,
+            'amount' => $amount,
+            'cost' => $cost,
+            'fee' => null,
         );
     }
 

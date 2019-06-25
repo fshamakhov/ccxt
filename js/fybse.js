@@ -53,7 +53,7 @@ module.exports = class fybse extends Exchange {
     async fetchBalance (params = {}) {
         await this.loadMarkets ();
         const response = await this.privatePostGetaccinfo (params);
-        let btc = this.safeFloat (response, 'btcBal');
+        const btc = this.safeFloat (response, 'btcBal');
         const symbol = this.symbols[0];
         const quote = this.markets[symbol]['quote'];
         const lowercase = quote.toLowerCase () + 'Bal';
@@ -109,20 +109,38 @@ module.exports = class fybse extends Exchange {
         };
     }
 
-    parseTrade (trade, market) {
-        const timestamp = this.safeInteger (trade, 'date') * 1000;
+    parseTrade (trade, market = undefined) {
+        let timestamp = this.safeInteger (trade, 'date');
+        if (timestamp !== undefined) {
+            timestamp *= 1000;
+        }
         const id = this.safeString (trade, 'tid');
+        let symbol = undefined;
+        if (market !== undefined) {
+            symbol = market['symbol'];
+        }
+        const price = this.safeFloat (trade, 'price');
+        const amount = this.safeFloat (trade, 'amount');
+        let cost = undefined;
+        if (price !== undefined) {
+            if (amount !== undefined) {
+                cost = price * amount;
+            }
+        }
         return {
-            'info': trade,
             'id': id,
+            'info': trade,
             'order': undefined,
             'timestamp': timestamp,
             'datetime': this.iso8601 (timestamp),
-            'symbol': market['symbol'],
+            'symbol': symbol,
             'type': undefined,
             'side': undefined,
-            'price': this.safeFloat (trade, 'price'),
-            'amount': this.safeFloat (trade, 'amount'),
+            'takerOrMaker': undefined,
+            'price': price,
+            'amount': amount,
+            'cost': cost,
+            'fee': undefined,
         };
     }
 
