@@ -488,15 +488,16 @@ module.exports = class bilaxy extends Exchange {
                 headers = { 'accept': 'application/json' };
         } else {
             this.checkRequiredCredentials ();
-            let signature = this.urlencode (this.keysort (this.extend ({
+            const sorted = this.encode (this.urlencode (this.keysort (this.extend ({
                 'key': this.apiKey,
                 'secret': this.secret,
-            }, params)));
-            signature = this.hash (this.encode (signature), 'sha1');
-            let query = this.urlencode (this.keysort (this.extend ({
+            }, params))));
+            const signature = this.hash (sorted, 'sha1');
+            const query = this.urlencode (this.keysort (this.extend ({
                 'key': this.apiKey,
+                'sign': signature,
             }, params)));
-            query += '&' + 'sign=' + signature;
+            // console.log ('params:', params, 'sorted:', sorted, 'query:', query);
             if (method === 'GET') {
                 url += '?' + query;
             } else {
