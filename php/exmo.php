@@ -399,13 +399,13 @@ class exmo extends Exchange {
             $parts = explode('<td class="th_fees_2" colspan="2">', $response);
             $numParts = is_array ($parts) ? count ($parts) : 0;
             if ($numParts !== 2) {
-                throw new ExchangeError($this->id . ' fetchTradingFees format has changed');
+                throw new NotSupported($this->id . ' fetchTradingFees format has changed');
             }
             $rest = $parts[1];
             $parts = explode('</td>', $rest);
             $numParts = is_array ($parts) ? count ($parts) : 0;
             if ($numParts < 2) {
-                throw new ExchangeError($this->id . ' fetchTradingFees format has changed');
+                throw new NotSupported($this->id . ' fetchTradingFees format has changed');
             }
             $fee = floatval (str_replace('%', '', $parts[0])) * 0.01;
             $taker = $fee;
@@ -607,7 +607,6 @@ class exmo extends Exchange {
             if (is_array($response['reserved']) && array_key_exists($currency, $response['reserved'])) {
                 $account['used'] = $this->safe_float($response['reserved'], $currency);
             }
-            $account['total'] = $this->sum ($account['free'], $account['used']);
             $result[$currency] = $account;
         }
         return $this->parse_balance($result);
@@ -747,6 +746,7 @@ class exmo extends Exchange {
             'order' => $orderId,
             'type' => $type,
             'side' => $side,
+            'takerOrMaker' => null,
             'price' => $price,
             'amount' => $amount,
             'cost' => $cost,

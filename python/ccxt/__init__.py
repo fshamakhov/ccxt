@@ -22,7 +22,7 @@
 
 # ----------------------------------------------------------------------------
 
-__version__ = '1.18.696'
+__version__ = '1.18.815'
 
 # ----------------------------------------------------------------------------
 
@@ -85,7 +85,6 @@ from ccxt.bitfinex2 import bitfinex2                        # noqa: F401
 from ccxt.bitflyer import bitflyer                          # noqa: F401
 from ccxt.bitforex import bitforex                          # noqa: F401
 from ccxt.bithumb import bithumb                            # noqa: F401
-from ccxt.bitibu import bitibu                              # noqa: F401
 from ccxt.bitkk import bitkk                                # noqa: F401
 from ccxt.bitlish import bitlish                            # noqa: F401
 from ccxt.bitmarket import bitmarket                        # noqa: F401
@@ -109,7 +108,6 @@ from ccxt.btctradeua import btctradeua                      # noqa: F401
 from ccxt.btcturk import btcturk                            # noqa: F401
 from ccxt.buda import buda                                  # noqa: F401
 from ccxt.bxinth import bxinth                              # noqa: F401
-from ccxt.ccex import ccex                                  # noqa: F401
 from ccxt.cex import cex                                    # noqa: F401
 from ccxt.chbtc import chbtc                                # noqa: F401
 from ccxt.chilebit import chilebit                          # noqa: F401
@@ -149,7 +147,6 @@ from ccxt.fybsg import fybsg                                # noqa: F401
 from ccxt.gateio import gateio                              # noqa: F401
 from ccxt.gdax import gdax                                  # noqa: F401
 from ccxt.gemini import gemini                              # noqa: F401
-from ccxt.getbtc import getbtc                              # noqa: F401
 from ccxt.hadax import hadax                                # noqa: F401
 from ccxt.hitbtc import hitbtc                              # noqa: F401
 from ccxt.hitbtc2 import hitbtc2                            # noqa: F401
@@ -160,7 +157,6 @@ from ccxt.idex import idex                                  # noqa: F401
 from ccxt.independentreserve import independentreserve      # noqa: F401
 from ccxt.indodax import indodax                            # noqa: F401
 from ccxt.itbit import itbit                                # noqa: F401
-from ccxt.jubi import jubi                                  # noqa: F401
 from ccxt.kkex import kkex                                  # noqa: F401
 from ccxt.kraken import kraken                              # noqa: F401
 from ccxt.kucoin import kucoin                              # noqa: F401
@@ -193,7 +189,6 @@ from ccxt.theocean import theocean                          # noqa: F401
 from ccxt.therock import therock                            # noqa: F401
 from ccxt.tidebit import tidebit                            # noqa: F401
 from ccxt.tidex import tidex                                # noqa: F401
-from ccxt.uex import uex                                    # noqa: F401
 from ccxt.upbit import upbit                                # noqa: F401
 from ccxt.urdubit import urdubit                            # noqa: F401
 from ccxt.vaultoro import vaultoro                          # noqa: F401
@@ -225,7 +220,6 @@ exchanges = [
     'bitflyer',
     'bitforex',
     'bithumb',
-    'bitibu',
     'bitkk',
     'bitlish',
     'bitmarket',
@@ -249,7 +243,6 @@ exchanges = [
     'btcturk',
     'buda',
     'bxinth',
-    'ccex',
     'cex',
     'chbtc',
     'chilebit',
@@ -289,7 +282,6 @@ exchanges = [
     'gateio',
     'gdax',
     'gemini',
-    'getbtc',
     'hadax',
     'hitbtc',
     'hitbtc2',
@@ -300,7 +292,6 @@ exchanges = [
     'independentreserve',
     'indodax',
     'itbit',
-    'jubi',
     'kkex',
     'kraken',
     'kucoin',
@@ -333,7 +324,6 @@ exchanges = [
     'therock',
     'tidebit',
     'tidex',
-    'uex',
     'upbit',
     'urdubit',
     'vaultoro',

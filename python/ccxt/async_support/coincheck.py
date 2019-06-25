@@ -117,13 +117,13 @@ class coincheck (Exchange):
         codes = list(self.currencies.keys())
         for i in range(0, len(codes)):
             code = codes[i]
-            currencyId = self.currency(code)
-            account = self.account()
-            reserved = currencyId + '_reserved'
-            account['free'] = self.safe_float(balances, currencyId)
-            account['used'] = self.safe_float(balances, reserved)
-            account['total'] = self.sum(account['free'], account['used'])
-            result[code] = account
+            currencyId = self.currencyId(code)
+            if currencyId in balances:
+                account = self.account()
+                reserved = currencyId + '_reserved'
+                account['free'] = self.safe_float(balances, currencyId)
+                account['used'] = self.safe_float(balances, reserved)
+                result[code] = account
         return self.parse_balance(result)
 
     async def fetch_open_orders(self, symbol=None, since=None, limit=None, params={}):
@@ -210,7 +210,9 @@ class coincheck (Exchange):
             raise NotSupported(self.id + ' fetchTicker() supports BTC/JPY only')
         await self.load_markets()
         ticker = await self.publicGetTicker(params)
-        timestamp = ticker['timestamp'] * 1000
+        timestamp = self.safe_integer(ticker, 'timestamp')
+        if timestamp is not None:
+            timestamp *= 1000
         last = self.safe_float(ticker, 'last')
         return {
             'symbol': symbol,

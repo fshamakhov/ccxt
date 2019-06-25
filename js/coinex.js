@@ -51,7 +51,7 @@ module.exports = class coinex extends Exchange {
                 'www': 'https://www.coinex.com',
                 'doc': 'https://github.com/coinexcom/coinex_exchange_api/wiki',
                 'fees': 'https://www.coinex.com/fees',
-                'referral': 'https://www.coinex.com/account/signup?refer_code=yw5fz',
+                'referral': 'https://www.coinex.com/register?refer_code=yw5fz',
             },
             'api': {
                 'web': {
@@ -172,8 +172,11 @@ module.exports = class coinex extends Exchange {
 
     parseTicker (ticker, market = undefined) {
         const timestamp = this.safeInteger (ticker, 'date');
-        const symbol = market['symbol'];
-        ticker = ticker['ticker'];
+        let symbol = undefined;
+        if (market !== undefined) {
+            symbol = market['symbol'];
+        }
+        ticker = this.safeValue (ticker, 'ticker', {});
         const last = this.safeFloat (ticker, 'last');
         return {
             'symbol': symbol,
@@ -215,15 +218,19 @@ module.exports = class coinex extends Exchange {
         const data = this.safeValue (response, 'data');
         const timestamp = this.safeInteger (data, 'date');
         const tickers = this.safeValue (data, 'ticker');
-        const ids = Object.keys (tickers);
+        const marketIds = Object.keys (tickers);
         const result = {};
-        for (let i = 0; i < ids.length; i++) {
-            const id = ids[i];
-            const market = this.markets_by_id[id];
-            const symbol = market['symbol'];
+        for (let i = 0; i < marketIds.length; i++) {
+            const marketId = marketIds[i];
+            let symbol = marketId;
+            let market = undefined;
+            if (marketId in this.markets_by_id) {
+                market = this.markets_by_id[marketId];
+                symbol = market['symbol'];
+            }
             const ticker = {
                 'date': timestamp,
-                'ticker': tickers[id],
+                'ticker': tickers[marketId],
             };
             result[symbol] = this.parseTicker (ticker, market);
         }
@@ -356,17 +363,19 @@ module.exports = class coinex extends Exchange {
         //
         const result = { 'info': response };
         const balances = this.safeValue (response, 'data');
-        const currencies = Object.keys (balances);
-        for (let i = 0; i < currencies.length; i++) {
-            const currencyId = currencies[i];
-            const balance = balances[currencyId];
-            const code = this.commonCurrencyCode (currencyId);
-            let account = {
-                'free': parseFloat (balance['available']),
-                'used': parseFloat (balance['frozen']),
-                'total': 0.0,
-            };
-            account['total'] = this.sum (account['free'], account['used']);
+        const currencyIds = Object.keys (balances);
+        for (let i = 0; i < currencyIds.length; i++) {
+            const currencyId = currencyIds[i];
+            let code = currencyId;
+            if (currencyId in this.currencies_by_id) {
+                code = this.currencies_by_id[currencyId]['code'];
+            } else {
+                code = this.commonCurrencyCode (currencyId);
+            }
+            const balance = this.safeValue (balances, currencyId, {});
+            const account = this.account ();
+            account['free'] = this.safeFloat (balance, 'available');
+            account['used'] = this.safeFloat (balance, 'frozen');
             result[code] = account;
         }
         return this.parseBalance (result);
@@ -421,7 +430,7 @@ module.exports = class coinex extends Exchange {
         market = this.safeValue (this.markets_by_id, marketId);
         let feeCurrency = undefined;
         const feeCurrencyId = this.safeString (order, 'fee_asset');
-        let currency = this.safeValue (this.currencies_by_id, feeCurrencyId);
+        const currency = this.safeValue (this.currencies_by_id, feeCurrencyId);
         if (currency !== undefined) {
             feeCurrency = currency['code'];
         }

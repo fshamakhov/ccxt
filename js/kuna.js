@@ -24,6 +24,7 @@ module.exports = class kuna extends acx {
                 'withdraw': false,
             },
             'urls': {
+                'referral': 'https://kuna.io?r=kunaid-gvfihe8az7o4',
                 'logo': 'https://user-images.githubusercontent.com/1294454/31697638-912824fa-b3c1-11e7-8c36-cf9606eb94ac.jpg',
                 'api': 'https://kuna.io',
                 'www': 'https://kuna.io',
@@ -146,21 +147,25 @@ module.exports = class kuna extends acx {
             };
             side = this.safeString (sideMap, side);
         }
+        const price = this.safeFloat (trade, 'price');
+        const amount = this.safeFloat (trade, 'volume');
         const cost = this.safeFloat (trade, 'funds');
         const orderId = this.safeString (trade, 'order_id');
         const id = this.safeString (trade, 'id');
         return {
             'id': id,
+            'info': trade,
             'timestamp': timestamp,
             'datetime': this.iso8601 (timestamp),
             'symbol': symbol,
             'type': undefined,
             'side': side,
-            'price': this.safeFloat (trade, 'price'),
-            'amount': this.safeFloat (trade, 'volume'),
-            'cost': cost,
             'order': orderId,
-            'info': trade,
+            'takerOrMaker': undefined,
+            'price': price,
+            'amount': amount,
+            'cost': cost,
+            'fee': undefined,
         };
     }
 

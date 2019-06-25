@@ -30,7 +30,7 @@ class coinspot (Exchange):
                 },
                 'www': 'https://www.coinspot.com.au',
                 'doc': 'https://www.coinspot.com.au/api',
-                'referral': 'https://www.coinspot.com.au/join/FSM11C',
+                'referral': 'https://www.coinspot.com.au/register?code=PJURCU',
             },
             'api': {
                 'public': {
@@ -69,19 +69,19 @@ class coinspot (Exchange):
         await self.load_markets()
         response = await self.privatePostMyBalances(params)
         result = {'info': response}
-        if 'balance' in response:
-            balances = response['balance']
-            currencyIds = list(balances.keys())
-            for i in range(0, len(currencyIds)):
-                currencyId = currencyIds[i]
-                uppercase = currencyId.upper()
-                code = self.common_currency_code(uppercase)
-                account = {
-                    'free': balances[currencyId],
-                    'used': 0.0,
-                    'total': balances[currencyId],
-                }
-                result[code] = account
+        balances = self.safe_value(response, 'balance', {})
+        currencyIds = list(balances.keys())
+        for i in range(0, len(currencyIds)):
+            currencyId = currencyIds[i]
+            uppercase = currencyId.upper()
+            code = self.common_currency_code(uppercase)
+            total = self.safe_float(balances, currencyId)
+            account = {
+                'free': total,
+                'used': 0.0,
+                'total': total,
+            }
+            result[code] = account
         return self.parse_balance(result)
 
     async def fetch_order_book(self, symbol, limit=None, params={}):
@@ -126,10 +126,13 @@ class coinspot (Exchange):
 
     async def fetch_trades(self, symbol, since=None, limit=None, params={}):
         await self.load_markets()
+        market = self.market(symbol)
         request = {
-            'cointype': self.market_id(symbol),
+            'cointype': market['id'],
         }
-        return await self.privatePostOrdersHistory(self.extend(request, params))
+        response = await self.privatePostOrdersHistory(self.extend(request, params))
+        trades = self.safe_value(response, 'orders', [])
+        return self.parse_trades(trades, market, since, limit)
 
     async def create_order(self, symbol, type, side, amount, price=None, params={}):
         await self.load_markets()

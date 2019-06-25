@@ -17,6 +17,7 @@ class mixcoins (Exchange):
             'countries': ['GB', 'HK'],
             'rateLimit': 1500,
             'version': 'v1',
+            'userAgent': self.userAgents['chrome'],
             'has': {
                 'CORS': False,
             },
@@ -29,9 +30,9 @@ class mixcoins (Exchange):
             'api': {
                 'public': {
                     'get': [
-                        'ticker',
-                        'trades',
-                        'depth',
+                        'ticker/',
+                        'trades/',
+                        'depth/',
                     ],
                 },
                 'private': {
@@ -58,17 +59,20 @@ class mixcoins (Exchange):
     def fetch_balance(self, params={}):
         self.load_markets()
         response = self.privatePostInfo(params)
-        balance = self.safe_value(response['result'], 'wallet')
-        result = {'info': balance}
-        currencies = list(self.currencies.keys())
-        for i in range(0, len(currencies)):
-            code = currencies[i]
-            currencyId = self.currencyid(code)
+        balances = self.safe_value(response['result'], 'wallet')
+        result = {'info': response}
+        currencyIds = list(balances.keys())
+        for i in range(0, len(currencyIds)):
+            currencyId = currencyIds[i]
+            code = currencyId
+            if currencyId in self.currencies_by_id:
+                code = self.currencies_by_id[currencyId]['code']
+            else:
+                code = self.common_currency_code(currencyId.upper())
+            balance = self.safe_value(balances, currencyId, {})
             account = self.account()
-            if currencyId in balance:
-                account['free'] = self.safe_float(balance[currencyId], 'avail')
-                account['used'] = self.safe_float(balance[currencyId], 'lock')
-                account['total'] = self.sum(account['free'], account['used'])
+            account['free'] = self.safe_float(balance, 'avail')
+            account['used'] = self.safe_float(balance, 'lock')
             result[code] = account
         return self.parse_balance(result)
 
@@ -112,18 +116,34 @@ class mixcoins (Exchange):
             'info': ticker,
         }
 
-    def parse_trade(self, trade, market):
-        timestamp = int(trade['date']) * 1000
+    def parse_trade(self, trade, market=None):
+        timestamp = self.safe_integer(trade, 'date')
+        if timestamp is not None:
+            timestamp *= 1000
+        symbol = None
+        if market is not None:
+            symbol = market['symbol']
+        id = self.safe_string(trade, 'id')
+        price = self.safe_float(trade, 'price')
+        amount = self.safe_float(trade, 'amount')
+        cost = None
+        if price is not None:
+            if amount is not None:
+                cost = price * amount
         return {
-            'id': str(trade['id']),
+            'id': id,
             'info': trade,
             'timestamp': timestamp,
             'datetime': self.iso8601(timestamp),
-            'symbol': market['symbol'],
+            'symbol': symbol,
             'type': None,
             'side': None,
-            'price': self.safe_float(trade, 'price'),
-            'amount': self.safe_float(trade, 'amount'),
+            'order': None,
+            'takerOrMaker': None,
+            'price': price,
+            'amount': amount,
+            'cost': cost,
+            'fee': None,
         }
 
     def fetch_trades(self, symbol, since=None, limit=None, params={}):

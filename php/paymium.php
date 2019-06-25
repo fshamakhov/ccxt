@@ -82,17 +82,14 @@ class paymium extends Exchange {
         for ($i = 0; $i < count ($currencies); $i++) {
             $code = $currencies[$i];
             $currencyId = $this->currencyId ($code);
-            $account = $this->account ();
-            $balance = 'balance_' . $currencyId;
-            $locked = 'locked_' . $currencyId;
-            if (is_array($response) && array_key_exists($balance, $response)) {
-                $account['free'] = $response[$balance];
+            $free = 'balance_' . $currencyId;
+            if (is_array($response) && array_key_exists($free, $response)) {
+                $account = $this->account ();
+                $used = 'locked_' . $currencyId;
+                $account['free'] = $this->safe_float($response, $free);
+                $account['used'] = $this->safe_float($response, $used);
+                $result[$code] = $account;
             }
-            if (is_array($response) && array_key_exists($locked, $response)) {
-                $account['used'] = $response[$locked];
-            }
-            $account['total'] = $this->sum ($account['free'], $account['used']);
-            $result[$code] = $account;
         }
         return $this->parse_balance($result);
     }
@@ -111,7 +108,10 @@ class paymium extends Exchange {
             'id' => $this->market_id($symbol),
         );
         $ticker = $this->publicGetDataIdTicker (array_merge ($request, $params));
-        $timestamp = $ticker['at'] * 1000;
+        $timestamp = $this->safe_integer($ticker, 'at');
+        if ($timestamp !== null) {
+            $timestamp *= 1000;
+        }
         $vwap = $this->safe_float($ticker, 'vwap');
         $baseVolume = $this->safe_float($ticker, 'volume');
         $quoteVolume = null;
@@ -144,19 +144,39 @@ class paymium extends Exchange {
     }
 
     public function parse_trade ($trade, $market) {
-        $timestamp = intval ($trade['created_at_int']) * 1000;
-        $volume = 'traded_' . strtolower($market['base']);
+        $timestamp = $this->safe_integer($trade, 'created_at_int');
+        if ($timestamp !== null) {
+            $timestamp *= 1000;
+        }
+        $id = $this->safe_string($trade, 'uuid');
+        $symbol = null;
+        if ($market !== null) {
+            $symbol = $market['symbol'];
+        }
+        $side = $this->safe_string($trade, 'side');
+        $price = $this->safe_float($trade, 'price');
+        $amountField = 'traded_' . strtolower($market['base']);
+        $amount = $this->safe_float($trade, $amountField);
+        $cost = null;
+        if ($price !== null) {
+            if ($amount !== null) {
+                $cost = $amount * $price;
+            }
+        }
         return array (
             'info' => $trade,
-            'id' => $trade['uuid'],
+            'id' => $id,
             'order' => null,
             'timestamp' => $timestamp,
             'datetime' => $this->iso8601 ($timestamp),
-            'symbol' => $market['symbol'],
+            'symbol' => $symbol,
             'type' => null,
-            'side' => $trade['side'],
-            'price' => $trade['price'],
-            'amount' => $trade[$volume],
+            'side' => $side,
+            'takerOrMaker' => null,
+            'price' => $price,
+            'amount' => $amount,
+            'cost' => $cost,
+            'fee' => null,
         );
     }
 

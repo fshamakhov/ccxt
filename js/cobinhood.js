@@ -51,6 +51,7 @@ module.exports = class cobinhood extends Exchange {
                 '1M': '1M',
             },
             'urls': {
+                'referral': 'https://cobinhood.com?referrerId=a9d57842-99bb-4d7c-b668-0479a15a458b',
                 'logo': 'https://user-images.githubusercontent.com/1294454/35755576-dee02e5c-0878-11e8-989f-1595d80ba47f.jpg',
                 'api': 'https://api.cobinhood.com',
                 'www': 'https://cobinhood.com',
@@ -390,6 +391,7 @@ module.exports = class cobinhood extends Exchange {
             'order': undefined,
             'type': undefined,
             'side': side,
+            'takerOrMaker': undefined,
             'price': price,
             'amount': amount,
             'cost': cost,
@@ -459,12 +461,12 @@ module.exports = class cobinhood extends Exchange {
             let code = currencyId;
             if (currencyId in this.currencies_by_id) {
                 code = this.currencies_by_id[currencyId]['code'];
+            } else {
+                code = this.commonCurrencyCode (currencyId);
             }
-            const account = {
-                'used': parseFloat (balance['on_order']),
-                'total': parseFloat (balance['total']),
-            };
-            account['free'] = parseFloat (account['total'] - account['used']);
+            const account = this.account ();
+            account['used'] = this.safeFloat (balance, 'on_order');
+            account['total'] = this.safeFloat (balance, 'total');
             result[code] = account;
         }
         return this.parseBalance (result);
@@ -558,7 +560,7 @@ module.exports = class cobinhood extends Exchange {
 
     async createOrder (symbol, type, side, amount, price = undefined, params = {}) {
         await this.loadMarkets ();
-        let market = this.market (symbol);
+        const market = this.market (symbol);
         side = (side === 'sell') ? 'ask' : 'bid';
         const request = {
             'trading_pair_id': market['id'],
@@ -594,7 +596,7 @@ module.exports = class cobinhood extends Exchange {
         const request = {
             'order_id': id,
         };
-        let response = await this.privateDeleteTradingOrdersOrderId (this.extend (request, params));
+        const response = await this.privateDeleteTradingOrdersOrderId (this.extend (request, params));
         return this.parseOrder (this.extend (response, {
             'id': id,
         }));

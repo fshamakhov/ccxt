@@ -113,16 +113,16 @@ module.exports = class btcturk extends Exchange {
         for (let i = 0; i < codes.length; i++) {
             const code = codes[i];
             const currency = this.currencies[code];
-            const account = this.account ();
             const free = currency['id'] + '_available';
             const total = currency['id'] + '_balance';
             const used = currency['id'] + '_reserved';
             if (free in response) {
+                const account = this.account ();
                 account['free'] = this.safeFloat (response, free);
                 account['total'] = this.safeFloat (response, total);
                 account['used'] = this.safeFloat (response, used);
+                result[code] = account;
             }
-            result[code] = account;
         }
         return this.parseBalance (result);
     }
@@ -200,7 +200,7 @@ module.exports = class btcturk extends Exchange {
         return this.safeValue2 (tickers, market['id'], symbol);
     }
 
-    parseTrade (trade, market) {
+    parseTrade (trade, market = undefined) {
         let timestamp = this.safeInteger (trade, 'date');
         if (timestamp !== undefined) {
             timestamp *= 1000;
@@ -214,17 +214,24 @@ module.exports = class btcturk extends Exchange {
                 cost = amount * price;
             }
         }
+        let symbol = undefined;
+        if (market !== undefined) {
+            symbol = market['symbol'];
+        }
         return {
             'id': id,
             'info': trade,
             'timestamp': timestamp,
             'datetime': this.iso8601 (timestamp),
-            'symbol': market['symbol'],
+            'symbol': symbol,
             'type': undefined,
             'side': undefined,
+            'order': undefined,
+            'takerOrMaker': undefined,
             'price': price,
             'amount': amount,
             'cost': cost,
+            'fee': undefined,
         };
     }
 

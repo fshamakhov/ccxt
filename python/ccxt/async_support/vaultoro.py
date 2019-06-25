@@ -60,14 +60,14 @@ class vaultoro (Exchange):
 
     async def fetch_markets(self, params={}):
         result = []
-        markets = await self.publicGetMarkets()
-        market = markets['data']
-        baseId = market['MarketCurrency']
-        quoteId = market['BaseCurrency']
+        response = await self.publicGetMarkets(params)
+        market = self.safe_value(response, 'data')
+        baseId = self.safe_string(market, 'MarketCurrency')
+        quoteId = self.safe_string(market, 'BaseCurrency')
         base = self.common_currency_code(baseId)
         quote = self.common_currency_code(quoteId)
         symbol = base + '/' + quote
-        id = market['MarketName']
+        id = self.safe_string(market, 'MarketName')
         result.append({
             'id': id,
             'symbol': symbol,
@@ -86,17 +86,15 @@ class vaultoro (Exchange):
         result = {'info': balances}
         for i in range(0, len(balances)):
             balance = balances[i]
-            currencyId = balance['currency_code']
-            uppercaseId = currencyId.upper()
-            code = self.common_currency_code(uppercaseId)
-            free = self.safe_float(balance, 'cash')
-            used = self.safe_float(balance, 'reserved')
-            total = self.sum(free, used)
-            account = {
-                'free': free,
-                'used': used,
-                'total': total,
-            }
+            currencyId = self.safe_string(balance, 'currency_code')
+            code = currencyId
+            if currencyId in self.currencies_by_id:
+                code = self.currencies_by_id[currencyId]['code']
+            else:
+                code = self.common_currency_code(currencyId.upper())
+            account = self.account()
+            account['free'] = self.safe_float(balance, 'cash')
+            account['used'] = self.safe_float(balance, 'reserved')
             result[code] = account
         return self.parse_balance(result)
 
@@ -116,7 +114,7 @@ class vaultoro (Exchange):
         bid = quote['bids'][bidsLength - 1]
         ask = quote['asks'][0]
         response = await self.publicGetMarkets(params)
-        ticker = response['data']
+        ticker = self.safe_value(response, 'data')
         timestamp = self.milliseconds()
         last = self.safe_float(ticker, 'LastPrice')
         return {
@@ -142,19 +140,31 @@ class vaultoro (Exchange):
             'info': ticker,
         }
 
-    def parse_trade(self, trade, market):
+    def parse_trade(self, trade, market=None):
         timestamp = self.parse8601(self.safe_string(trade, 'Time'))
+        symbol = None
+        if market is not None:
+            symbol = market['symbol']
+        price = self.safe_float(trade, 'Gold_Price')
+        amount = self.safe_float(trade, 'Gold_Amount')
+        cost = None
+        if price is not None:
+            if amount is not None:
+                cost = amount * price
         return {
             'id': None,
             'info': trade,
             'timestamp': timestamp,
             'datetime': self.iso8601(timestamp),
-            'symbol': market['symbol'],
+            'symbol': symbol,
             'order': None,
             'type': None,
             'side': None,
-            'price': trade['Gold_Price'],
-            'amount': trade['Gold_Amount'],
+            'takerOrMaker': None,
+            'price': price,
+            'amount': amount,
+            'cost': cost,
+            'fee': None,
         }
 
     async def fetch_trades(self, symbol, since=None, limit=None, params={}):

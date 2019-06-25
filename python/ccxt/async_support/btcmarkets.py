@@ -373,9 +373,11 @@ class btcmarkets (Exchange):
             'symbol': symbol,
             'type': None,
             'side': None,
+            'takerOrMaker': None,
             'price': price,
             'amount': amount,
             'cost': cost,
+            'fee': None,
         }
 
     async def fetch_trades(self, symbol, since=None, limit=None, params={}):
@@ -611,13 +613,13 @@ class btcmarkets (Exchange):
                 'apikey': self.apiKey,
                 'timestamp': nonce,
             }
-            if method == 'post':
+            if method == 'POST':
                 headers['Content-Type'] = 'application/json'
                 auth = uri + "\n" + nonce + "\n"  # eslint-disable-line quotes
                 body = self.json(params)
                 auth += body
             else:
-                query = self.ksort(self.omit(params, self.extract_params(path)))
+                query = self.keysort(self.omit(params, self.extract_params(path)))
                 queryString = ''
                 if query:
                     queryString = self.urlencode(query)

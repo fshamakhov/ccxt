@@ -62,14 +62,14 @@ class vaultoro extends Exchange {
 
     public function fetch_markets ($params = array ()) {
         $result = array();
-        $markets = $this->publicGetMarkets ();
-        $market = $markets['data'];
-        $baseId = $market['MarketCurrency'];
-        $quoteId = $market['BaseCurrency'];
+        $response = $this->publicGetMarkets ($params);
+        $market = $this->safe_value($response, 'data');
+        $baseId = $this->safe_string($market, 'MarketCurrency');
+        $quoteId = $this->safe_string($market, 'BaseCurrency');
         $base = $this->common_currency_code($baseId);
         $quote = $this->common_currency_code($quoteId);
         $symbol = $base . '/' . $quote;
-        $id = $market['MarketName'];
+        $id = $this->safe_string($market, 'MarketName');
         $result[] = array (
             'id' => $id,
             'symbol' => $symbol,
@@ -89,17 +89,16 @@ class vaultoro extends Exchange {
         $result = array( 'info' => $balances );
         for ($i = 0; $i < count ($balances); $i++) {
             $balance = $balances[$i];
-            $currencyId = $balance['currency_code'];
-            $uppercaseId = strtoupper($currencyId);
-            $code = $this->common_currency_code($uppercaseId);
-            $free = $this->safe_float($balance, 'cash');
-            $used = $this->safe_float($balance, 'reserved');
-            $total = $this->sum ($free, $used);
-            $account = array (
-                'free' => $free,
-                'used' => $used,
-                'total' => $total,
-            );
+            $currencyId = $this->safe_string($balance, 'currency_code');
+            $code = $currencyId;
+            if (is_array($this->currencies_by_id) && array_key_exists($currencyId, $this->currencies_by_id)) {
+                $code = $this->currencies_by_id[$currencyId]['code'];
+            } else {
+                $code = $this->common_currency_code(strtoupper($currencyId));
+            }
+            $account = $this->account ();
+            $account['free'] = $this->safe_float($balance, 'cash');
+            $account['used'] = $this->safe_float($balance, 'reserved');
             $result[$code] = $account;
         }
         return $this->parse_balance($result);
@@ -122,7 +121,7 @@ class vaultoro extends Exchange {
         $bid = $quote['bids'][$bidsLength - 1];
         $ask = $quote['asks'][0];
         $response = $this->publicGetMarkets ($params);
-        $ticker = $response['data'];
+        $ticker = $this->safe_value($response, 'data');
         $timestamp = $this->milliseconds ();
         $last = $this->safe_float($ticker, 'LastPrice');
         return array (
@@ -149,19 +148,34 @@ class vaultoro extends Exchange {
         );
     }
 
-    public function parse_trade ($trade, $market) {
+    public function parse_trade ($trade, $market = null) {
         $timestamp = $this->parse8601 ($this->safe_string($trade, 'Time'));
+        $symbol = null;
+        if ($market !== null) {
+            $symbol = $market['symbol'];
+        }
+        $price = $this->safe_float($trade, 'Gold_Price');
+        $amount = $this->safe_float($trade, 'Gold_Amount');
+        $cost = null;
+        if ($price !== null) {
+            if ($amount !== null) {
+                $cost = $amount * $price;
+            }
+        }
         return array (
             'id' => null,
             'info' => $trade,
             'timestamp' => $timestamp,
             'datetime' => $this->iso8601 ($timestamp),
-            'symbol' => $market['symbol'],
+            'symbol' => $symbol,
             'order' => null,
             'type' => null,
             'side' => null,
-            'price' => $trade['Gold_Price'],
-            'amount' => $trade['Gold_Amount'],
+            'takerOrMaker' => null,
+            'price' => $price,
+            'amount' => $amount,
+            'cost' => $cost,
+            'fee' => null,
         );
     }
 

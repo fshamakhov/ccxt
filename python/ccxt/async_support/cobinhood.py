@@ -58,6 +58,7 @@ class cobinhood (Exchange):
                 '1M': '1M',
             },
             'urls': {
+                'referral': 'https://cobinhood.com?referrerId=a9d57842-99bb-4d7c-b668-0479a15a458b',
                 'logo': 'https://user-images.githubusercontent.com/1294454/35755576-dee02e5c-0878-11e8-989f-1595d80ba47f.jpg',
                 'api': 'https://api.cobinhood.com',
                 'www': 'https://cobinhood.com',
@@ -380,6 +381,7 @@ class cobinhood (Exchange):
             'order': None,
             'type': None,
             'side': side,
+            'takerOrMaker': None,
             'price': price,
             'amount': amount,
             'cost': cost,
@@ -444,11 +446,11 @@ class cobinhood (Exchange):
             code = currencyId
             if currencyId in self.currencies_by_id:
                 code = self.currencies_by_id[currencyId]['code']
-            account = {
-                'used': float(balance['on_order']),
-                'total': float(balance['total']),
-            }
-            account['free'] = float(account['total'] - account['used'])
+            else:
+                code = self.common_currency_code(currencyId)
+            account = self.account()
+            account['used'] = self.safe_float(balance, 'on_order')
+            account['total'] = self.safe_float(balance, 'total')
             result[code] = account
         return self.parse_balance(result)
 

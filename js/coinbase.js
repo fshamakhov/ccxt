@@ -400,6 +400,7 @@ module.exports = class coinbase extends Exchange {
             'symbol': symbol,
             'type': type,
             'side': side,
+            'takerOrMaker': undefined,
             'price': price,
             'amount': amount,
             'cost': cost,
@@ -474,7 +475,7 @@ module.exports = class coinbase extends Exchange {
             'askVolume': undefined,
             'vwap': undefined,
             'open': undefined,
-            'close': undefined,
+            'close': last,
             'previousClose': undefined,
             'change': undefined,
             'percentage': undefined,
@@ -504,8 +505,8 @@ module.exports = class coinbase extends Exchange {
                     code = this.currencies_by_id[currencyId]['code'];
                 }
                 const total = this.safeFloat (balance['balance'], 'amount');
-                let free = total;
-                let used = undefined;
+                const free = total;
+                const used = undefined;
                 if (code in result) {
                     result[code]['free'] = this.sum (result[code]['free'], total);
                     result[code]['total'] = this.sum (result[code]['total'], total);

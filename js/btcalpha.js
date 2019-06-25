@@ -184,18 +184,19 @@ module.exports = class btcalpha extends Exchange {
         const side = this.safeString2 (trade, 'my_side', 'side');
         const orderId = this.safeString (trade, 'o_id');
         return {
+            'id': id,
+            'info': trade,
             'timestamp': timestamp,
             'datetime': this.iso8601 (timestamp),
             'symbol': symbol,
-            'id': id,
             'order': orderId,
             'type': 'limit',
             'side': side,
+            'takerOrMaker': undefined,
             'price': price,
             'amount': amount,
             'cost': cost,
             'fee': undefined,
-            'info': trade,
         };
     }
 
@@ -380,7 +381,7 @@ module.exports = class btcalpha extends Exchange {
         await this.loadMarkets ();
         const request = {};
         if (symbol !== undefined) {
-            let market = this.market (symbol);
+            const market = this.market (symbol);
             request['pair'] = market['id'];
         }
         if (limit !== undefined) {

@@ -220,11 +220,15 @@ class ice3x (Exchange):
         return self.parse_order_book(orderbook, None, 'bids', 'asks', 'price', 'amount')
 
     def parse_trade(self, trade, market=None):
-        timestamp = self.safe_integer(trade, 'created') * 1000
+        timestamp = self.safe_integer(trade, 'created')
+        if timestamp is not None:
+            timestamp *= 1000
         price = self.safe_float(trade, 'price')
         amount = self.safe_float(trade, 'volume')
-        symbol = market['symbol']
-        cost = float(self.cost_to_precision(symbol, price * amount))
+        cost = None
+        if price is not None:
+            if amount is not None:
+                cost = price * amount
         fee = None
         feeCost = self.safe_float(trade, 'fee')
         if feeCost is not None:
@@ -232,19 +236,26 @@ class ice3x (Exchange):
                 'cost': feeCost,
                 'currency': market['quote'],
             }
+        type = 'limit'
+        side = self.safe_string(trade, 'type')
+        id = self.safe_string(trade, 'trade_id')
+        symbol = None
+        if market is not None:
+            symbol = market['symbol']
         return {
+            'id': id,
+            'info': trade,
             'timestamp': timestamp,
             'datetime': self.iso8601(timestamp),
             'symbol': symbol,
-            'id': self.safe_string(trade, 'trade_id'),
             'order': None,
-            'type': 'limit',
-            'side': trade['type'],
+            'type': type,
+            'side': side,
+            'takerOrMaker': None,
             'price': price,
             'amount': amount,
             'cost': cost,
             'fee': fee,
-            'info': trade,
         }
 
     def fetch_trades(self, symbol, since=None, limit=None, params={}):
@@ -261,18 +272,17 @@ class ice3x (Exchange):
         self.load_markets()
         response = self.privatePostBalanceList(params)
         result = {'info': response}
-        balances = self.safe_value(response['response'], 'entities')
+        balances = self.safe_value(response['response'], 'entities', [])
         for i in range(0, len(balances)):
             balance = balances[i]
-            id = balance['currency_id']
-            if id in self.currencies_by_id:
-                currency = self.currencies_by_id[id]
-                code = currency['code']
-                result[code] = {
-                    'free': 0.0,
-                    'used': 0.0,
-                    'total': self.safe_float(balance, 'balance'),
-                }
+            # currency ids are numeric strings
+            currencyId = self.safe_string(balance, 'currency_id')
+            code = currencyId
+            if currencyId in self.currencies_by_id:
+                code = self.currencies_by_id[currencyId]['code']
+            account = self.account()
+            account['total'] = self.safe_float(balance, 'balance')
+            result[code] = account
         return self.parse_balance(result)
 
     def parse_order(self, order, market=None):

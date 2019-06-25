@@ -18,7 +18,7 @@ class coinegg extends Exchange {
                 'fetchOrder' => true,
                 'fetchOrders' => true,
                 'fetchOpenOrders' => 'emulated',
-                'fetchMyTrades' => true,
+                'fetchMyTrades' => false,
                 'fetchTickers' => false,
             ),
             'urls' => array (
@@ -30,7 +30,7 @@ class coinegg extends Exchange {
                 'www' => 'https://www.coinegg.com',
                 'doc' => 'https://www.coinegg.com/explain.api.html',
                 'fees' => 'https://www.coinegg.com/fee.html',
-                'referral' => 'http://www.coinegg.com/user/register?invite=523218',
+                'referral' => 'https://www.coinegg.com/user/register?invite=523218',
             ),
             'api' => array (
                 'web' => array (
@@ -280,19 +280,21 @@ class coinegg extends Exchange {
         }
         $type = 'limit';
         $side = $this->safe_string($trade, 'type');
+        $id = $this->safe_string($trade, 'tid');
         return array (
+            'id' => $id,
+            'info' => $trade,
             'timestamp' => $timestamp,
             'datetime' => $this->iso8601 ($timestamp),
             'symbol' => $symbol,
-            'id' => $this->safe_string($trade, 'tid'),
             'order' => null,
             'type' => $type,
             'side' => $side,
+            'takerOrMaker' => null,
             'price' => $price,
             'amount' => $amount,
             'cost' => $cost,
             'fee' => null,
-            'info' => $trade,
         );
     }
 
@@ -310,8 +312,9 @@ class coinegg extends Exchange {
     public function fetch_balance ($params = array ()) {
         $this->load_markets();
         $response = $this->privatePostBalance ($params);
-        $result = array();
-        $balances = $this->omit ($response['data'], 'uid');
+        $result = array( 'info' => $response );
+        $data = $this->safe_value($response, 'data', array());
+        $balances = $this->omit ($data, 'uid');
         $keys = is_array($balances) ? array_keys($balances) : array();
         for ($i = 0; $i < count ($keys); $i++) {
             $key = $keys[$i];
@@ -319,27 +322,23 @@ class coinegg extends Exchange {
             $code = $currencyId;
             if (is_array($this->currencies_by_id) && array_key_exists($currencyId, $this->currencies_by_id)) {
                 $code = $this->currencies_by_id[$currencyId]['code'];
+            } else {
+                $code = $this->common_currency_code(strtoupper($currencyId));
             }
             if (!(is_array($result) && array_key_exists($code, $result))) {
-                $result[$code] = array (
-                    'free' => null,
-                    'used' => null,
-                    'total' => null,
-                );
+                $result[$code] = $this->account ();
             }
-            $accountType = ($accountType === 'lock') ? 'used' : 'free';
-            $result[$code][$accountType] = floatval ($balances[$key]);
+            $type = ($accountType === 'lock') ? 'used' : 'free';
+            $result[$code][$type] = $this->safe_float($balances, $key);
         }
-        $currencies = is_array($result) ? array_keys($result) : array();
-        for ($i = 0; $i < count ($currencies); $i++) {
-            $currency = $currencies[$i];
-            $result[$currency]['total'] = $this->sum ($result[$currency]['free'], $result[$currency]['used']);
-        }
-        return $this->parse_balance(array_merge (array( 'info' => $response ), $result));
+        return $this->parse_balance($result);
     }
 
     public function parse_order ($order, $market = null) {
-        $symbol = $market['symbol'];
+        $symbol = null;
+        if ($market !== null) {
+            $symbol = $market['symbol'];
+        }
         $timestamp = $this->parse8601 ($this->safe_string($order, 'datetime'));
         $price = $this->safe_float($order, 'price');
         $amount = $this->safe_float($order, 'amount_original');
@@ -357,15 +356,18 @@ class coinegg extends Exchange {
             $status = $remaining ? 'open' : 'closed';
         }
         $info = $this->safe_value($order, 'info', $order);
+        $type = 'limit';
+        $side = $this->safe_string($order, 'type');
+        $id = $this->safe_string($order, 'id');
         return array (
-            'id' => $this->safe_string($order, 'id'),
+            'id' => $id,
             'datetime' => $this->iso8601 ($timestamp),
             'timestamp' => $timestamp,
             'lastTradeTimestamp' => null,
             'status' => $status,
             'symbol' => $symbol,
-            'type' => 'limit',
-            'side' => $order['type'],
+            'type' => $type,
+            'side' => $side,
             'price' => $price,
             'cost' => null,
             'amount' => $amount,

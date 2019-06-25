@@ -10,7 +10,20 @@ use Exception as Exception; // a common import
 class bleutrade extends bittrex {
 
     public function describe () {
-        return array_replace_recursive (parent::describe (), array (
+        $timeframes = array (
+            '15m' => '15m',
+            '20m' => '20m',
+            '30m' => '30m',
+            '1h' => '1h',
+            '2h' => '2h',
+            '3h' => '3h',
+            '4h' => '4h',
+            '6h' => '6h',
+            '8h' => '8h',
+            '12h' => '12h',
+            '1d' => '1d',
+        );
+        $result = array_replace_recursive (parent::describe (), array (
             'id' => 'bleutrade',
             'name' => 'Bleutrade',
             'countries' => array ( 'BR' ), // Brazil
@@ -24,19 +37,7 @@ class bleutrade extends bittrex {
                 'fetchClosedOrders' => true,
                 'fetchOrderTrades' => true,
             ),
-            'timeframes' => array (
-                '15m' => '15m',
-                '20m' => '20m',
-                '30m' => '30m',
-                '1h' => '1h',
-                '2h' => '2h',
-                '3h' => '3h',
-                '4h' => '4h',
-                '6h' => '6h',
-                '8h' => '8h',
-                '12h' => '12h',
-                '1d' => '1d',
-            ),
+            'timeframes' => $timeframes,
             'hostname' => 'bleutrade.com',
             'urls' => array (
                 'logo' => 'https://user-images.githubusercontent.com/1294454/30303000-b602dbe6-976d-11e7-956d-36c5049c01e7.jpg',
@@ -142,6 +143,9 @@ class bleutrade extends bittrex {
                 'symbolSeparator' => '_',
             ),
         ));
+        // bittrex inheritance override
+        $result['timeframes'] = $timeframes;
+        return $result;
     }
 
     public function parse_order_status ($status) {
@@ -239,14 +243,14 @@ class bleutrade extends bittrex {
 
     public function parse_ohlcv ($ohlcv, $market = null, $timeframe = '1d', $since = null, $limit = null) {
         $timestamp = $this->parse8601 ($ohlcv['TimeStamp'] . '+00:00');
-        return [
+        return array (
             $timestamp,
-            $ohlcv['Open'],
-            $ohlcv['High'],
-            $ohlcv['Low'],
-            $ohlcv['Close'],
-            $ohlcv['Volume'],
-        ];
+            $this->safe_float($ohlcv, 'Open'),
+            $this->safe_float($ohlcv, 'High'),
+            $this->safe_float($ohlcv, 'Low'),
+            $this->safe_float($ohlcv, 'Close'),
+            $this->safe_float($ohlcv, 'Volume'),
+        );
     }
 
     public function fetch_ohlcv ($symbol, $timeframe = '15m', $since = null, $limit = null, $params = array ()) {
@@ -294,6 +298,8 @@ class bleutrade extends bittrex {
             'symbol' => $symbol,
             'type' => 'limit',
             'side' => $side,
+            'order' => null,
+            'takerOrMaker' => null,
             'price' => $price,
             'amount' => $amount,
             'cost' => $cost,

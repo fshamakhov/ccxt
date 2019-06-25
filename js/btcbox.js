@@ -78,13 +78,14 @@ module.exports = class btcbox extends Exchange {
             const code = codes[i];
             const currency = this.currency (code);
             const currencyId = currency['id'];
-            const account = this.account ();
             const free = currencyId + '_balance';
-            const used = currencyId + '_lock';
-            account['free'] = this.safeFloat (response, free);
-            account['used'] = this.safeFloat (response, used);
-            account['total'] = this.sum (account['free'], account['used']);
-            result[currency] = account;
+            if (free in response) {
+                const account = this.account ();
+                const used = currencyId + '_lock';
+                account['free'] = this.safeFloat (response, free);
+                account['used'] = this.safeFloat (response, used);
+                result[code] = account;
+            }
         }
         return this.parseBalance (result);
     }
@@ -173,9 +174,11 @@ module.exports = class btcbox extends Exchange {
             'symbol': symbol,
             'type': type,
             'side': side,
+            'takerOrMaker': undefined,
             'price': price,
             'amount': amount,
             'cost': cost,
+            'fee': undefined,
         };
     }
 
@@ -273,7 +276,7 @@ module.exports = class btcbox extends Exchange {
                 status = 'closed';
             }
         }
-        let trades = undefined; // todo: this.parseTrades (order['trades']);
+        const trades = undefined; // todo: this.parseTrades (order['trades']);
         let symbol = undefined;
         if (market !== undefined) {
             symbol = market['symbol'];

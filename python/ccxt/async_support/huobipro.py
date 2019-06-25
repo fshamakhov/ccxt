@@ -64,7 +64,7 @@ class huobipro (Exchange):
                     'zendesk': 'https://huobiglobal.zendesk.com/hc/en-us/articles',
                 },
                 'www': 'https://www.huobi.pro',
-                'referral': 'https://www.huobi.br.com/en-us/topic/invited/?invite_code=rwrd3',
+                'referral': 'https://www.huobi.co/en-us/topic/invited/?invite_code=rwrd3',
                 'doc': 'https://github.com/huobiapi/API_Docs/wiki/REST_api_reference',
                 'fees': 'https://www.huobi.pro/about/fee/',
             },
@@ -251,6 +251,8 @@ class huobipro (Exchange):
             }
             maker = 0 if (base == 'OMG') else 0.2 / 100
             taker = 0 if (base == 'OMG') else 0.2 / 100
+            minAmount = self.safe_float(market, 'min-order-amt', math.pow(10, -precision['amount']))
+            minCost = self.safe_float(market, 'min-order-value', 0)
             result.append({
                 'id': id,
                 'symbol': symbol,
@@ -264,7 +266,7 @@ class huobipro (Exchange):
                 'maker': maker,
                 'limits': {
                     'amount': {
-                        'min': math.pow(10, -precision['amount']),
+                        'min': minAmount,
                         'max': None,
                     },
                     'price': {
@@ -272,7 +274,7 @@ class huobipro (Exchange):
                         'max': None,
                     },
                     'cost': {
-                        'min': 0,
+                        'min': minCost,
                         'max': None,
                     },
                 },
@@ -416,15 +418,17 @@ class huobipro (Exchange):
                 'cost': feeCost,
                 'currency': feeCurrency,
             }
+        id = self.safe_string(trade, 'id')
         return {
+            'id': id,
             'info': trade,
-            'id': self.safe_string(trade, 'id'),
             'order': order,
             'timestamp': timestamp,
             'datetime': self.iso8601(timestamp),
             'symbol': symbol,
             'type': type,
             'side': side,
+            'takerOrMaker': None,
             'price': price,
             'amount': amount,
             'cost': cost,
@@ -566,13 +570,16 @@ class huobipro (Exchange):
             'id': self.accounts[0]['id'],
         }
         response = await getattr(self, method)(self.extend(request, params))
-        balances = self.safe_value(response['data'], 'list')
+        balances = self.safe_value(response['data'], 'list', [])
         result = {'info': response}
         for i in range(0, len(balances)):
             balance = balances[i]
             currencyId = self.safe_string(balance, 'currency')
-            uppercase = currencyId.upper()
-            code = self.common_currency_code(uppercase)
+            code = currencyId
+            if currencyId in self.currencies_by_id:
+                code = self.currencies_by_id[currencyId]['code']
+            else:
+                code = self.common_currency_code(currencyId.upper())
             account = None
             if code in result:
                 account = result[code]
@@ -582,7 +589,6 @@ class huobipro (Exchange):
                 account['free'] = self.safe_float(balance, 'balance')
             if balance['type'] == 'frozen':
                 account['used'] = self.safe_float(balance, 'balance')
-            account['total'] = self.sum(account['free'], account['used'])
             result[code] = account
         return self.parse_balance(result)
 

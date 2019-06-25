@@ -4,7 +4,7 @@
 
 # -----------------------------------------------------------------------------
 
-__version__ = '1.18.696'
+__version__ = '1.18.815'
 
 # -----------------------------------------------------------------------------
 
@@ -66,7 +66,6 @@ from ccxt.async_support.bitfinex2 import bitfinex2                        # noqa
 from ccxt.async_support.bitflyer import bitflyer                          # noqa: F401
 from ccxt.async_support.bitforex import bitforex                          # noqa: F401
 from ccxt.async_support.bithumb import bithumb                            # noqa: F401
-from ccxt.async_support.bitibu import bitibu                              # noqa: F401
 from ccxt.async_support.bitkk import bitkk                                # noqa: F401
 from ccxt.async_support.bitlish import bitlish                            # noqa: F401
 from ccxt.async_support.bitmarket import bitmarket                        # noqa: F401
@@ -90,7 +89,6 @@ from ccxt.async_support.btctradeua import btctradeua                      # noqa
 from ccxt.async_support.btcturk import btcturk                            # noqa: F401
 from ccxt.async_support.buda import buda                                  # noqa: F401
 from ccxt.async_support.bxinth import bxinth                              # noqa: F401
-from ccxt.async_support.ccex import ccex                                  # noqa: F401
 from ccxt.async_support.cex import cex                                    # noqa: F401
 from ccxt.async_support.chbtc import chbtc                                # noqa: F401
 from ccxt.async_support.chilebit import chilebit                          # noqa: F401
@@ -130,7 +128,6 @@ from ccxt.async_support.fybsg import fybsg                                # noqa
 from ccxt.async_support.gateio import gateio                              # noqa: F401
 from ccxt.async_support.gdax import gdax                                  # noqa: F401
 from ccxt.async_support.gemini import gemini                              # noqa: F401
-from ccxt.async_support.getbtc import getbtc                              # noqa: F401
 from ccxt.async_support.hadax import hadax                                # noqa: F401
 from ccxt.async_support.hitbtc import hitbtc                              # noqa: F401
 from ccxt.async_support.hitbtc2 import hitbtc2                            # noqa: F401
@@ -141,7 +138,6 @@ from ccxt.async_support.idex import idex                                  # noqa
 from ccxt.async_support.independentreserve import independentreserve      # noqa: F401
 from ccxt.async_support.indodax import indodax                            # noqa: F401
 from ccxt.async_support.itbit import itbit                                # noqa: F401
-from ccxt.async_support.jubi import jubi                                  # noqa: F401
 from ccxt.async_support.kkex import kkex                                  # noqa: F401
 from ccxt.async_support.kraken import kraken                              # noqa: F401
 from ccxt.async_support.kucoin import kucoin                              # noqa: F401
@@ -174,7 +170,6 @@ from ccxt.async_support.theocean import theocean                          # noqa
 from ccxt.async_support.therock import therock                            # noqa: F401
 from ccxt.async_support.tidebit import tidebit                            # noqa: F401
 from ccxt.async_support.tidex import tidex                                # noqa: F401
-from ccxt.async_support.uex import uex                                    # noqa: F401
 from ccxt.async_support.upbit import upbit                                # noqa: F401
 from ccxt.async_support.urdubit import urdubit                            # noqa: F401
 from ccxt.async_support.vaultoro import vaultoro                          # noqa: F401
@@ -206,7 +201,6 @@ exchanges = [
     'bitflyer',
     'bitforex',
     'bithumb',
-    'bitibu',
     'bitkk',
     'bitlish',
     'bitmarket',
@@ -230,7 +224,6 @@ exchanges = [
     'btcturk',
     'buda',
     'bxinth',
-    'ccex',
     'cex',
     'chbtc',
     'chilebit',
@@ -270,7 +263,6 @@ exchanges = [
     'gateio',
     'gdax',
     'gemini',
-    'getbtc',
     'hadax',
     'hitbtc',
     'hitbtc2',
@@ -281,7 +273,6 @@ exchanges = [
     'independentreserve',
     'indodax',
     'itbit',
-    'jubi',
     'kkex',
     'kraken',
     'kucoin',
@@ -314,7 +305,6 @@ exchanges = [
     'therock',
     'tidebit',
     'tidex',
-    'uex',
     'upbit',
     'urdubit',
     'vaultoro',

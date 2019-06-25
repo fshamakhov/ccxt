@@ -3,7 +3,7 @@
 //  ---------------------------------------------------------------------------
 
 const Exchange = require ('./base/Exchange');
-const { ExchangeNotAvailable, ArgumentsRequired, PermissionDenied, AuthenticationError, ExchangeError, OrderNotFound, DDoSProtection, InvalidNonce, InsufficientFunds, CancelPending, InvalidOrder, InvalidAddress } = require ('./base/errors');
+const { ExchangeNotAvailable, ArgumentsRequired, PermissionDenied, AuthenticationError, ExchangeError, OrderNotFound, DDoSProtection, InvalidNonce, InsufficientFunds, CancelPending, InvalidOrder, InvalidAddress, NotSupported } = require ('./base/errors');
 const { TRUNCATE, DECIMAL_PLACES } = require ('./base/functions/number');
 
 //  ---------------------------------------------------------------------------
@@ -238,7 +238,7 @@ module.exports = class kraken extends Exchange {
         const parts = html.split ('<td class="wysiwyg-text-align-right">');
         const numParts = parts.length;
         if (numParts < 3) {
-            throw new ExchangeError (this.id + ' fetchMinOrderAmounts HTML page markup has changed: https://support.kraken.com/hc/en-us/articles/205893708-What-is-the-minimum-order-size-');
+            throw new NotSupported (this.id + ' fetchMinOrderAmounts HTML page markup has changed: https://support.kraken.com/hc/en-us/articles/205893708-What-is-the-minimum-order-size-');
         }
         const result = {};
         // skip the part before the header and the header itself
@@ -757,6 +757,7 @@ module.exports = class kraken extends Exchange {
             'symbol': symbol,
             'type': type,
             'side': side,
+            'takerOrMaker': undefined,
             'price': price,
             'amount': amount,
             'cost': price * amount,
@@ -892,7 +893,7 @@ module.exports = class kraken extends Exchange {
         if (market !== undefined) {
             return market;
         }
-        let baseIdStart = 0;
+        const baseIdStart = 0;
         let baseIdEnd = 3;
         let quoteIdStart = 3;
         let quoteIdEnd = 6;
@@ -1209,7 +1210,7 @@ module.exports = class kraken extends Exchange {
             timestamp = timestamp * 1000;
         }
         let code = undefined;
-        let currencyId = this.safeString (transaction, 'asset');
+        const currencyId = this.safeString (transaction, 'asset');
         currency = this.safeValue (this.currencies_by_id, currencyId);
         if (currency !== undefined) {
             code = currency['code'];
@@ -1389,14 +1390,14 @@ module.exports = class kraken extends Exchange {
             }
         } else if (api === 'private') {
             this.checkRequiredCredentials ();
-            let nonce = this.nonce ().toString ();
+            const nonce = this.nonce ().toString ();
             body = this.urlencode (this.extend ({ 'nonce': nonce }, params));
-            let auth = this.encode (nonce + body);
-            let hash = this.hash (auth, 'sha256', 'binary');
-            let binary = this.stringToBinary (this.encode (url));
-            let binhash = this.binaryConcat (binary, hash);
-            let secret = this.base64ToBinary (this.secret);
-            let signature = this.hmac (binhash, secret, 'sha512', 'base64');
+            const auth = this.encode (nonce + body);
+            const hash = this.hash (auth, 'sha256', 'binary');
+            const binary = this.stringToBinary (this.encode (url));
+            const binhash = this.binaryConcat (binary, hash);
+            const secret = this.base64ToBinary (this.secret);
+            const signature = this.hmac (binhash, secret, 'sha512', 'base64');
             headers = {
                 'API-Key': this.apiKey,
                 'API-Sign': this.decode (signature),
@@ -1436,9 +1437,9 @@ module.exports = class kraken extends Exchange {
         if (body[0] === '{') {
             if (typeof response !== 'string') {
                 if ('error' in response) {
-                    let numErrors = response['error'].length;
+                    const numErrors = response['error'].length;
                     if (numErrors) {
-                        let message = this.id + ' ' + this.json (response);
+                        const message = this.id + ' ' + this.json (response);
                         for (let i = 0; i < response['error'].length; i++) {
                             if (response['error'][i] in this.exceptions) {
                                 throw new this.exceptions[response['error'][i]] (message);

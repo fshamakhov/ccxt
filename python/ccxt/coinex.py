@@ -57,7 +57,7 @@ class coinex (Exchange):
                 'www': 'https://www.coinex.com',
                 'doc': 'https://github.com/coinexcom/coinex_exchange_api/wiki',
                 'fees': 'https://www.coinex.com/fees',
-                'referral': 'https://www.coinex.com/account/signup?refer_code=yw5fz',
+                'referral': 'https://www.coinex.com/register?refer_code=yw5fz',
             },
             'api': {
                 'web': {
@@ -175,8 +175,10 @@ class coinex (Exchange):
 
     def parse_ticker(self, ticker, market=None):
         timestamp = self.safe_integer(ticker, 'date')
-        symbol = market['symbol']
-        ticker = ticker['ticker']
+        symbol = None
+        if market is not None:
+            symbol = market['symbol']
+        ticker = self.safe_value(ticker, 'ticker', {})
         last = self.safe_float(ticker, 'last')
         return {
             'symbol': symbol,
@@ -216,15 +218,18 @@ class coinex (Exchange):
         data = self.safe_value(response, 'data')
         timestamp = self.safe_integer(data, 'date')
         tickers = self.safe_value(data, 'ticker')
-        ids = list(tickers.keys())
+        marketIds = list(tickers.keys())
         result = {}
-        for i in range(0, len(ids)):
-            id = ids[i]
-            market = self.markets_by_id[id]
-            symbol = market['symbol']
+        for i in range(0, len(marketIds)):
+            marketId = marketIds[i]
+            symbol = marketId
+            market = None
+            if marketId in self.markets_by_id:
+                market = self.markets_by_id[marketId]
+                symbol = market['symbol']
             ticker = {
                 'date': timestamp,
-                'ticker': tickers[id],
+                'ticker': tickers[marketId],
             }
             result[symbol] = self.parse_ticker(ticker, market)
         return result
@@ -344,17 +349,18 @@ class coinex (Exchange):
         #
         result = {'info': response}
         balances = self.safe_value(response, 'data')
-        currencies = list(balances.keys())
-        for i in range(0, len(currencies)):
-            currencyId = currencies[i]
-            balance = balances[currencyId]
-            code = self.common_currency_code(currencyId)
-            account = {
-                'free': float(balance['available']),
-                'used': float(balance['frozen']),
-                'total': 0.0,
-            }
-            account['total'] = self.sum(account['free'], account['used'])
+        currencyIds = list(balances.keys())
+        for i in range(0, len(currencyIds)):
+            currencyId = currencyIds[i]
+            code = currencyId
+            if currencyId in self.currencies_by_id:
+                code = self.currencies_by_id[currencyId]['code']
+            else:
+                code = self.common_currency_code(currencyId)
+            balance = self.safe_value(balances, currencyId, {})
+            account = self.account()
+            account['free'] = self.safe_float(balance, 'available')
+            account['used'] = self.safe_float(balance, 'frozen')
             result[code] = account
         return self.parse_balance(result)
 

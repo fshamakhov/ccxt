@@ -5,7 +5,6 @@
 
 from ccxt.base.exchange import Exchange
 import hashlib
-from ccxt.base.errors import ExchangeError
 
 
 class southxchange (Exchange):
@@ -66,10 +65,10 @@ class southxchange (Exchange):
         })
 
     def fetch_markets(self, params={}):
-        markets = self.publicGetMarkets()
+        markets = self.publicGetMarkets(params)
         result = []
-        for p in range(0, len(markets)):
-            market = markets[p]
+        for i in range(0, len(markets)):
+            market = markets[i]
             baseId = market[0]
             quoteId = market[1]
             base = self.common_currency_code(baseId)
@@ -91,24 +90,20 @@ class southxchange (Exchange):
     def fetch_balance(self, params={}):
         self.load_markets()
         response = self.privatePostListBalances(params)
-        if not response:
-            raise ExchangeError(self.id + ' fetchBalance got an unrecognized response')
         result = {'info': response}
         for i in range(0, len(response)):
             balance = response[i]
-            currencyId = balance['Currency']
-            uppercaseId = currencyId.upper()
-            code = self.common_currency_code(uppercaseId)
-            free = self.safe_float(balance, 'Available')
+            currencyId = self.safe_string(balance, 'Currency')
+            code = currencyId
+            if currencyId in self.currencies_by_id:
+                code = self.currencies_by_id[currencyId]['code']
+            else:
+                code = self.common_currency_code(currencyId.upper())
             deposited = self.safe_float(balance, 'Deposited')
             unconfirmed = self.safe_float(balance, 'Unconfirmed')
-            total = self.sum(deposited, unconfirmed)
-            used = total - free
-            account = {
-                'free': free,
-                'used': used,
-                'total': total,
-            }
+            account = self.account()
+            account['free'] = self.safe_float(balance, 'Available')
+            account['total'] = self.sum(deposited, unconfirmed)
             result[code] = account
         return self.parse_balance(result)
 
@@ -179,17 +174,30 @@ class southxchange (Exchange):
         timestamp = self.safe_integer(trade, 'At')
         if timestamp is not None:
             timestamp = timestamp * 1000
+        price = self.safe_float(trade, 'Price')
+        amount = self.safe_float(trade, 'Amount')
+        cost = None
+        if price is not None:
+            if amount is not None:
+                cost = price * amount
+        side = self.safe_string(trade, 'Type')
+        symbol = None
+        if market is not None:
+            symbol = market['symbol']
         return {
             'info': trade,
             'timestamp': timestamp,
             'datetime': self.iso8601(timestamp),
-            'symbol': market['symbol'],
+            'symbol': symbol,
             'id': None,
             'order': None,
             'type': None,
-            'side': trade['Type'],
-            'price': trade['Price'],
-            'amount': trade['Amount'],
+            'side': side,
+            'price': price,
+            'takerOrMaker': None,
+            'amount': amount,
+            'cost': cost,
+            'fee': None,
         }
 
     def fetch_trades(self, symbol, since=None, limit=None, params={}):
@@ -203,7 +211,11 @@ class southxchange (Exchange):
 
     def parse_order(self, order, market=None):
         status = 'open'
-        symbol = order['ListingCurrency'] + '/' + order['ReferenceCurrency']
+        baseId = self.safe_string(order, 'ListingCurrency')
+        quoteId = self.safe_string(order, 'ReferenceCurrency')
+        base = self.common_currency_code(baseId)
+        quote = self.common_currency_code(quoteId)
+        symbol = base + '/' + quote
         timestamp = None
         price = self.safe_float(order, 'LimitPrice')
         amount = self.safe_float(order, 'OriginalAmount')
@@ -214,16 +226,20 @@ class southxchange (Exchange):
             cost = price * amount
             if remaining is not None:
                 filled = amount - remaining
-        orderType = order['Type'].lower()
+        type = 'limit'
+        side = self.safe_string(order, 'Type')
+        if side is not None:
+            side = side.lower()
+        id = self.safe_string(order, 'Code')
         result = {
             'info': order,
-            'id': str(order['Code']),
+            'id': id,
             'timestamp': timestamp,
             'datetime': self.iso8601(timestamp),
             'lastTradeTimestamp': None,
             'symbol': symbol,
-            'type': 'limit',
-            'side': orderType,
+            'type': type,
+            'side': side,
             'price': price,
             'amount': amount,
             'cost': cost,

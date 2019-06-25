@@ -170,9 +170,12 @@ module.exports = class crex24 extends Exchange {
             const base = this.commonCurrencyCode (baseId);
             const quote = this.commonCurrencyCode (quoteId);
             const symbol = base + '/' + quote;
+            const tickSize = this.safeValue (market, 'tickSize');
+            const minPrice = this.safeValue (market, 'minPrice');
+            const minAmount = this.safeFloat (market, 'minVolume');
             const precision = {
-                'amount': this.precisionFromString (this.truncate_to_string (market['tickSize'], 8)),
-                'price': this.precisionFromString (this.truncate_to_string (market['minPrice'], 8)),
+                'amount': this.precisionFromString (this.numberToString (minAmount)),
+                'price': this.precisionFromString (this.numberToString (tickSize)),
             };
             const active = (market['state'] === 'active');
             result.push ({
@@ -187,11 +190,11 @@ module.exports = class crex24 extends Exchange {
                 'precision': precision,
                 'limits': {
                     'amount': {
-                        'min': this.safeFloat (market, 'minVolume'),
+                        'min': minAmount,
                         'max': undefined,
                     },
                     'price': {
-                        'min': Math.pow (10, -precision['price']),
+                        'min': minPrice,
                         'max': undefined,
                     },
                     'cost': {
@@ -307,14 +310,10 @@ module.exports = class crex24 extends Exchange {
             } else {
                 code = this.commonCurrencyCode (code);
             }
-            const free = this.safeFloat (balance, 'available');
-            const used = this.safeFloat (balance, 'reserved');
-            const total = this.sum (free, used);
-            result[code] = {
-                'free': free,
-                'used': used,
-                'total': total,
-            };
+            const account = this.account ();
+            account['free'] = this.safeFloat (balance, 'available');
+            account['used'] = this.safeFloat (balance, 'reserved');
+            result[code] = account;
         }
         return this.parseBalance (result);
     }
@@ -641,8 +640,8 @@ module.exports = class crex24 extends Exchange {
             }
         }
         const side = this.safeString (order, 'side');
-        let fee = undefined;
-        let trades = undefined;
+        const fee = undefined;
+        const trades = undefined;
         let average = undefined;
         if (cost !== undefined) {
             if (filled) {
@@ -1182,7 +1181,7 @@ module.exports = class crex24 extends Exchange {
                 auth += body;
             }
             const signature = this.stringToBase64 (this.hmac (this.encode (auth), secret, 'sha512', 'binary'));
-            headers['X-CREX24-API-SIGN'] = signature;
+            headers['X-CREX24-API-SIGN'] = this.decode (signature);
         }
         return { 'url': url, 'method': method, 'body': body, 'headers': headers };
     }

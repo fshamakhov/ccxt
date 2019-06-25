@@ -171,7 +171,7 @@ module.exports = class gdax extends Exchange {
                 'max': undefined,
             };
             const precision = {
-                'amount': 8,
+                'amount': this.precisionFromString (this.safeString (market, 'base_increment')),
                 'price': this.precisionFromString (this.safeString (market, 'quote_increment')),
             };
             let taker = this.fees['trading']['taker'];  // does not seem right
@@ -333,7 +333,7 @@ module.exports = class gdax extends Exchange {
             'currency': feeCurrency,
             'rate': feeRate,
         };
-        let type = undefined;
+        const type = undefined;
         const id = this.safeString (trade, 'trade_id');
         let side = (trade['side'] === 'buy') ? 'sell' : 'buy';
         const orderId = this.safeString (trade, 'order_id');
@@ -458,11 +458,19 @@ module.exports = class gdax extends Exchange {
             }
         }
         const cost = this.safeFloat (order, 'executed_value');
-        const fee = {
-            'cost': this.safeFloat (order, 'fill_fees'),
-            'currency': undefined,
-            'rate': undefined,
-        };
+        const feeCost = this.safeFloat (order, 'fill_fees');
+        let fee = undefined;
+        if (feeCost !== undefined) {
+            let feeCurrencyCode = undefined;
+            if (market !== undefined) {
+                feeCurrencyCode = market['quote'];
+            }
+            fee = {
+                'cost': feeCost,
+                'currency': feeCurrencyCode,
+                'rate': undefined,
+            };
+        }
         if (market !== undefined) {
             symbol = market['symbol'];
         }
@@ -576,10 +584,10 @@ module.exports = class gdax extends Exchange {
     }
 
     calculateFee (symbol, type, side, amount, price, takerOrMaker = 'taker', params = {}) {
-        let market = this.markets[symbol];
-        let rate = market[takerOrMaker];
-        let cost = amount * price;
-        let currency = market['quote'];
+        const market = this.markets[symbol];
+        const rate = market[takerOrMaker];
+        const cost = amount * price;
+        const currency = market['quote'];
         return {
             'type': takerOrMaker,
             'currency': currency,
@@ -686,7 +694,7 @@ module.exports = class gdax extends Exchange {
         }
         const processed = this.safeValue (transaction, 'processed_at');
         const completed = this.safeValue (transaction, 'completed_at');
-        if (processed && completed) {
+        if (completed) {
             return 'ok';
         } else if (processed && !completed) {
             return 'failed';
@@ -709,7 +717,7 @@ module.exports = class gdax extends Exchange {
         } else {
             code = this.commonCurrencyCode (currencyId);
         }
-        let fee = undefined;
+        const fee = undefined;
         const status = this.parseTransactionStatus (transaction);
         const amount = this.safeFloat (transaction, 'amount');
         let type = this.safeString (transaction, 'type');
@@ -745,7 +753,7 @@ module.exports = class gdax extends Exchange {
                 request += '?' + this.urlencode (query);
             }
         }
-        let url = this.urls['api'] + request;
+        const url = this.urls['api'] + request;
         if (api === 'private') {
             this.checkRequiredCredentials ();
             const nonce = this.nonce ().toString ();
@@ -832,8 +840,8 @@ module.exports = class gdax extends Exchange {
     handleErrors (code, reason, url, method, headers, body, response) {
         if ((code === 400) || (code === 404)) {
             if (body[0] === '{') {
-                let message = response['message'];
-                let feedback = this.id + ' ' + message;
+                const message = response['message'];
+                const feedback = this.id + ' ' + message;
                 const exact = this.exceptions['exact'];
                 if (message in exact) {
                     throw new exact[message] (feedback);

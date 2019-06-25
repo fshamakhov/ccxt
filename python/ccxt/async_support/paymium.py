@@ -81,15 +81,13 @@ class paymium (Exchange):
         for i in range(0, len(currencies)):
             code = currencies[i]
             currencyId = self.currencyId(code)
-            account = self.account()
-            balance = 'balance_' + currencyId
-            locked = 'locked_' + currencyId
-            if balance in response:
-                account['free'] = response[balance]
-            if locked in response:
-                account['used'] = response[locked]
-            account['total'] = self.sum(account['free'], account['used'])
-            result[code] = account
+            free = 'balance_' + currencyId
+            if free in response:
+                account = self.account()
+                used = 'locked_' + currencyId
+                account['free'] = self.safe_float(response, free)
+                account['used'] = self.safe_float(response, used)
+                result[code] = account
         return self.parse_balance(result)
 
     async def fetch_order_book(self, symbol, limit=None, params={}):
@@ -105,7 +103,9 @@ class paymium (Exchange):
             'id': self.market_id(symbol),
         }
         ticker = await self.publicGetDataIdTicker(self.extend(request, params))
-        timestamp = ticker['at'] * 1000
+        timestamp = self.safe_integer(ticker, 'at')
+        if timestamp is not None:
+            timestamp *= 1000
         vwap = self.safe_float(ticker, 'vwap')
         baseVolume = self.safe_float(ticker, 'volume')
         quoteVolume = None
@@ -136,19 +136,35 @@ class paymium (Exchange):
         }
 
     def parse_trade(self, trade, market):
-        timestamp = int(trade['created_at_int']) * 1000
-        volume = 'traded_' + market['base'].lower()
+        timestamp = self.safe_integer(trade, 'created_at_int')
+        if timestamp is not None:
+            timestamp *= 1000
+        id = self.safe_string(trade, 'uuid')
+        symbol = None
+        if market is not None:
+            symbol = market['symbol']
+        side = self.safe_string(trade, 'side')
+        price = self.safe_float(trade, 'price')
+        amountField = 'traded_' + market['base'].lower()
+        amount = self.safe_float(trade, amountField)
+        cost = None
+        if price is not None:
+            if amount is not None:
+                cost = amount * price
         return {
             'info': trade,
-            'id': trade['uuid'],
+            'id': id,
             'order': None,
             'timestamp': timestamp,
             'datetime': self.iso8601(timestamp),
-            'symbol': market['symbol'],
+            'symbol': symbol,
             'type': None,
-            'side': trade['side'],
-            'price': trade['price'],
-            'amount': trade[volume],
+            'side': side,
+            'takerOrMaker': None,
+            'price': price,
+            'amount': amount,
+            'cost': cost,
+            'fee': None,
         }
 
     async def fetch_trades(self, symbol, since=None, limit=None, params={}):
