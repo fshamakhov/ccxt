@@ -1848,6 +1848,8 @@ class Exchange(object):
         )
 
     def hashMessage(self, message):
+        if message[:2] == '0x':
+            message = message[2:]
         message_bytes = bytes.fromhex(message)
         return self.web3.sha3(b"\x19Ethereum Signed Message:\n" + str(len(message_bytes)).encode() + message_bytes).hex()
 
