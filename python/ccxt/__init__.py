@@ -22,7 +22,7 @@
 
 # ----------------------------------------------------------------------------
 
-__version__ = '1.18.815'
+__version__ = '1.18.862'
 
 # ----------------------------------------------------------------------------
 
@@ -69,7 +69,6 @@ from ccxt._1btcxe import _1btcxe                            # noqa: F401
 from ccxt.acx import acx                                    # noqa: F401
 from ccxt.allcoin import allcoin                            # noqa: F401
 from ccxt.anxpro import anxpro                              # noqa: F401
-from ccxt.anybits import anybits                            # noqa: F401
 from ccxt.bcex import bcex                                  # noqa: F401
 from ccxt.bequant import bequant                            # noqa: F401
 from ccxt.bibox import bibox                                # noqa: F401
@@ -89,7 +88,6 @@ from ccxt.bitkk import bitkk                                # noqa: F401
 from ccxt.bitlish import bitlish                            # noqa: F401
 from ccxt.bitmarket import bitmarket                        # noqa: F401
 from ccxt.bitmex import bitmex                              # noqa: F401
-from ccxt.bitsane import bitsane                            # noqa: F401
 from ccxt.bitso import bitso                                # noqa: F401
 from ccxt.bitstamp import bitstamp                          # noqa: F401
 from ccxt.bitstamp1 import bitstamp1                        # noqa: F401
@@ -143,7 +141,6 @@ from ccxt.fcoinjp import fcoinjp                            # noqa: F401
 from ccxt.flowbtc import flowbtc                            # noqa: F401
 from ccxt.foxbit import foxbit                              # noqa: F401
 from ccxt.fybse import fybse                                # noqa: F401
-from ccxt.fybsg import fybsg                                # noqa: F401
 from ccxt.gateio import gateio                              # noqa: F401
 from ccxt.gdax import gdax                                  # noqa: F401
 from ccxt.gemini import gemini                              # noqa: F401
@@ -190,7 +187,6 @@ from ccxt.therock import therock                            # noqa: F401
 from ccxt.tidebit import tidebit                            # noqa: F401
 from ccxt.tidex import tidex                                # noqa: F401
 from ccxt.upbit import upbit                                # noqa: F401
-from ccxt.urdubit import urdubit                            # noqa: F401
 from ccxt.vaultoro import vaultoro                          # noqa: F401
 from ccxt.vbtc import vbtc                                  # noqa: F401
 from ccxt.virwox import virwox                              # noqa: F401
@@ -204,7 +200,6 @@ exchanges = [
     'acx',
     'allcoin',
     'anxpro',
-    'anybits',
     'bcex',
     'bequant',
     'bibox',
@@ -224,7 +219,6 @@ exchanges = [
     'bitlish',
     'bitmarket',
     'bitmex',
-    'bitsane',
     'bitso',
     'bitstamp',
     'bitstamp1',
@@ -278,7 +272,6 @@ exchanges = [
     'flowbtc',
     'foxbit',
     'fybse',
-    'fybsg',
     'gateio',
     'gdax',
     'gemini',
@@ -325,7 +318,6 @@ exchanges = [
     'tidebit',
     'tidex',
     'upbit',
-    'urdubit',
     'vaultoro',
     'vbtc',
     'virwox',

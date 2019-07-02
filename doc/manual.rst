@@ -23,8 +23,8 @@ The structure of the library can be outlined as follows:
        |       fetchTickers           .            fetchOrders       |
        |       fetchOrderBook         .        fetchOpenOrders       |
        |       fetchOHLCV             .      fetchClosedOrders       |
-       |       fetchTrades            .          fetchMyTrades       |
-       |                              .                deposit       |
+       |       fetchStatus            .          fetchMyTrades       |
+       |       fetchTrades            .                deposit       |
        |                              .               withdraw       |
        │                              .                              |
        +=============================================================+
@@ -55,7 +55,7 @@ Full public and private HTTP REST APIs for all exchanges are implemented. WebSoc
 Exchanges
 =========
 
-The ccxt library currently supports the following 131 cryptocurrency exchange markets and trading APIs:
+The ccxt library currently supports the following 127 cryptocurrency exchange markets and trading APIs:
 
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 |        logo                                                                               | id                 | name                                                                                       | ver | doc                                                                                             | certified                                                            |
@@ -67,8 +67,6 @@ The ccxt library currently supports the following 131 cryptocurrency exchange ma
 | `allcoin <https://www.allcoin.com>`__                                                     | allcoin            | `Allcoin <https://www.allcoin.com>`__                                                      | 1   | `API <https://www.allcoin.com/api_market/market>`__                                             |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 | `anxpro <https://anxpro.com>`__                                                           | anxpro             | `ANXPro <https://anxpro.com>`__                                                            | \*  | `API <https://anxv2.docs.apiary.io>`__                                                          |                                                                      |
-+-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
-| `anybits <https://bitsane.com?ref=CGOvuPA2LR3GcdOUOKjc>`__                                | anybits            | `Anybits <https://bitsane.com?ref=CGOvuPA2LR3GcdOUOKjc>`__                                 | \*  | `API <https://anybits.com/help/api>`__                                                          |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 | `bcex <https://www.bcex.top/register?invite_code=758978&lang=en>`__                       | bcex               | `BCEX <https://www.bcex.top/register?invite_code=758978&lang=en>`__                        | 1   | `API <https://github.com/BCEX-TECHNOLOGY-LIMITED/API_Docs/wiki/Interface>`__                    |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
@@ -98,15 +96,13 @@ The ccxt library currently supports the following 131 cryptocurrency exchange ma
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 | `bithumb <https://www.bithumb.com>`__                                                     | bithumb            | `Bithumb <https://www.bithumb.com>`__                                                      | \*  | `API <https://apidocs.bithumb.com>`__                                                           |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
-| `bitkk <https://vip.zb.com/user/register?recommendCode=bn070u>`__                         | bitkk              | `bitkk <https://vip.zb.com/user/register?recommendCode=bn070u>`__                          | 1   | `API <https://www.bitkk.com/i/developer>`__                                                     |                                                                      |
+| `bitkk <https://www.bitkk.com>`__                                                         | bitkk              | `bitkk <https://www.bitkk.com>`__                                                          | 1   | `API <https://www.bitkk.com/i/developer>`__                                                     |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 | `bitlish <https://bitlish.com>`__                                                         | bitlish            | `Bitlish <https://bitlish.com>`__                                                          | 1   | `API <https://bitlish.com/api>`__                                                               |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 | `bitmarket <https://www.bitmarket.net/?ref=23323>`__                                      | bitmarket          | `BitMarket <https://www.bitmarket.net/?ref=23323>`__                                       | \*  | `API <https://www.bitmarket.net/docs.php?file=api_public.html>`__                               |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 | `bitmex <https://www.bitmex.com/register/rm3C16>`__                                       | bitmex             | `BitMEX <https://www.bitmex.com/register/rm3C16>`__                                        | 1   | `API <https://www.bitmex.com/app/apiOverview>`__                                                |                                                                      |
-+-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
-| `bitsane <https://bitsane.com?ref=CGOvuPA2LR3GcdOUOKjc>`__                                | bitsane            | `Bitsane <https://bitsane.com?ref=CGOvuPA2LR3GcdOUOKjc>`__                                 | \*  | `API <https://bitsane.com/help/api>`__                                                          |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 | `bitso <https://bitso.com/?ref=itej>`__                                                   | bitso              | `Bitso <https://bitso.com/?ref=itej>`__                                                    | 3   | `API <https://bitso.com/api_info>`__                                                            |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
@@ -146,7 +142,7 @@ The ccxt library currently supports the following 131 cryptocurrency exchange ma
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 | `cex <https://cex.io/r/0/up105393824/0/>`__                                               | cex                | `CEX.IO <https://cex.io/r/0/up105393824/0/>`__                                             | \*  | `API <https://cex.io/cex-api>`__                                                                |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
-| `chbtc <https://vip.zb.com/user/register?recommendCode=bn070u>`__                         | chbtc              | `CHBTC <https://vip.zb.com/user/register?recommendCode=bn070u>`__                          | 1   | `API <https://www.chbtc.com/i/developer>`__                                                     |                                                                      |
+| `chbtc <https://trade.chbtc.com/api>`__                                                   | chbtc              | `CHBTC <https://trade.chbtc.com/api>`__                                                    | 1   | `API <https://www.chbtc.com/i/developer>`__                                                     |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 | `chilebit <https://chilebit.net>`__                                                       | chilebit           | `ChileBit <https://chilebit.net>`__                                                        | 1   | `API <https://blinktrade.com/docs>`__                                                           |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
@@ -170,7 +166,7 @@ The ccxt library currently supports the following 131 cryptocurrency exchange ma
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 | `coinfloor <https://www.coinfloor.co.uk>`__                                               | coinfloor          | `coinfloor <https://www.coinfloor.co.uk>`__                                                | \*  | `API <https://github.com/coinfloor/api>`__                                                      |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
-| `coingi <https://coingi.com>`__                                                           | coingi             | `Coingi <https://coingi.com>`__                                                            | \*  | `API <https://coingi.docs.apiary.io>`__                                                         |                                                                      |
+| `coingi <https://www.coingi.com/?r=XTPPMC>`__                                             | coingi             | `Coingi <https://www.coingi.com/?r=XTPPMC>`__                                              | \*  | `API <https://coingi.docs.apiary.io>`__                                                         |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 | `coinmarketcap <https://coinmarketcap.com>`__                                             | coinmarketcap      | `CoinMarketCap <https://coinmarketcap.com>`__                                              | 1   | `API <https://coinmarketcap.com/api>`__                                                         |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
@@ -214,8 +210,6 @@ The ccxt library currently supports the following 131 cryptocurrency exchange ma
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 | `fybse <https://www.fybse.se>`__                                                          | fybse              | `FYB-SE <https://www.fybse.se>`__                                                          | \*  | `API <https://fyb.docs.apiary.io>`__                                                            |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
-| `fybsg <https://www.fybsg.com>`__                                                         | fybsg              | `FYB-SG <https://www.fybsg.com>`__                                                         | \*  | `API <https://fyb.docs.apiary.io>`__                                                            |                                                                      |
-+-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 | `gateio <https://www.gate.io/signup/2436035>`__                                           | gateio             | `Gate.io <https://www.gate.io/signup/2436035>`__                                           | 2   | `API <https://gate.io/api2>`__                                                                  |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 | `gdax <https://www.gdax.com>`__                                                           | gdax               | `GDAX <https://www.gdax.com>`__                                                            | \*  | `API <https://docs.gdax.com>`__                                                                 |                                                                      |
@@ -228,7 +222,7 @@ The ccxt library currently supports the following 131 cryptocurrency exchange ma
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 | `hitbtc2 <https://hitbtc.com/?ref_id=5a5d39a65d466>`__                                    | hitbtc2            | `HitBTC <https://hitbtc.com/?ref_id=5a5d39a65d466>`__                                      | 2   | `API <https://api.hitbtc.com>`__                                                                |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
-| `huobipro <https://www.huobi.co/en-us/topic/invited/?invite_code=rwrd3>`__                | huobipro           | `Huobi Pro <https://www.huobi.co/en-us/topic/invited/?invite_code=rwrd3>`__                | 1   | `API <https://github.com/huobiapi/API_Docs/wiki/REST_api_reference>`__                          |                                                                      |
+| `huobipro <https://www.huobi.co/en-us/topic/invited/?invite_code=rwrd3>`__                | huobipro           | `Huobi Pro <https://www.huobi.co/en-us/topic/invited/?invite_code=rwrd3>`__                | 1   | `API <https://huobiapi.github.io/docs/spot/v1/cn/>`__                                           |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 | `huobiru <https://www.huobi.com.ru/invite?invite_code=esc74>`__                           | huobiru            | `Huobi Russia <https://www.huobi.com.ru/invite?invite_code=esc74>`__                       | 1   | `API <https://github.com/cloudapidoc/API_Docs_en>`__                                            |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
@@ -250,7 +244,7 @@ The ccxt library currently supports the following 131 cryptocurrency exchange ma
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 | `lakebtc <https://www.lakebtc.com>`__                                                     | lakebtc            | `LakeBTC <https://www.lakebtc.com>`__                                                      | 2   | `API <https://www.lakebtc.com/s/api_v2>`__                                                      |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
-| `lbank <https://www.lbex.io/sign-up.html?icode=7QCY&lang=en-US>`__                        | lbank              | `LBank <https://www.lbex.io/sign-up.html?icode=7QCY&lang=en-US>`__                         | 1   | `API <https://github.com/LBank-exchange/lbank-official-api-docs>`__                             |                                                                      |
+| `lbank <https://www.lbex.io/invite?icode=7QCY>`__                                         | lbank              | `LBank <https://www.lbex.io/invite?icode=7QCY>`__                                          | 1   | `API <https://github.com/LBank-exchange/lbank-official-api-docs>`__                             |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 | `liqui <https://liqui.io>`__                                                              | liqui              | `Liqui <https://liqui.io>`__                                                               | 3   | `API <https://liqui.io/api>`__                                                                  |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
@@ -304,8 +298,6 @@ The ccxt library currently supports the following 131 cryptocurrency exchange ma
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 | `upbit <https://upbit.com>`__                                                             | upbit              | `Upbit <https://upbit.com>`__                                                              | 1   | `API <https://docs.upbit.com/docs/%EC%9A%94%EC%B2%AD-%EC%88%98-%EC%A0%9C%ED%95%9C>`__           | `CCXT Certified <https://github.com/ccxt/ccxt/wiki/Certification>`__ |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
-| `urdubit <https://urdubit.com>`__                                                         | urdubit            | `UrduBit <https://urdubit.com>`__                                                          | 1   | `API <https://blinktrade.com/docs>`__                                                           |                                                                      |
-+-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 | `vaultoro <https://www.vaultoro.com>`__                                                   | vaultoro           | `Vaultoro <https://www.vaultoro.com>`__                                                    | 1   | `API <https://api.vaultoro.com>`__                                                              |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 | `vbtc <https://vbtc.exchange>`__                                                          | vbtc               | `VBTC <https://vbtc.exchange>`__                                                           | 1   | `API <https://blinktrade.com/docs>`__                                                           |                                                                      |
@@ -318,7 +310,7 @@ The ccxt library currently supports the following 131 cryptocurrency exchange ma
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 | `zaif <https://zaif.jp>`__                                                                | zaif               | `Zaif <https://zaif.jp>`__                                                                 | 1   | `API <https://techbureau-api-document.readthedocs.io/ja/latest/index.html>`__                   |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
-| `zb <https://vip.zb.com/user/register?recommendCode=bn070u>`__                            | zb                 | `ZB <https://vip.zb.com/user/register?recommendCode=bn070u>`__                             | 1   | `API <https://www.zb.com/i/developer>`__                                                        |                                                                      |
+| `zb <https://www.zb.com>`__                                                               | zb                 | `ZB <https://www.zb.com>`__                                                                | 1   | `API <https://www.zb.com/i/developer>`__                                                        |                                                                      |
 +-------------------------------------------------------------------------------------------+--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 
 Besides making basic market and limit orders, some exchanges offer margin trading (leverage), various derivatives (like futures contracts and options) and also have `dark pools <https://en.wikipedia.org/wiki/Dark_pool>`__, `OTC <https://en.wikipedia.org/wiki/Over-the-counter_(finance)>`__ (over-the-counter trading), merchant APIs and much more.
@@ -494,6 +486,7 @@ Here’s an overview of base exchange properties with values added for example:
            'fetchOrder': false,
            'fetchOrderBook': true,
            'fetchOrders': false,
+           'fetchStatus': 'emulated',
            'fetchTicker': true,
            'fetchTickers': false,
            'fetchBidsAsks': false,
@@ -584,6 +577,8 @@ Below is a detailed description of each of the base exchange properties:
 
 -  ``options``: An exchange-specific associative dictionary containing special keys and options that are accepted by the underlying exchange and supported in CCXT.
 
+-  ``precisionMode``: The exchange decimal precision counting mode, read more about `Precision And Limits <#precision-and-limits>`__
+
 See this section on `Overriding exchange properties <https://github.com/ccxt/ccxt/wiki/Manual#overriding-exchange-properties-upon-instantiation>`__.
 
 Exchange Metadata
@@ -617,6 +612,7 @@ Exchange Metadata
           'fetchOrder': false,
           'fetchOrderBook': true,
           'fetchOrders': false,
+          'fetchStatus': 'emulated',
           'fetchTicker': true,
           'fetchTickers': false,
           'fetchBidsAsks': false,
@@ -745,7 +741,7 @@ Market Structure
        'quoteId': 'usd',     // any string, exchange-specific quote currency id
        'active': true,       // boolean, market status
        'precision': {        // number of decimal digits "after the dot"
-           'price': 8,       // integer, might be missing if not supplied by the exchange
+           'price': 8,       // integer or float for TICK_SIZE roundingMode, might be missing if not supplied by the exchange
            'amount': 8,      // integer, might be missing if not supplied by the exchange
            'cost': 8,        // integer, very few exchanges actually have it
        },
@@ -853,6 +849,26 @@ The above values can be missing with some exchanges that don’t provide info on
 Methods For Formatting Decimals
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Each exchange has its own rounding, counting and padding modes.
+
+Supported rounding modes are:
+
+-  ``ROUND`` – will round the last decimal digits to precision
+-  ``TRUNCATE``– will cut off the digits after certain precision
+
+The decimal precision counting mode is available in the ``exchange.precisionMode`` property.
+
+Supported counting modes are:
+
+-  ``DECIMAL_PLACES`` – counts all digits, 99% of exchanges use this counting mode
+-  ``SIGNIFICANT_DIGITS`` – counts non-zero digits only, some exchanges (``bitfinex`` and maybe a few other) implement this mode of counting decimals
+-  ``TICK_SIZE`` – some exchanges only allow a multiple of a specific value (``bitmex`` uses this mode)
+
+Supported padding modes are:
+
+-  ``NO_PADDING`` – default for most cases
+-  ``PAD_WITH_ZERO`` – appends zero characters up to precision
+
 The exchange base class contains the ``decimalToPrecision`` method to help format values to the required decimal precision with support for different rounding, counting and padding modes.
 
 .. code:: javascript
@@ -870,22 +886,6 @@ The exchange base class contains the ``decimalToPrecision`` method to help forma
 
    // PHP
    function decimalToPrecision ($x, $roundingMode = ROUND, $numPrecisionDigits = null, $countingMode = DECIMAL_PLACES, $paddingMode = NO_PADDING)
-
-Supported rounding modes are:
-
--  ``ROUND`` – will round the last decimal digits to precision
--  ``TRUNCATE``– will cut off the digits after certain precision
-
-Supported counting modes are:
-
--  ``DECIMAL_PLACES`` – counts all digits, 99% of exchanges use this counting mode
--  ``SIGNIFICANT_DIGITS`` – counts non-zero digits only, some exchanges (``bitfinex`` and maybe a few other) implement this mode of counting decimals
--  ``TICK_SIZE`` – some exchanges only allow a multiple of a specific value (``bitmex`` uses this mode)
-
-Supported padding modes are:
-
--  ``NO_PADDING`` – default for most cases
--  ``PAD_WITH_ZERO`` – appends zero characters up to precision
 
 For examples of how to use the ``decimalToPrecision`` to format strings and floats, please, see the following files:
 
@@ -1312,6 +1312,7 @@ The unified ccxt API is a subset of methods common among the exchanges. It curre
 -  ``fetchMarkets ()``: Fetches a list of all available markets from an exchange and returns an array of markets (objects with properties such as ``symbol``, ``base``, ``quote`` etc.). Some exchanges do not have means for obtaining a list of markets via their online API. For those, the list of markets is hardcoded.
 -  ``loadMarkets ([reload])``: Returns the list of markets as an object indexed by symbol and caches it with the exchange instance. Returns cached markets if loaded already, unless the ``reload = true`` flag is forced.
 -  ``fetchOrderBook (symbol[, limit = undefined[, params = {}]])``: Fetch L2/L3 order book for a particular market trading symbol.
+-  ``fetchStatus ([, params = {}])``: Returns information regarding the exchange status from either the info hardcoded in the exchange instance or the API, if available.
 -  ``fetchL2OrderBook (symbol[, limit = undefined[, params]])``: Level 2 (price-aggregated) order book for a particular symbol.
 -  ``fetchTrades (symbol[, since[, [limit, [params]]]])``: Fetch recent trades for a particular trading symbol.
 -  ``fetchTicker (symbol)``: Fetch latest ticker data by trading symbol.
@@ -3314,6 +3315,40 @@ Fee Structure
        'cost': feePaid, // the fee cost (amount * fee rate)
    }
 
+Exchange Status
+~~~~~~~~~~~~~~~
+
+The exchange status describes the latest known information on the availability of the exchange API. This information is either hardcoded into the exchange class or fetched live directly from the exchange API. The ``fetchStatus(params = {})`` method can be used to get this information. The status returned by ``fetchStatus`` is one of:
+
+-  Hardcoded into the exchange class, e.g. if the API has been broken or shutdown.
+-  Updated using the exchange ping or ``fetchTime`` endpoint to see if its alive
+-  Updated using the dedicated exchange API status endpoint.
+
+.. code:: javascript
+
+   fetchStatus(params = {})
+
+Exchange Status Structure
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``fetchStatus()`` method will return a status structure like shown below:
+
+.. code:: javascript
+
+   {
+       'status': 'ok' // 'ok', 'shutdown', 'error', 'maintenance'
+       'updated': undefined // integer, last updated timestamp in milliseconds if updated via the API
+       'eta': undefined, // when the maintenance or outage is expected to end
+       'url': undefined, // a link to a GitHub issue or to an exchange post on the subject
+   }
+
+The possible values in the ``status`` field are:
+
+-  ``'ok'`` means the exchange API is fully operational
+-  ``'shutdown``\ ’ means the exchange was closed, and the ``updated`` field should contain the datetime of the shutdown
+-  ``'error'`` means that either the exchange API is broken, or the implementation of the exchange in CCXT is broken
+-  ``'maintenance'`` means regular maintenance, and the ``eta`` field should contain the datetime when the exchange is expected to be operational again
+
 Trading Fees
 ~~~~~~~~~~~~
 
@@ -3367,7 +3402,7 @@ Ledger Entry Structure
 .. code:: javascript
 
    {
-       'id': 'string-id',                      // id of the ledger entry, a string
+       'id': 'hqfl-f125f9l2c9',                // string id of the ledger entry, e.g. an order id
        'direction': 'out',                     // or 'in'
        'account': '06d4ab58-dfcd-468a',        // string id of the account if any
        'referenceId': 'bf7a-d4441fb3fd31',     // string id of the trade, transaction, etc...
