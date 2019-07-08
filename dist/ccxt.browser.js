@@ -45800,8 +45800,8 @@ module.exports = class gemini extends Exchange {
         };
         const ticker = await this.publicGetPubtickerSymbol (this.extend (request, params));
         const timestamp = this.safeInteger (ticker['volume'], 'timestamp');
-        const baseVolume = this.safeFloat (market, 'base');
-        const quoteVolume = this.safeFloat (market, 'quote');
+        const baseCurrency = market['base']; // unified structures are guaranteed to have unified fields
+        const quoteCurrency = market['quote']; // so we don't need safe-methods for unified structures
         const last = this.safeFloat (ticker, 'last');
         return {
             'symbol': symbol,
@@ -45821,8 +45821,8 @@ module.exports = class gemini extends Exchange {
             'change': undefined,
             'percentage': undefined,
             'average': undefined,
-            'baseVolume': this.safeFloat (ticker['volume'], baseVolume),
-            'quoteVolume': this.safeFloat (ticker['volume'], quoteVolume),
+            'baseVolume': this.safeFloat (ticker['volume'], baseCurrency),
+            'quoteVolume': this.safeFloat (ticker['volume'], quoteCurrency),
             'info': ticker,
         };
     }
