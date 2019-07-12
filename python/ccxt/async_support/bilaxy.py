@@ -31,10 +31,7 @@ class bilaxy (Exchange):
             'rateLimit': 500,
             'has': {
                 'fetchDepositAddress': True,
-                'createLimitOrder': True,
                 'createMarketOrder': False,
-                'createOrder': True,
-                'fetchBalance': True,
                 'fetchBidsAsks': True,
                 'fetchClosedOrders': True,
                 'fetchOpenOrders': True,

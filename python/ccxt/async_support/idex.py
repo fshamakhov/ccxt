@@ -17,8 +17,6 @@ class idex (Exchange):
             'countries': ['JP', 'MT'],  # Japan, Malta
             'rateLimit': 500,
             'has': {
-                'createLimitOrder': False,
-                'createMarketOrder': False,
                 'fetchTickers': True,
                 'withdraw': True,
             },

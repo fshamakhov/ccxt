@@ -16,8 +16,6 @@ class idex extends Exchange {
             'countries' => array ( 'JP', 'MT' ), // Japan, Malta
             'rateLimit' => 500,
             'has' => array (
-                'createLimitOrder' => false,
-                'createMarketOrder' => false,
                 'fetchTickers' => true,
                 'withdraw' => true,
             ),
