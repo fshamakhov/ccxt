@@ -16,10 +16,7 @@ module.exports = class bilaxy extends Exchange {
             'rateLimit': 500,
             'has': {
                 'fetchDepositAddress': true,
-                'createLimitOrder': true,
                 'createMarketOrder': false,
-                'createOrder': true,
-                'fetchBalance': true,
                 'fetchBidsAsks': true,
                 'fetchClosedOrders': true,
                 'fetchOpenOrders': true,
