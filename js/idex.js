@@ -14,8 +14,6 @@ module.exports = class idex extends Exchange {
             'countries': [ 'JP', 'MT' ], // Japan, Malta
             'rateLimit': 500,
             'has': {
-                'createLimitOrder': false,
-                'createMarketOrder': false,
                 'fetchTickers': true,
                 'withdraw': true,
             },
