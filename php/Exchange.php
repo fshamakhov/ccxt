@@ -34,7 +34,7 @@ use kornrunner\Eth;
 use kornrunner\Secp256k1;
 use kornrunner\Solidity;
 
-$version = '1.18.908';
+$version = '1.18.926';
 
 // rounding mode
 const TRUNCATE = 0;
@@ -51,7 +51,7 @@ const PAD_WITH_ZERO = 1;
 
 class Exchange {
 
-    const VERSION = '1.18.908';
+    const VERSION = '1.18.926';
 
     public static $eth_units = array (
         'wei'        => '1',
@@ -102,7 +102,6 @@ class Exchange {
         'bithumb',
         'bitkk',
         'bitlish',
-        'bitmarket',
         'bitmex',
         'bitso',
         'bitstamp',
@@ -123,7 +122,6 @@ class Exchange {
         'buda',
         'bxinth',
         'cex',
-        'chbtc',
         'chilebit',
         'cobinhood',
         'coinbase',
@@ -138,7 +136,6 @@ class Exchange {
         'coingi',
         'coinmarketcap',
         'coinmate',
-        'coinnest',
         'coinone',
         'coinspot',
         'cointiger',
@@ -366,16 +363,23 @@ class Exchange {
         return mb_strtoupper(mb_substr($string, 0, 1)) . mb_substr($string, 1);
     }
 
+    public static function is_associative($array) {
+        return count(array_filter(array_keys($array), 'is_string')) > 0;
+    }
+
     public static function omit($array, $keys) {
-        $result = $array;
-        if (is_array($keys)) {
-            foreach ($keys as $key) {
-                unset($result[$key]);
+        if (static::is_associative($array)) {
+            $result = $array;
+            if (is_array($keys)) {
+                foreach ($keys as $key) {
+                    unset($result[$key]);
+                }
+            } else {
+                unset($result[$keys]);
             }
-        } else {
-            unset($result[$keys]);
+            return $result;
         }
-        return $result;
+        return $array;
     }
 
     public static function unique($array) {
@@ -472,9 +476,11 @@ class Exchange {
     }
 
     public static function implode_params($string, $params) {
-        foreach ($params as $key => $value) {
-            if (gettype($value) !== 'array') {
-                $string = implode($value, mb_split('{' . preg_quote($key) . '}', $string));
+        if (static::is_associative($params)) {
+            foreach ($params as $key => $value) {
+                if (gettype($value) !== 'array') {
+                    $string = implode($value, mb_split('{' . preg_quote($key) . '}', $string));
+                }
             }
         }
         return $string;
@@ -584,7 +590,7 @@ class Exchange {
         if ($timestamp < 0) {
             return null;
         }
-        $result = date('c', (int) floor($timestamp / 1000));
+        $result = gmdate('c', (int) floor($timestamp / 1000));
         $msec = (int) $timestamp % 1000;
         $result = str_replace('+00:00', sprintf('.%03dZ', $msec), $result);
         return $result;
@@ -1304,8 +1310,10 @@ class Exchange {
                     )) . ')';
                 throw new ExchangeNotAvailable(implode(' ', array($url, $method, $http_status_code, $result, $details)));
             }
-            $namespaced = 'ccxt\\' . $error_class;
-            throw new $namespaced(implode(' ', array($url, $method, $http_status_code, $result)));
+            if (substr($error_class, 0, 6) !== '\\ccxt\\') {
+                $error_class = '\\ccxt\\' . $error_class;
+            }
+            throw new $error_class(implode(' ', array($url, $method, $http_status_code, $result)));
         }
 
         if (!$json_response) {
@@ -1324,8 +1332,10 @@ class Exchange {
                 $error_class = 'DDosProtection';
             }
             if ($error_class !== null) {
-                $namespaced = 'ccxt\\' . $error_class;
-                throw new $namespaced(implode(' ', array($url, $method, $http_status_code, 'not accessible from this location at the moment', $details)));
+                if (substr($error_class, 0, 6) !== '\\ccxt\\') {
+                    $error_class = '\\ccxt\\' . $error_class;
+                }
+                throw new $error_class(implode(' ', array($url, $method, $http_status_code, 'not accessible from this location at the moment', $details)));
             }
         }
 
@@ -1426,8 +1436,7 @@ class Exchange {
     }
 
     public function parse_ohlcv($ohlcv, $market = null, $timeframe = 60, $since = null, $limit = null) {
-        return ('array' === gettype($ohlcv) && 0 == count(array_filter(array_keys($ohlcv), 'is_string'))) ?
-            array_slice($ohlcv, 0, 6) : $ohlcv;
+        return ('array' === gettype($ohlcv) && !static::is_associative($ohlcv)) ? array_slice($ohlcv, 0, 6) : $ohlcv;
     }
 
     public function parseOHLCV($ohlcv, $market = null, $timeframe = 60, $since = null, $limit = null) {
@@ -2224,10 +2233,9 @@ class Exchange {
         if (!isset($market)) {
             $market = $this->find_market($string);
         }
-        if ((gettype($market) === 'array') && (count(array_filter(array_keys($market), 'is_string')) !== 0)) {
+        if ((gettype($market) === 'array') && static::is_associative($market)) {
             return $market['symbol'];
         }
-
         return $string;
     }
 

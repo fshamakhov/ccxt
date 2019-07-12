@@ -22,7 +22,7 @@
 
 # ----------------------------------------------------------------------------
 
-__version__ = '1.18.908'
+__version__ = '1.18.926'
 
 # ----------------------------------------------------------------------------
 
@@ -86,7 +86,6 @@ from ccxt.bitforex import bitforex                          # noqa: F401
 from ccxt.bithumb import bithumb                            # noqa: F401
 from ccxt.bitkk import bitkk                                # noqa: F401
 from ccxt.bitlish import bitlish                            # noqa: F401
-from ccxt.bitmarket import bitmarket                        # noqa: F401
 from ccxt.bitmex import bitmex                              # noqa: F401
 from ccxt.bitso import bitso                                # noqa: F401
 from ccxt.bitstamp import bitstamp                          # noqa: F401
@@ -107,7 +106,6 @@ from ccxt.btcturk import btcturk                            # noqa: F401
 from ccxt.buda import buda                                  # noqa: F401
 from ccxt.bxinth import bxinth                              # noqa: F401
 from ccxt.cex import cex                                    # noqa: F401
-from ccxt.chbtc import chbtc                                # noqa: F401
 from ccxt.chilebit import chilebit                          # noqa: F401
 from ccxt.cobinhood import cobinhood                        # noqa: F401
 from ccxt.coinbase import coinbase                          # noqa: F401
@@ -122,7 +120,6 @@ from ccxt.coinfloor import coinfloor                        # noqa: F401
 from ccxt.coingi import coingi                              # noqa: F401
 from ccxt.coinmarketcap import coinmarketcap                # noqa: F401
 from ccxt.coinmate import coinmate                          # noqa: F401
-from ccxt.coinnest import coinnest                          # noqa: F401
 from ccxt.coinone import coinone                            # noqa: F401
 from ccxt.coinspot import coinspot                          # noqa: F401
 from ccxt.cointiger import cointiger                        # noqa: F401
@@ -217,7 +214,6 @@ exchanges = [
     'bithumb',
     'bitkk',
     'bitlish',
-    'bitmarket',
     'bitmex',
     'bitso',
     'bitstamp',
@@ -238,7 +234,6 @@ exchanges = [
     'buda',
     'bxinth',
     'cex',
-    'chbtc',
     'chilebit',
     'cobinhood',
     'coinbase',
@@ -253,7 +248,6 @@ exchanges = [
     'coingi',
     'coinmarketcap',
     'coinmate',
-    'coinnest',
     'coinone',
     'coinspot',
     'cointiger',
