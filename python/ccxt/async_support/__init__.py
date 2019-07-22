@@ -4,7 +4,7 @@
 
 # -----------------------------------------------------------------------------
 
-__version__ = '1.18.926'
+__version__ = '1.18.965'
 
 # -----------------------------------------------------------------------------
 
@@ -78,7 +78,6 @@ from ccxt.async_support.braziliex import braziliex                        # noqa
 from ccxt.async_support.btcalpha import btcalpha                          # noqa: F401
 from ccxt.async_support.btcbox import btcbox                              # noqa: F401
 from ccxt.async_support.btcchina import btcchina                          # noqa: F401
-from ccxt.async_support.btcexchange import btcexchange                    # noqa: F401
 from ccxt.async_support.btcmarkets import btcmarkets                      # noqa: F401
 from ccxt.async_support.btctradeim import btctradeim                      # noqa: F401
 from ccxt.async_support.btctradeua import btctradeua                      # noqa: F401
@@ -121,7 +120,6 @@ from ccxt.async_support.fybse import fybse                                # noqa
 from ccxt.async_support.gateio import gateio                              # noqa: F401
 from ccxt.async_support.gdax import gdax                                  # noqa: F401
 from ccxt.async_support.gemini import gemini                              # noqa: F401
-from ccxt.async_support.hadax import hadax                                # noqa: F401
 from ccxt.async_support.hitbtc import hitbtc                              # noqa: F401
 from ccxt.async_support.hitbtc2 import hitbtc2                            # noqa: F401
 from ccxt.async_support.huobipro import huobipro                          # noqa: F401
@@ -204,7 +202,6 @@ exchanges = [
     'btcalpha',
     'btcbox',
     'btcchina',
-    'btcexchange',
     'btcmarkets',
     'btctradeim',
     'btctradeua',
@@ -247,7 +244,6 @@ exchanges = [
     'gateio',
     'gdax',
     'gemini',
-    'hadax',
     'hitbtc',
     'hitbtc2',
     'huobipro',

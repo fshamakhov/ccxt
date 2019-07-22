@@ -1005,10 +1005,18 @@ class kucoin (Exchange):
             request['memo'] = tag
         response = self.privatePostWithdrawals(self.extend(request, params))
         #
-        # {"withdrawalId": "5bffb63303aa675e8bbe18f9"}
+        # https://github.com/ccxt/ccxt/issues/5558
         #
+        #     {
+        #         "code":  200000,
+        #         "data": {
+        #             "withdrawalId":  "abcdefghijklmnopqrstuvwxyz"
+        #         }
+        #     }
+        #
+        data = self.safe_value(response, 'data', {})
         return {
-            'id': self.safe_string(response, 'withdrawalId'),
+            'id': self.safe_string(data, 'withdrawalId'),
             'info': response,
         }
 
@@ -1248,7 +1256,7 @@ class kucoin (Exchange):
             balance = data[i]
             currencyId = self.safe_string(balance, 'currency')
             code = self.safe_currency_code(currencyId)
-            account = {}
+            account = self.account()
             account['total'] = self.safe_float(balance, 'balance')
             account['free'] = self.safe_float(balance, 'available')
             account['used'] = self.safe_float(balance, 'holds')
