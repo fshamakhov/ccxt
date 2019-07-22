@@ -22,7 +22,7 @@
 
 # ----------------------------------------------------------------------------
 
-__version__ = '1.18.926'
+__version__ = '1.18.965'
 
 # ----------------------------------------------------------------------------
 
@@ -97,7 +97,6 @@ from ccxt.braziliex import braziliex                        # noqa: F401
 from ccxt.btcalpha import btcalpha                          # noqa: F401
 from ccxt.btcbox import btcbox                              # noqa: F401
 from ccxt.btcchina import btcchina                          # noqa: F401
-from ccxt.btcexchange import btcexchange                    # noqa: F401
 from ccxt.btcmarkets import btcmarkets                      # noqa: F401
 from ccxt.btctradeim import btctradeim                      # noqa: F401
 from ccxt.btctradeua import btctradeua                      # noqa: F401
@@ -140,7 +139,6 @@ from ccxt.fybse import fybse                                # noqa: F401
 from ccxt.gateio import gateio                              # noqa: F401
 from ccxt.gdax import gdax                                  # noqa: F401
 from ccxt.gemini import gemini                              # noqa: F401
-from ccxt.hadax import hadax                                # noqa: F401
 from ccxt.hitbtc import hitbtc                              # noqa: F401
 from ccxt.hitbtc2 import hitbtc2                            # noqa: F401
 from ccxt.huobipro import huobipro                          # noqa: F401
@@ -223,7 +221,6 @@ exchanges = [
     'btcalpha',
     'btcbox',
     'btcchina',
-    'btcexchange',
     'btcmarkets',
     'btctradeim',
     'btctradeua',
@@ -266,7 +263,6 @@ exchanges = [
     'gateio',
     'gdax',
     'gemini',
-    'hadax',
     'hitbtc',
     'hitbtc2',
     'huobipro',

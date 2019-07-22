@@ -80,11 +80,8 @@ class kraken (Exchange):
                     'zendesk': 'https://support.kraken.com/hc/en-us/articles/',
                 },
                 'www': 'https://www.kraken.com',
-                'doc': [
-                    'https://www.kraken.com/en-us/help/api',
-                    'https://github.com/nothingisdead/npm-kraken-api',
-                ],
-                'fees': 'https://www.kraken.com/en-us/help/fees',
+                'doc': 'https://www.kraken.com/features/api',
+                'fees': 'https://www.kraken.com/en-us/features/fee-schedule',
             },
             'fees': {
                 'trading': {
@@ -767,20 +764,14 @@ class kraken (Exchange):
 
     def fetch_balance(self, params={}):
         response = self.privatePostBalance(params)
-        balances = self.safe_value(response, 'result')
-        if balances is None:
-            raise ExchangeNotAvailable(self.id + ' fetchBalance failed due to a malformed response ' + self.json(response))
+        balances = self.safe_value(response, 'result', {})
         result = {'info': balances}
         currencyIds = list(balances.keys())
         for i in range(0, len(currencyIds)):
             currencyId = currencyIds[i]
             code = self.safe_currency_code(currencyId)
-            balance = self.safe_float(balances, currencyId)
-            account = {
-                'free': balance,
-                'used': 0.0,
-                'total': balance,
-            }
+            account = self.account()
+            account['total'] = self.safe_float(balances, currencyId)
             result[code] = account
         return self.parse_balance(result)
 
