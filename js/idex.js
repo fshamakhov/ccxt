@@ -61,7 +61,7 @@ module.exports = class idex extends Exchange {
                 },
             },
             'requiredCredentials': {
-                'apiKey': false,
+                'apiKey': true,
                 'secret': false,
                 'uid': false,
                 'login': false,
@@ -560,15 +560,23 @@ module.exports = class idex extends Exchange {
     sign (path, api = 'public', method = 'GET', params = {}, headers = undefined, body = undefined) {
         let url = this.urls['api'][api];
         url += '/' + path;
+        if (headers === undefined) {
+            headers = {};
+        }
+        if (api !== 'public') {
+            this.checkRequiredCredentials ();
+            headers = this.extend (headers, {
+                'API-Key': this.apiKey,
+            });
+        }
         if (method === 'GET') {
             if (Object.keys (params).length) {
                 url += '?' + this.urlencode (params);
             }
         } else {
-            headers = { 'Content-Type': 'application/json' };
-            if (api !== 'public') {
-                this.checkRequiredCredentials ();
-            }
+            headers = this.extend (headers, {
+                'Content-Type': 'application/json',
+            });
             body = this.json (params);
         }
         return { 'url': url, 'method': method, 'body': body, 'headers': headers };

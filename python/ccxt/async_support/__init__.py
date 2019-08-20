@@ -4,7 +4,7 @@
 
 # -----------------------------------------------------------------------------
 
-__version__ = '1.18.965'
+__version__ = '1.18.1071'
 
 # -----------------------------------------------------------------------------
 
@@ -67,6 +67,7 @@ from ccxt.async_support.bitforex import bitforex                          # noqa
 from ccxt.async_support.bithumb import bithumb                            # noqa: F401
 from ccxt.async_support.bitkk import bitkk                                # noqa: F401
 from ccxt.async_support.bitlish import bitlish                            # noqa: F401
+from ccxt.async_support.bitmart import bitmart                            # noqa: F401
 from ccxt.async_support.bitmex import bitmex                              # noqa: F401
 from ccxt.async_support.bitso import bitso                                # noqa: F401
 from ccxt.async_support.bitstamp import bitstamp                          # noqa: F401
@@ -108,6 +109,7 @@ from ccxt.async_support.coss import coss                                  # noqa
 from ccxt.async_support.crex24 import crex24                              # noqa: F401
 from ccxt.async_support.crypton import crypton                            # noqa: F401
 from ccxt.async_support.deribit import deribit                            # noqa: F401
+from ccxt.async_support.digifinex import digifinex                        # noqa: F401
 from ccxt.async_support.dsx import dsx                                    # noqa: F401
 from ccxt.async_support.dx import dx                                      # noqa: F401
 from ccxt.async_support.ethfinex import ethfinex                          # noqa: F401
@@ -136,8 +138,8 @@ from ccxt.async_support.kucoin import kucoin                              # noqa
 from ccxt.async_support.kucoin2 import kucoin2                            # noqa: F401
 from ccxt.async_support.kuna import kuna                                  # noqa: F401
 from ccxt.async_support.lakebtc import lakebtc                            # noqa: F401
+from ccxt.async_support.latoken import latoken                            # noqa: F401
 from ccxt.async_support.lbank import lbank                                # noqa: F401
-from ccxt.async_support.liqui import liqui                                # noqa: F401
 from ccxt.async_support.liquid import liquid                              # noqa: F401
 from ccxt.async_support.livecoin import livecoin                          # noqa: F401
 from ccxt.async_support.luno import luno                                  # noqa: F401
@@ -193,6 +195,7 @@ exchanges = [
     'bithumb',
     'bitkk',
     'bitlish',
+    'bitmart',
     'bitmex',
     'bitso',
     'bitstamp',
@@ -234,6 +237,7 @@ exchanges = [
     'crex24',
     'crypton',
     'deribit',
+    'digifinex',
     'dsx',
     'dx',
     'ethfinex',
@@ -262,8 +266,8 @@ exchanges = [
     'kucoin2',
     'kuna',
     'lakebtc',
+    'latoken',
     'lbank',
-    'liqui',
     'liquid',
     'livecoin',
     'luno',

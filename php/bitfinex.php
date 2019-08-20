@@ -284,6 +284,7 @@ class bitfinex extends Exchange {
                 'DAD' => 'DADI',
                 'DAT' => 'DATA',
                 'DSH' => 'DASH',
+                'DRK' => 'DRK',
                 'GSD' => 'GUSD',
                 'HOT' => 'Hydro Protocol',
                 'IOS' => 'IOST',
@@ -655,10 +656,7 @@ class bitfinex extends Exchange {
             $timestamp = intval ($timestamp) * 1000;
         }
         $type = null;
-        $side = $this->safe_string($trade, 'type');
-        if ($side !== null) {
-            $side = strtolower($side);
-        }
+        $side = $this->safe_string_lower($trade, 'type');
         $orderId = $this->safe_string($trade, 'order_id');
         $price = $this->safe_float($trade, 'price');
         $amount = $this->safe_float($trade, 'amount');
@@ -1036,10 +1034,7 @@ class bitfinex extends Exchange {
         }
         $currencyId = $this->safe_string($transaction, 'currency');
         $code = $this->safe_currency_code($currencyId, $currency);
-        $type = $this->safe_string($transaction, 'type'); // DEPOSIT or WITHDRAWAL
-        if ($type !== null) {
-            $type = strtolower($type);
-        }
+        $type = $this->safe_string_lower($transaction, 'type'); // DEPOSIT or WITHDRAWAL
         $status = $this->parse_transaction_status ($this->safe_string($transaction, 'status'));
         $feeCost = $this->safe_float($transaction, 'fee');
         if ($feeCost !== null) {

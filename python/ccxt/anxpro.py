@@ -25,6 +25,7 @@ class anxpro (Exchange):
             'name': 'ANXPro',
             'countries': ['JP', 'SG', 'HK', 'NZ'],
             'rateLimit': 1500,
+            'userAgent': self.userAgents['chrome'],
             'has': {
                 'CORS': False,
                 'fetchCurrencies': True,
@@ -441,8 +442,7 @@ class anxpro (Exchange):
         price = self.safe_float(trade, 'price')
         amount = self.safe_float(trade, 'tradedCurrencyFillAmount')
         cost = self.safe_float(trade, 'settlementCurrencyFillAmount')
-        side = self.safe_string(trade, 'side')
-        side = None if (side is None) else side.lower()
+        side = self.safe_string_lower(trade, 'side')
         return {
             'id': id,
             'order': orderId,
@@ -460,8 +460,9 @@ class anxpro (Exchange):
 
     def fetch_currencies(self, params={}):
         response = self.v3publicGetCurrencyStatic(params)
-        result = {}
-        currencies = response['currencyStatic']['currencies']
+        #
+        #   {
+        #     "currencyStatic": {
         #       "currencies": {
         #         "HKD": {
         #           "decimals": 2,
@@ -510,6 +511,35 @@ class anxpro (Exchange):
         #           "assetIcon": "/images/currencies/crypto/ETH.svg"
         #         },
         #       },
+        #       "currencyPairs": {
+        #         "ETHUSD": {
+        #           "priceDecimals": 5,
+        #           "engineSettings": {
+        #             "tradingEnabled": True,
+        #             "displayEnabled": True,
+        #             "cancelOnly": True,
+        #             "verifyRequired": False,
+        #             "restrictedBuy": False,
+        #             "restrictedSell": False
+        #           },
+        #           "minOrderRate": 10.00000000,
+        #           "maxOrderRate": 10000.00000000,
+        #           "displayPriceDecimals": 5,
+        #           "tradedCcy": "ETH",
+        #           "settlementCcy": "USD",
+        #           "preferredMarket": "ANX",
+        #           "chartEnabled": True,
+        #           "simpleTradeEnabled": False
+        #         },
+        #       },
+        #     },
+        #     "timestamp": "1549840691039",
+        #     "resultCode": "OK"
+        #   }
+        #
+        currencyStatic = self.safe_value(response, 'currencyStatic', {})
+        currencies = self.safe_value(currencyStatic, 'currencies', {})
+        result = {}
         ids = list(currencies.keys())
         for i in range(0, len(ids)):
             id = ids[i]
@@ -522,9 +552,7 @@ class anxpro (Exchange):
             active = depositsEnabled and withdrawalsEnabled and displayEnabled
             precision = self.safe_integer(currency, 'decimals')
             fee = self.safe_float(currency, 'networkFee')
-            type = self.safe_string(currency, 'type')
-            if type != 'None':
-                type = type.lower()
+            type = self.safe_string_lower(currency, 'type')
             result[code] = {
                 'id': id,
                 'code': code,
@@ -729,8 +757,7 @@ class anxpro (Exchange):
         }
         response = self.publicGetCurrencyPairMoneyDepthFull(self.extend(request, params))
         orderbook = self.safe_value(response, 'data', {})
-        t = self.safe_integer(orderbook, 'dataUpdateTime')
-        timestamp = t if (t is None) else int(t / 1000)
+        timestamp = self.safe_integer_product(orderbook, 'dataUpdateTime', 0.001)
         return self.parse_order_book(orderbook, timestamp, 'bids', 'asks', 'price', 'amount')
 
     def fetch_ticker(self, symbol, params={}):
@@ -740,8 +767,7 @@ class anxpro (Exchange):
         }
         response = self.publicGetCurrencyPairMoneyTicker(self.extend(request, params))
         ticker = self.safe_value(response, 'data', {})
-        t = self.safe_integer(ticker, 'dataUpdateTime')
-        timestamp = t if (t is None) else int(t / 1000)
+        timestamp = self.safe_integer_product(ticker, 'dataUpdateTime', 0.001)
         bid = self.safe_float(ticker['buy'], 'value')
         ask = self.safe_float(ticker['sell'], 'value')
         baseVolume = self.safe_float(ticker['vol'], 'value')
@@ -896,7 +922,7 @@ class anxpro (Exchange):
         lastTradeTimestamp = None
         trades = []
         filled = 0
-        type = self.safe_string(order, 'orderType').lower()
+        type = self.safe_string_lower(order, 'orderType')
         for i in range(0, len(order['trades'])):
             trade = order['trades'][i]
             tradeTimestamp = self.safe_integer(trade, 'timestamp')
