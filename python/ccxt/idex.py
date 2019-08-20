@@ -64,7 +64,7 @@ class idex (Exchange):
                 },
             },
             'requiredCredentials': {
-                'apiKey': False,
+                'apiKey': True,
                 'secret': False,
                 'uid': False,
                 'login': False,
@@ -518,13 +518,20 @@ class idex (Exchange):
     def sign(self, path, api='public', method='GET', params={}, headers=None, body=None):
         url = self.urls['api'][api]
         url += '/' + path
+        if headers is None:
+            headers = {}
+        if api != 'public':
+            self.check_required_credentials()
+            headers = self.extend(headers, {
+                'API-Key': self.apiKey,
+            })
         if method == 'GET':
             if params:
                 url += '?' + self.urlencode(params)
         else:
-            headers = {'Content-Type': 'application/json'}
-            if api != 'public':
-                self.check_required_credentials()
+            headers = self.extend(headers, {
+                'Content-Type': 'application/json',
+            })
             body = self.json(params)
         return {'url': url, 'method': method, 'body': body, 'headers': headers}
 

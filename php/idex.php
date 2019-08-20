@@ -63,7 +63,7 @@ class idex extends Exchange {
                 ),
             ),
             'requiredCredentials' => array (
-                'apiKey' => false,
+                'apiKey' => true,
                 'secret' => false,
                 'uid' => false,
                 'login' => false,
@@ -562,15 +562,23 @@ class idex extends Exchange {
     public function sign ($path, $api = 'public', $method = 'GET', $params = array (), $headers = null, $body = null) {
         $url = $this->urls['api'][$api];
         $url .= '/' . $path;
+        if ($headers === null) {
+            $headers = array();
+        }
+        if ($api !== 'public') {
+            $this->check_required_credentials();
+            $headers = array_merge ($headers, array (
+                'API-Key' => $this->apiKey,
+            ));
+        }
         if ($method === 'GET') {
             if ($params) {
                 $url .= '?' . $this->urlencode ($params);
             }
         } else {
-            $headers = array( 'Content-Type' => 'application/json' );
-            if ($api !== 'public') {
-                $this->check_required_credentials();
-            }
+            $headers = array_merge ($headers, array (
+                'Content-Type' => 'application/json',
+            ));
             $body = $this->json ($params);
         }
         return array( 'url' => $url, 'method' => $method, 'body' => $body, 'headers' => $headers );
