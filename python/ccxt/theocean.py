@@ -29,7 +29,6 @@ class theocean (Exchange):
             'countries': ['US'],
             'rateLimit': 3000,
             'version': 'v1',
-            'certified': True,
             'requiresWeb3': True,
             'timeframes': {
                 '5m': '300',
@@ -185,7 +184,7 @@ class theocean (Exchange):
     def parse_ohlcv(self, ohlcv, market=None, timeframe='5m', since=None, limit=None):
         baseDecimals = self.safe_integer(self.options['decimals'], market['base'], 18)
         return [
-            self.safe_integer(ohlcv, 'startTime') * 1000,
+            self.safe_timestamp(ohlcv, 'startTime'),
             self.safe_float(ohlcv, 'open'),
             self.safe_float(ohlcv, 'high'),
             self.safe_float(ohlcv, 'low'),
