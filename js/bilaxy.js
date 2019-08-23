@@ -306,6 +306,9 @@ module.exports = class bilaxy extends Exchange {
     }
 
     handleErrors (code, reason, url, method, headers, body, response) {
+        if (response === undefined) {
+            throw new ExchangeError (this.id + ' response is empty.');
+        }
         const exceptions = this.exceptions;
         const bilaxyCode = this.safeString (response, 'code');
         if (bilaxyCode in exceptions) {
