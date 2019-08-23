@@ -307,6 +307,9 @@ class bilaxy extends Exchange {
     }
 
     public function handle_errors ($code, $reason, $url, $method, $headers, $body, $response) {
+        if ($response === null) {
+            throw new ExchangeError($this->id . ' $response is empty.');
+        }
         $exceptions = $this->exceptions;
         $bilaxyCode = $this->safe_string($response, 'code');
         if (is_array($exceptions) && array_key_exists($bilaxyCode, $exceptions)) {

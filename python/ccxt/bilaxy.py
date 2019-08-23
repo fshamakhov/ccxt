@@ -298,6 +298,8 @@ class bilaxy (Exchange):
         return self.parse_balance(result)
 
     def handle_errors(self, code, reason, url, method, headers, body, response):
+        if response is None:
+            raise ExchangeError(self.id + ' response is empty.')
         exceptions = self.exceptions
         bilaxyCode = self.safe_string(response, 'code')
         if bilaxyCode in exceptions:
