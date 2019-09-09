@@ -1405,6 +1405,10 @@ module.exports = class Exchange {
         return this.web3.eth.accounts.privateKeyToAccount (privateKey)
     }
 
+    soliditySha3V2 (array) {
+        return this.soliditySha3 (array)
+    }
+
     soliditySha3 (array) {
         const values = this.solidityValues (array);
         const types = this.solidityTypes (values);

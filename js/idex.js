@@ -426,10 +426,10 @@ module.exports = class idex extends Exchange {
         const args = {
             'orderHash': openOrder['orderHash'],
             'amount': this.toWei (orderAmount),
-            'nonce': nonce,
             'address': this.walletAddress,
+            'nonce': nonce,
         };
-        const raw = this.soliditySha3 ([
+        const raw = this.soliditySha3V2 ([
             args['orderHash'],
             args['amount'],
             args['address'],

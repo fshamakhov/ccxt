@@ -1803,6 +1803,31 @@ class Exchange(object):
     def decryptAccountFromPrivateKey(self, privateKey):
         return self.web3.eth.accounts.privateKeyToAccount(privateKey)
 
+    def solidityTypesV2(self, array):
+        res = []
+        for val in array:
+            if self.web3.isAddress(val):
+                res.append('address')
+            elif isinstance(val, str) and val[:2] == '0x':
+                res.append('bytes')
+            else:
+                res.append('uint256')
+        return res
+
+    def solidityValuesV2(self, array):
+        res = []
+        for val in array:
+            if self.web3.isAddress(val) or (isinstance(val, str) and val[:2] == '0x'):
+                res.append(val)
+            else:
+                res.append(int(val))
+        return res
+
+    def soliditySha3V2(self, array):
+        values = self.solidityValuesV2(array)
+        types = self.solidityTypesV2(values)
+        return self.web3.soliditySha3(types, values).hex()
+
     def soliditySha3(self, array):
         values = self.solidityValues(array)
         types = self.solidityTypes(values)
