@@ -127,9 +127,16 @@ module.exports = class idex extends Exchange {
                 'VNT': 'Vanta Network',
                 'WCT': 'Wealth Chain Token',
             },
-            'currencyAddresses': undefined,
+            'currencyById': undefined,
             'enableLastResponseHeaders': true,
         });
+    }
+
+    getCurrency (currency = '') {
+        if (currency in this.currencyById) {
+            return this.currencyById[currency];
+        }
+        throw new ExchangeError ('Exchange ' + this.id + 'currency ' + currency + ' not found');
     }
 
     async fetchMarkets (params = {}) {
@@ -145,6 +152,7 @@ module.exports = class idex extends Exchange {
             const currency = currencies[i];
             currenciesById[currency['symbol']] = currency;
         }
+        this.currencyById = currenciesById;
         const result = [];
         const limits = {
             'amount': {
@@ -396,6 +404,58 @@ module.exports = class idex extends Exchange {
         return this.parseBalance (result);
     }
 
+    prepareOrderForTrade (orderHash, amount, nonce, params = {}) {
+        const address = this.safeString (this.extend ({ 'address': this.walletAddress }, params), 'address');
+        const orderToSign = {
+            'orderHash': orderHash,
+            'amount': this.toWei (amount),
+            'address': address,
+            'nonce': nonce,
+        };
+        const hash = this.getIdexMarketOrderHash (orderToSign);
+        const signature = this.signMessage (hash, this.privateKey);
+        const request = this.extend (orderToSign, signature);
+        return request;
+    }
+
+    async idexTrade (base, quote, side, amount, nonce, params = {}) {
+        const amountFloat = parseFloat (amount);
+        const symbol = base['symbol'] + '/' + quote['symbol'];
+        const market = this.market (symbol);
+        const request = {
+            'market': market['id'],
+            'count': 100,
+        };
+        const orderbook = await this.publicPostReturnOrderBook (request);
+        let orderbookKey = undefined;
+        if (side === 'buy') {
+            orderbookKey = 'asks';
+        } else if (side === 'sell') {
+            orderbookKey = 'bids';
+        } else {
+            throw new InvalidOrder (this.id + ' invalid side value: ' + side);
+        }
+        let totalAmount = 0;
+        const orders = [];
+        for (let i = 0; i < orderbook[orderbookKey].length; i++) {
+            if (totalAmount >= amountFloat) {
+                break;
+            }
+            const openOrder = orderbook[orderbookKey][i];
+            let orderAmount = this.safeFloat (openOrder, 'amount');
+            if (orderAmount === undefined) {
+                continue;
+            }
+            if (totalAmount + orderAmount > amount) {
+                orderAmount = amount - totalAmount;
+            }
+            totalAmount += orderAmount;
+            const newOrder = this.prepareOrderForTrade (openOrder['orderHash'], orderAmount, nonce, params);
+            orders.push (newOrder);
+        }
+        return await this.privatePostTrade (orders);
+    }
+
     async createOrder (symbol, type, side, amount, price = undefined, params = {}) {
         this.checkRequiredDependencies ();
         await this.loadMarkets ();
@@ -462,9 +522,17 @@ module.exports = class idex extends Exchange {
             //      user: '0x0ab991497116f7f5532a4c2f4f7b1784488628e1' } }
             return this.parseOrder (response, market);
         } else if (type === 'market') {
-            if (!('orderHash' in params)) {
-                throw new ArgumentsRequired (this.id + ' market order requires an order structure such as that in fetchOrderBook()[\'bids\'][0][2], fetchOrder()[\'info\'], or fetchOpenOrders()[0][\'info\']');
+            const currencies = symbol.split ('/');
+            const base = this.getCurrency (currencies[0]);
+            const quote = this.getCurrency (currencies[1]);
+            const nonce = await this.getNonce ();
+            const trade_response = await this.idexTrade (base, quote, side, amount, nonce, params);
+            const result = [];
+            for (let i = 0; i < trade_response.length; i++) {
+                const order = this.parseOrder (trade_response[i], market);
+                result.push (order);
             }
+            return result;
             // { price: '0.000132247803328924',
             //   amount: '19980',
             //   total: '2.6423111105119',
@@ -482,17 +550,6 @@ module.exports = class idex extends Exchange {
             //      expires: 10000,
             //      nonce: 1564656561510,
             //      user: '0xc3f8304270e49b8e8197bfcfd8567b83d9e4479b' } }
-            const orderToSign = {
-                'orderHash': params['orderHash'],
-                'amount': params['params']['amountBuy'],
-                'address': params['params']['user'],
-                'nonce': params['params']['nonce'],
-            };
-            const orderHash = this.getIdexMarketOrderHash (orderToSign);
-            const signature = this.signMessage (orderHash, this.privateKey);
-            const signedOrder = this.extend (orderToSign, signature);
-            signedOrder['address'] = this.walletAddress;
-            signedOrder['nonce'] = await this.getNonce ();
             //   [ {
             //     "amount": "0.07",
             //     "date": "2017-10-13 16:25:36",
@@ -503,8 +560,6 @@ module.exports = class idex extends Exchange {
             //     "orderHash": "0xcfe4018c59e50e0e1964c979e6213ce5eb8c751cbc98a44251eb48a0985adc52",
             //     "uuid": "250d51a0-b033-11e7-9984-a9ab79bb8f35"
             //   } ]
-            const response = await this.privatePostTrade (signedOrder);
-            return this.parseOrders (response, market);
         }
     }
 
@@ -1043,7 +1098,7 @@ module.exports = class idex extends Exchange {
     }
 
     getIdexMarketOrderHash (order) {
-        return this.soliditySha3 ([
+        return this.soliditySha3V2 ([
             order['orderHash'], // address
             order['amount'], // uint256
             order['address'], // address
