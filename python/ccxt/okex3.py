@@ -202,6 +202,7 @@ class okex3 (Exchange):
                         'accounts/{instrument_id}/settings',
                         'accounts/{instrument_id}/ledger',
                         'accounts/{instrument_id}/holds',
+                        'order_algo/{instrument_id}',
                         'orders/{instrument_id}',
                         'orders/{instrument_id}/{order_id}',
                         'orders/{instrument_id}/{client_oid}',
@@ -225,7 +226,9 @@ class okex3 (Exchange):
                     'post': [
                         'accounts/{instrument_id}/leverage',
                         'order',
+                        'order_algo',
                         'orders',
+                        'cancel_algos',
                         'cancel_order/{instrument_id}/{order_id}',
                         'cancel_order/{instrument_id}/{client_oid}',
                         'cancel_batch_orders/{instrument_id}',
@@ -2123,7 +2126,9 @@ class okex3 (Exchange):
             if currencyId is not None:
                 feeWithCurrencyId = self.safe_string(transaction, 'fee')
                 if feeWithCurrencyId is not None:
-                    feeWithoutCurrencyId = feeWithCurrencyId.replace(currencyId, '')
+                    # https://github.com/ccxt/ccxt/pull/5748
+                    lowercaseCurrencyId = currencyId.lower()
+                    feeWithoutCurrencyId = feeWithCurrencyId.replace(lowercaseCurrencyId, '')
                     feeCost = float(feeWithoutCurrencyId)
         # todo parse tags
         return {
@@ -2570,7 +2575,7 @@ class okex3 (Exchange):
         key = self.findBroadlyMatchedKey(auth, path)
         return self.safe_string(auth, key, 'private')
 
-    def handle_errors(self, code, reason, url, method, headers, body, response=None):
+    def handle_errors(self, code, reason, url, method, headers, body, response, requestHeaders, requestBody):
         feedback = self.id + ' ' + body
         if code == 503:
             raise ExchangeError(feedback)

@@ -480,8 +480,8 @@ class digifinex extends Exchange {
             'change' => null,
             'percentage' => $percentage,
             'average' => null,
-            'baseVolume' => $this->safe_float($ticker, 'base_vol'),
-            'quoteVolume' => $this->safe_float($ticker, 'vol'),
+            'baseVolume' => $this->safe_float($ticker, 'vol'),
+            'quoteVolume' => $this->safe_float($ticker, 'base_vol'),
             'info' => $ticker,
         );
     }
@@ -1141,7 +1141,7 @@ class digifinex extends Exchange {
         return $this->ymd ($timestampMS . $timedelta);
     }
 
-    public function handle_errors ($statusCode, $statusText, $url, $method, $responseHeaders, $responseBody, $response) {
+    public function handle_errors ($statusCode, $statusText, $url, $method, $responseHeaders, $responseBody, $response, $requestHeaders, $requestBody) {
         if (!$response) {
             return; // fall back to default error handler
         }
