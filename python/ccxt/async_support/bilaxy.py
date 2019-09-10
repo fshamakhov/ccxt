@@ -297,7 +297,7 @@ class bilaxy (Exchange):
             result[currency] = account
         return self.parse_balance(result)
 
-    def handle_errors(self, code, reason, url, method, headers, body, response):
+    def handle_errors(self, code, reason, url, method, headers, body, response, requestHeaders, requestBody):
         if response is None:
             raise ExchangeError(self.id + ' response is empty.')
         exceptions = self.exceptions

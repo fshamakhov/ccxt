@@ -306,7 +306,7 @@ class bilaxy extends Exchange {
         return $this->parse_balance($result);
     }
 
-    public function handle_errors ($code, $reason, $url, $method, $headers, $body, $response) {
+    public function handle_errors ($code, $reason, $url, $method, $headers, $body, $response, $requestHeaders, $requestBody) {
         if ($response === null) {
             throw new ExchangeError($this->id . ' $response is empty.');
         }
