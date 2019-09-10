@@ -305,7 +305,7 @@ module.exports = class bilaxy extends Exchange {
         return this.parseBalance (result);
     }
 
-    handleErrors (code, reason, url, method, headers, body, response) {
+    handleErrors (code, reason, url, method, headers, body, response, requestHeaders, requestBody) {
         if (response === undefined) {
             throw new ExchangeError (this.id + ' response is empty.');
         }
