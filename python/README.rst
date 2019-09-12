@@ -64,7 +64,7 @@ Certified Cryptocurrency Exchanges
 Supported Cryptocurrency Exchange Markets
 -----------------------------------------
 
-The ccxt library currently supports the following 125 cryptocurrency exchange markets and trading APIs:
+The ccxt library currently supports the following 126 cryptocurrency exchange markets and trading APIs:
 
 +--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 | id                 | name                                                                                       | ver | doc                                                                                             | certified                                                            |
@@ -72,6 +72,8 @@ The ccxt library currently supports the following 125 cryptocurrency exchange ma
 |  _1btcxe           | `1BTCXE <https://1btcxe.com>`__                                                            | \*  | `API <https://1btcxe.com/api-docs.php>`__                                                       |                                                                      |
 +--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 | acx                | `ACX <https://acx.io>`__                                                                   | 2   | `API <https://acx.io/documents/api_v2>`__                                                       |                                                                      |
++--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
+| adara              | `Adara <https://adara.io>`__                                                               | 1   | `API <https://api.adara.io/v1>`__                                                               |                                                                      |
 +--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
 | allcoin            | `Allcoin <https://www.allcoin.com>`__                                                      | 1   | `API <https://www.allcoin.com/api_market/market>`__                                             |                                                                      |
 +--------------------+--------------------------------------------------------------------------------------------+-----+-------------------------------------------------------------------------------------------------+----------------------------------------------------------------------+
@@ -367,14 +369,14 @@ JavaScript (for use with the ``<script>`` tag):
 
 All-in-one browser bundle (dependencies included), served from a CDN of your choice:
 
--  jsDelivr: https://cdn.jsdelivr.net/npm/ccxt@1.18.1126/dist/ccxt.browser.js
--  unpkg: https://unpkg.com/ccxt@1.18.1126/dist/ccxt.browser.js
+-  jsDelivr: https://cdn.jsdelivr.net/npm/ccxt@1.18.1132/dist/ccxt.browser.js
+-  unpkg: https://unpkg.com/ccxt@1.18.1132/dist/ccxt.browser.js
 
 CDNs are not updated in real-time and may have delays. Defaulting to the most recent version without specifying the version number is not recommended. Please, keep in mind that we are not responsible for the correct operation of those CDN servers.
 
 .. code:: html
 
-   <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/ccxt@1.18.1126/dist/ccxt.browser.js"></script>
+   <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/ccxt@1.18.1132/dist/ccxt.browser.js"></script>
 
 Creates a global ``ccxt`` object:
 
