@@ -173,7 +173,7 @@ class bilaxy (Exchange):
     def get_bilaxy_symbol(self, symbol):
         if self.bilaxySymbols is None:
             raise ExchangeError(self.id + ' markets not loaded')
-        if (isinstance(symbol, basestring)) and(symbol in list(self.bilaxySymbols.keys())):
+        if (isinstance(symbol, basestring)) and (symbol in list(self.bilaxySymbols.keys())):
             return self.bilaxySymbols[symbol]
         raise ExchangeError(self.id + ' does not have market symbol ' + symbol)
 
@@ -382,7 +382,7 @@ class bilaxy (Exchange):
                 if self.options['parseOrderToPrecision']:
                     filled = float(self.amount_to_precision(symbol, filled))
                 filled = max(filled, 0.0)
-            if (price is not None) and(filled is not None):
+            if (price is not None) and (filled is not None):
                 cost = price * filled
         id = self.safe_string(order, 'id')
         type = 'limit'  # Bilaxy has only limit orders
