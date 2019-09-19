@@ -406,7 +406,6 @@ class idex (Exchange):
         return request
 
     def idex_trade(self, base, quote, side, amount, nonce, params={}):
-        amountFloat = float(amount)
         symbol = base['symbol'] + '/' + quote['symbol']
         market = self.market(symbol)
         request = {
@@ -424,7 +423,7 @@ class idex (Exchange):
         totalAmount = 0
         orders = []
         for i in range(0, len(orderbook[orderbookKey])):
-            if totalAmount >= amountFloat:
+            if totalAmount >= amount:
                 break
             openOrder = orderbook[orderbookKey][i]
             orderAmount = self.safe_float(openOrder, 'amount')
@@ -506,7 +505,8 @@ class idex (Exchange):
             base = self.get_currency(currencies[0])
             quote = self.get_currency(currencies[1])
             nonce = self.get_nonce()
-            trade_response = self.idex_trade(base, quote, side, amount, nonce, params)
+            amountFloat = float(amount)
+            trade_response = self.idex_trade(base, quote, side, amountFloat, nonce, params)
             result = []
             for i in range(0, len(trade_response)):
                 order = self.parse_order(trade_response[i], market)

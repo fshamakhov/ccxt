@@ -420,7 +420,6 @@ class idex extends Exchange {
     }
 
     public function idex_trade ($base, $quote, $side, $amount, $nonce, $params = array ()) {
-        $amountFloat = floatval ($amount);
         $symbol = $base['symbol'] . '/' . $quote['symbol'];
         $market = $this->market ($symbol);
         $request = array (
@@ -439,7 +438,7 @@ class idex extends Exchange {
         $totalAmount = 0;
         $orders = array();
         for ($i = 0; $i < count ($orderbook[$orderbookKey]); $i++) {
-            if ($totalAmount >= $amountFloat) {
+            if ($totalAmount >= $amount) {
                 break;
             }
             $openOrder = $orderbook[$orderbookKey][$i];
@@ -527,7 +526,8 @@ class idex extends Exchange {
             $base = $this->get_currency ($currencies[0]);
             $quote = $this->get_currency ($currencies[1]);
             $nonce = $this->get_nonce ();
-            $trade_response = $this->idex_trade ($base, $quote, $side, $amount, $nonce, $params);
+            $amountFloat = floatval ($amount);
+            $trade_response = $this->idex_trade ($base, $quote, $side, $amountFloat, $nonce, $params);
             $result = array();
             for ($i = 0; $i < count ($trade_response); $i++) {
                 $order = $this->parse_order($trade_response[$i], $market);
