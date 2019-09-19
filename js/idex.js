@@ -419,7 +419,6 @@ module.exports = class idex extends Exchange {
     }
 
     async idexTrade (base, quote, side, amount, nonce, params = {}) {
-        const amountFloat = parseFloat (amount);
         const symbol = base['symbol'] + '/' + quote['symbol'];
         const market = this.market (symbol);
         const request = {
@@ -438,7 +437,7 @@ module.exports = class idex extends Exchange {
         let totalAmount = 0;
         const orders = [];
         for (let i = 0; i < orderbook[orderbookKey].length; i++) {
-            if (totalAmount >= amountFloat) {
+            if (totalAmount >= amount) {
                 break;
             }
             const openOrder = orderbook[orderbookKey][i];
@@ -526,7 +525,8 @@ module.exports = class idex extends Exchange {
             const base = this.getCurrency (currencies[0]);
             const quote = this.getCurrency (currencies[1]);
             const nonce = await this.getNonce ();
-            const trade_response = await this.idexTrade (base, quote, side, amount, nonce, params);
+            const amountFloat = parseFloat (amount);
+            const trade_response = await this.idexTrade (base, quote, side, amountFloat, nonce, params);
             const result = [];
             for (let i = 0; i < trade_response.length; i++) {
                 const order = this.parseOrder (trade_response[i], market);

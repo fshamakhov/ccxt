@@ -22,7 +22,7 @@
 
 # ----------------------------------------------------------------------------
 
-__version__ = '1.18.1132'
+__version__ = '1.18.1165'
 
 # ----------------------------------------------------------------------------
 
@@ -77,6 +77,7 @@ from ccxt.bigone import bigone                              # noqa: F401
 from ccxt.bilaxy import bilaxy                              # noqa: F401
 from ccxt.binance import binance                            # noqa: F401
 from ccxt.binanceje import binanceje                        # noqa: F401
+from ccxt.binanceus import binanceus                        # noqa: F401
 from ccxt.bit2c import bit2c                                # noqa: F401
 from ccxt.bitbank import bitbank                            # noqa: F401
 from ccxt.bitbay import bitbay                              # noqa: F401
@@ -206,6 +207,7 @@ exchanges = [
     'bilaxy',
     'binance',
     'binanceje',
+    'binanceus',
     'bit2c',
     'bitbank',
     'bitbay',
