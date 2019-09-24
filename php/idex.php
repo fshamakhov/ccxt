@@ -25,6 +25,7 @@ class idex extends Exchange {
                 'fetchBalance' => true,
                 'createOrder' => true,
                 'cancelOrder' => true,
+                'fetchOpenOrders' => true,
                 'fetchTransactions' => true,
                 'fetchTrades' => false,
                 'fetchMyTrades' => true,
@@ -828,7 +829,7 @@ class idex extends Exchange {
             $buy = $this->safe_currency_code($this->safe_string($params, 'tokenBuy'));
             $sell = $this->safe_currency_code($this->safe_string($params, 'tokenSell'));
             if ($buy !== null && $sell !== null) {
-                $symbol = $side === 'buy' ? $buy . '/' . $sell : $sell . '/' . $buy;
+                $symbol = ($side === 'buy') ? ($buy . '/' . $sell) : ($sell . '/' . $buy);
             }
         }
         if ($symbol === null && $market !== null) {
@@ -1012,7 +1013,7 @@ class idex extends Exchange {
             'cost' => $feeCost,
         );
         if ($feeCost !== null && $amount !== null) {
-            $feeCurrencyAmount = $feeCurrency === 'ETH' ? $cost : $amount;
+            $feeCurrencyAmount = ($feeCurrency === 'ETH') ? $cost : $amount;
             $fee['rate'] = $feeCost / $feeCurrencyAmount;
         }
         $orderId = $this->safe_string($trade, 'orderHash');
