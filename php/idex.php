@@ -100,25 +100,25 @@ class idex extends Exchange {
             'idexContractAddress' => null,
             'commonCurrencies' => array (
                 'ACC' => 'Accelerator',
-                'AIC' => 'AKAI',
-                'AMB' => 'Amber',
+                'AIC' => 'Akaiito',
+                'AMB' => 'Amber Token',
                 'BIO' => 'BioCrypt',
                 'BLUE' => 'Ethereum Blue',
                 'BST' => 'Blocksquare Token',
-                'BTT' => 'Blocktrade Token',
+                'BTT' => 'Blocktrade',
                 'CAT2' => 'BitClave',
                 'CCC' => 'Container Crypto Coin',
-                'CRE' => 'Carry',
-                'CST' => 'Cryptosolartech',
+                'CRE' => 'Carry Token',
+                'CST' => 'CryptosolarTech',
                 'EXO' => 'EXOLOVER',
-                'GBX' => 'Globitex',
-                'GENE' => 'Gene Source Code Chain',
-                'GET' => 'GET Protocol',
+                'GBX' => 'Globitex Token',
+                'GENE' => 'GeneSourceCodeChain',
+                'GET' => 'GUTS',
                 'GET2' => 'GET',
                 'IPL' => 'InsurePal',
-                'NTK2' => 'NetKoin',
-                'ONE' => 'Menlo One',
-                'ONG' => 'SoMee.Social',
+                'NTK2' => 'Netkoin',
+                'ONE' => 'Menlo Token',
+                'ONG' => 'onG.social',
                 'PDX' => 'PdxToken',
                 'PRO' => 'ProChain',
                 'PRO2' => 'PRO',
@@ -315,7 +315,7 @@ class idex extends Exchange {
     public function fetch_order_book ($symbol, $limit = null, $params = array ()) {
         $this->load_markets();
         $market = $this->market ($symbol);
-        $id = $market['quote'] . '_' . $market['base'];
+        $id = $market['id'];
         $request = array (
             'market' => $id,
             'count' => 100, // the default will only return one trade
