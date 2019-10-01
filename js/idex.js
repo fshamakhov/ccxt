@@ -99,25 +99,25 @@ module.exports = class idex extends Exchange {
             'idexContractAddress': undefined,
             'commonCurrencies': {
                 'ACC': 'Accelerator',
-                'AIC': 'AKAI',
-                'AMB': 'Amber',
+                'AIC': 'Akaiito',
+                'AMB': 'Amber Token',
                 'BIO': 'BioCrypt',
                 'BLUE': 'Ethereum Blue',
                 'BST': 'Blocksquare Token',
-                'BTT': 'Blocktrade Token',
+                'BTT': 'Blocktrade',
                 'CAT2': 'BitClave',
                 'CCC': 'Container Crypto Coin',
-                'CRE': 'Carry',
-                'CST': 'Cryptosolartech',
+                'CRE': 'Carry Token',
+                'CST': 'CryptosolarTech',
                 'EXO': 'EXOLOVER',
-                'GBX': 'Globitex',
-                'GENE': 'Gene Source Code Chain',
-                'GET': 'GET Protocol',
+                'GBX': 'Globitex Token',
+                'GENE': 'GeneSourceCodeChain',
+                'GET': 'GUTS',
                 'GET2': 'GET',
                 'IPL': 'InsurePal',
-                'NTK2': 'NetKoin',
-                'ONE': 'Menlo One',
-                'ONG': 'SoMee.Social',
+                'NTK2': 'Netkoin',
+                'ONE': 'Menlo Token',
+                'ONG': 'onG.social',
                 'PDX': 'PdxToken',
                 'PRO': 'ProChain',
                 'PRO2': 'PRO',
@@ -314,7 +314,7 @@ module.exports = class idex extends Exchange {
     async fetchOrderBook (symbol, limit = undefined, params = {}) {
         await this.loadMarkets ();
         const market = this.market (symbol);
-        const id = market['quote'] + '_' + market['base'];
+        const id = market['id'];
         const request = {
             'market': id,
             'count': 100, // the default will only return one trade
