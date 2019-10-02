@@ -406,11 +406,22 @@ class idex extends Exchange {
         return $this->parse_balance($result);
     }
 
-    public function prepare_order_for_trade ($orderHash, $amount, $nonce, $params = array ()) {
+    public function prepare_order_for_trade ($order, $amount, $nonce, $side, $params = array ()) {
+        $orderHash = $order['orderHash'];
         $address = $this->safe_string(array_merge (array( 'address' => $this->walletAddress ), $params), 'address');
+        $total = 0;
+        if ($side === 'buy') {
+            $price = $this->safe_float($order, 'price');
+            $total = $amount * $price;
+        } else if ($side === 'sell') {
+            $total = $amount;
+        } else {
+            throw new InvalidOrder($this->id . ' invalid $side value => ' . $side);
+        }
+        $amountBuy = $this->toWei ($total, 'ether', $order['params']['buyPrecision']);
         $orderToSign = array (
             'orderHash' => $orderHash,
-            'amount' => $this->toWei ($amount),
+            'amount' => $amountBuy,
             'address' => $address,
             'nonce' => $nonce,
         );
@@ -451,7 +462,7 @@ class idex extends Exchange {
                 $orderAmount = $amount - $totalAmount;
             }
             $totalAmount .= $orderAmount;
-            $newOrder = $this->prepare_order_for_trade ($openOrder['orderHash'], $orderAmount, $nonce, $params);
+            $newOrder = $this->prepare_order_for_trade ($openOrder, $orderAmount, $nonce, $side, $params);
             $orders[] = $newOrder;
         }
         return $this->privatePostTrade ($orders);

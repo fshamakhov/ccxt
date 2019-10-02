@@ -393,11 +393,21 @@ class idex (Exchange):
             }
         return self.parse_balance(result)
 
-    def prepare_order_for_trade(self, orderHash, amount, nonce, params={}):
+    def prepare_order_for_trade(self, order, amount, nonce, side, params={}):
+        orderHash = order['orderHash']
         address = self.safe_string(self.extend({'address': self.walletAddress}, params), 'address')
+        total = 0
+        if side == 'buy':
+            price = self.safe_float(order, 'price')
+            total = amount * price
+        elif side == 'sell':
+            total = amount
+        else:
+            raise InvalidOrder(self.id + ' invalid side value: ' + side)
+        amountBuy = self.toWei(total, 'ether', order['params']['buyPrecision'])
         orderToSign = {
             'orderHash': orderHash,
-            'amount': self.toWei(amount),
+            'amount': amountBuy,
             'address': address,
             'nonce': nonce,
         }
@@ -433,7 +443,7 @@ class idex (Exchange):
             if totalAmount + orderAmount > amount:
                 orderAmount = amount - totalAmount
             totalAmount += orderAmount
-            newOrder = self.prepare_order_for_trade(openOrder['orderHash'], orderAmount, nonce, params)
+            newOrder = self.prepare_order_for_trade(openOrder, orderAmount, nonce, side, params)
             orders.append(newOrder)
         return await self.privatePostTrade(orders)
 
