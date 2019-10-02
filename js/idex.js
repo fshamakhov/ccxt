@@ -405,11 +405,22 @@ module.exports = class idex extends Exchange {
         return this.parseBalance (result);
     }
 
-    prepareOrderForTrade (orderHash, amount, nonce, params = {}) {
+    prepareOrderForTrade (order, amount, nonce, side, params = {}) {
+        const orderHash = order['orderHash'];
         const address = this.safeString (this.extend ({ 'address': this.walletAddress }, params), 'address');
+        let total = 0;
+        if (side === 'buy') {
+            const price = this.safeFloat (order, 'price');
+            total = amount * price;
+        } else if (side === 'sell') {
+            total = amount;
+        } else {
+            throw new InvalidOrder (this.id + ' invalid side value: ' + side);
+        }
+        const amountBuy = this.toWei (total, 'ether', order['params']['buyPrecision']);
         const orderToSign = {
             'orderHash': orderHash,
-            'amount': this.toWei (amount),
+            'amount': amountBuy,
             'address': address,
             'nonce': nonce,
         };
@@ -450,7 +461,7 @@ module.exports = class idex extends Exchange {
                 orderAmount = amount - totalAmount;
             }
             totalAmount += orderAmount;
-            const newOrder = this.prepareOrderForTrade (openOrder['orderHash'], orderAmount, nonce, params);
+            const newOrder = this.prepareOrderForTrade (openOrder, orderAmount, nonce, side, params);
             orders.push (newOrder);
         }
         return await this.privatePostTrade (orders);
