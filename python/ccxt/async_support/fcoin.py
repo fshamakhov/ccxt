@@ -19,7 +19,7 @@ from ccxt.base.errors import ExchangeNotAvailable
 from ccxt.base.errors import InvalidNonce
 
 
-class fcoin (Exchange):
+class fcoin(Exchange):
 
     def describe(self):
         return self.deep_extend(super(fcoin, self).describe(), {
@@ -518,10 +518,18 @@ class fcoin (Exchange):
             elif (cost > 0) and (filled > 0):
                 price = cost / filled
         feeCurrency = None
-        if market is not None:
-            symbol = market['symbol']
-            feeCurrency = market['base'] if (side == 'buy') else market['quote']
-        feeCost = self.safe_float(order, 'fill_fees')
+        feeCost = None
+        feeRebate = self.safe_float(order, 'fees_income')
+        if (feeRebate is not None) and (feeRebate > 0):
+            if market is not None:
+                symbol = market['symbol']
+                feeCurrency = market['quote'] if (side == 'buy') else market['base']
+            feeCost = -feeRebate
+        else:
+            feeCost = self.safe_float(order, 'fill_fees')
+            if market is not None:
+                symbol = market['symbol']
+                feeCurrency = market['base'] if (side == 'buy') else market['quote']
         return {
             'info': order,
             'id': id,
@@ -585,16 +593,20 @@ class fcoin (Exchange):
             self.safe_float(ohlcv, 'base_vol'),
         ]
 
-    async def fetch_ohlcv(self, symbol, timeframe='1m', since=None, limit=100, params={}):
+    async def fetch_ohlcv(self, symbol, timeframe='1m', since=None, limit=None, params={}):
         await self.load_markets()
-        if limit is None:
-            raise ExchangeError(self.id + ' fetchOHLCV requires a limit argument')
         market = self.market(symbol)
+        if limit is None:
+            limit = 20  # default is 20
         request = {
             'symbol': market['id'],
             'timeframe': self.timeframes[timeframe],
             'limit': limit,
         }
+        if since is not None:
+            sinceInSeconds = int(since / 1000)
+            timerange = limit * self.parse_timeframe(timeframe)
+            request['before'] = self.sum(sinceInSeconds, timerange) - 1
         response = await self.marketGetCandlesTimeframeSymbol(self.extend(request, params))
         return self.parse_ohlcvs(response['data'], market, timeframe, since, limit)
 
@@ -647,7 +659,5 @@ class fcoin (Exchange):
         status = self.safe_string(response, 'status')
         if status != '0' and status != 'ok':
             feedback = self.id + ' ' + body
-            if status in self.exceptions:
-                exceptions = self.exceptions
-                raise exceptions[status](feedback)
+            self.throw_exactly_matched_exception(self.exceptions, status, feedback)
             raise ExchangeError(feedback)

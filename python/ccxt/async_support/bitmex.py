@@ -16,7 +16,7 @@ from ccxt.base.errors import ExchangeNotAvailable
 from ccxt.base.decimal_to_precision import TICK_SIZE
 
 
-class bitmex (Exchange):
+class bitmex(Exchange):
 
     def describe(self):
         return self.deep_extend(super(bitmex, self).describe(), {
@@ -157,6 +157,7 @@ class bitmex (Exchange):
                     'Signature not valid': AuthenticationError,
                     'overloaded': ExchangeNotAvailable,
                     'Account has insufficient Available Balance': InsufficientFunds,
+                    'Service unavailable': ExchangeNotAvailable,  # {"error":{"message":"Service unavailable","name":"HTTPError"}}
                 },
             },
             'precisionMode': TICK_SIZE,
@@ -1173,13 +1174,8 @@ class bitmex (Exchange):
             error = self.safe_value(response, 'error', {})
             message = self.safe_string(error, 'message')
             feedback = self.id + ' ' + body
-            exact = self.exceptions['exact']
-            if message in exact:
-                raise exact[message](feedback)
-            broad = self.exceptions['broad']
-            broadKey = self.findBroadlyMatchedKey(broad, message)
-            if broadKey is not None:
-                raise broad[broadKey](feedback)
+            self.throw_exactly_matched_exception(self.exceptions['exact'], message, feedback)
+            self.throw_broadly_matched_exception(self.exceptions['broad'], message, feedback)
             if code == 400:
                 raise BadRequest(feedback)
             raise ExchangeError(feedback)  # unknown message

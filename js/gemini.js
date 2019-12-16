@@ -79,6 +79,7 @@ module.exports = class gemini extends Exchange {
                         'v1/order/status',
                         'v1/orders',
                         'v1/mytrades',
+                        'v1/notionalvolume',
                         'v1/tradevolume',
                         'v1/transfers',
                         'v1/balances',
@@ -636,14 +637,10 @@ module.exports = class gemini extends Exchange {
     }
 
     handleErrors (httpCode, reason, url, method, headers, body, response, requestHeaders, requestBody) {
-        const broad = this.exceptions['broad'];
         if (response === undefined) {
             if (typeof body === 'string') {
-                const broadKey = this.findBroadlyMatchedKey (broad, body);
                 const feedback = this.id + ' ' + body;
-                if (broadKey !== undefined) {
-                    throw new broad[broadKey] (feedback);
-                }
+                this.throwBroadlyMatchedException (this.exceptions['broad'], body, feedback);
             }
             return; // fallback to default error handler
         }
@@ -659,16 +656,9 @@ module.exports = class gemini extends Exchange {
             const reason = this.safeString (response, 'reason');
             const message = this.safeString (response, 'message');
             const feedback = this.id + ' ' + message;
-            const exact = this.exceptions['exact'];
-            if (reason in exact) {
-                throw new exact[reason] (feedback);
-            } else if (message in exact) {
-                throw new exact[message] (feedback);
-            }
-            const broadKey = this.findBroadlyMatchedKey (broad, message);
-            if (broadKey !== undefined) {
-                throw new broad[broadKey] (feedback);
-            }
+            this.throwExactlyMatchedException (this.exceptions['exact'], reason, feedback);
+            this.throwExactlyMatchedException (this.exceptions['exact'], message, feedback);
+            this.throwBroadlyMatchedException (this.exceptions['broad'], message, feedback);
             throw new ExchangeError (feedback); // unknown message
         }
     }

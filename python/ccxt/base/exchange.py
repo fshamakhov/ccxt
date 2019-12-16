@@ -4,7 +4,7 @@
 
 # -----------------------------------------------------------------------------
 
-__version__ = '1.18.1365'
+__version__ = '1.20.84'
 
 # -----------------------------------------------------------------------------
 
@@ -315,7 +315,7 @@ class Exchange(object):
         self.balance = dict() if self.balance is None else self.balance
         self.orderbooks = dict() if self.orderbooks is None else self.orderbooks
         self.orders = dict() if self.orders is None else self.orders
-        self.trades = dict() if self.trades is None else self.trades
+        self.trades = list() if self.trades is None else self.trades
         self.transactions = dict() if self.transactions is None else self.transactions
         self.currencies = dict() if self.currencies is None else self.currencies
         self.options = dict() if self.options is None else self.options  # Python does not allow to define properties in run-time with setattr
@@ -467,6 +467,15 @@ class Exchange(object):
                 return gzip.GzipFile('', 'rb', 9, io.BytesIO(text)).read()
         return text
 
+    def throw_exactly_matched_exception(self, exact, string, message):
+        if string in exact:
+            raise exact[string](message)
+
+    def throw_broadly_matched_exception(self, broad, string, message):
+        broad_key = self.find_broadly_matched_key(broad, string)
+        if broad_key is not None:
+            raise broad[broad_key](message)
+
     def find_broadly_matched_key(self, broad, string):
         """A helper method for matching error strings exactly vs broadly"""
         keys = list(broad.keys())
@@ -563,7 +572,9 @@ class Exchange(object):
         self.handle_rest_response(http_response, json_response, url, method)
         if json_response is not None:
             return json_response
-        return http_response
+        if self.is_text_response(headers):
+            return http_response
+        return response.content
 
     def handle_rest_errors(self, http_status_code, http_status_text, body, url, method):
         error = None
@@ -593,6 +604,10 @@ class Exchange(object):
                 return json.loads(http_response)
         except ValueError:  # superclass of JsonDecodeError (python2)
             pass
+
+    def is_text_response(self, headers):
+        content_type = headers.get('Content-Type', '')
+        return content_type.startswith('application/json') or content_type.startswith('text/')
 
     @staticmethod
     def key_exists(dictionary, key):
@@ -766,6 +781,7 @@ class Exchange(object):
 
     @staticmethod
     def filter_by(array, key, value=None):
+        array = Exchange.to_array(array)
         return list(filter(lambda x: x[key] == value, array))
 
     @staticmethod
@@ -827,18 +843,15 @@ class Exchange(object):
         return string
 
     @staticmethod
-    def url(path, params={}):
-        result = Exchange.implode_params(path, params)
-        query = Exchange.omit(params, Exchange.extract_params(path))
-        if query:
-            result += '?' + _urlencode.urlencode(query)
-        return result
+    def urlencode(params={}):
+        for key, value in params.items():
+            if isinstance(value, bool):
+                params[key] = 'true' if value else 'false'
+        return _urlencode.urlencode(params)
 
     @staticmethod
-    def urlencode(params={}):
-        if (type(params) is dict) or isinstance(params, collections.OrderedDict):
-            return _urlencode.urlencode(params)
-        return params
+    def urlencode_with_array_repeat(params={}):
+        return re.sub(r'%5B\d*%5D', '', Exchange.urlencode(params))
 
     @staticmethod
     def rawencode(params={}):
@@ -1147,6 +1160,7 @@ class Exchange(object):
                     raise AuthenticationError('requires `' + key + '`')
                 else:
                     return error
+        return True
 
     def check_address(self, address):
         """Checks an address is not the same character repeated or an empty sequence"""
@@ -1669,23 +1683,6 @@ class Exchange(object):
         if isinstance(code, basestring) and (code in self.currencies):
             return self.currencies[code]
         raise ExchangeError('Does not have currency code ' + str(code))
-
-    def find_market(self, string):
-        if not self.markets:
-            raise ExchangeError('Markets not loaded')
-        if isinstance(string, basestring):
-            if string in self.markets_by_id:
-                return self.markets_by_id[string]
-            if string in self.markets:
-                return self.markets[string]
-        return string
-
-    def find_symbol(self, string, market=None):
-        if market is None:
-            market = self.find_market(string)
-        if isinstance(market, dict):
-            return market['symbol']
-        return string
 
     def market(self, symbol):
         if not self.markets:
