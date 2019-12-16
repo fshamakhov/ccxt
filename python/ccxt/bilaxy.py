@@ -21,7 +21,7 @@ from ccxt.base.errors import InvalidOrder
 from ccxt.base.errors import ExchangeNotAvailable
 
 
-class bilaxy (Exchange):
+class bilaxy(Exchange):
 
     def describe(self):
         return self.deep_extend(super(bilaxy, self).describe(), {
@@ -173,7 +173,7 @@ class bilaxy (Exchange):
     def get_bilaxy_symbol(self, symbol):
         if self.bilaxySymbols is None:
             raise ExchangeError(self.id + ' markets not loaded')
-        if (isinstance(symbol, basestring)) and (symbol in list(self.bilaxySymbols.keys())):
+        if (isinstance(symbol, basestring)) and (symbol in self.bilaxySymbols):
             return self.bilaxySymbols[symbol]
         raise ExchangeError(self.id + ' does not have market symbol ' + symbol)
 
