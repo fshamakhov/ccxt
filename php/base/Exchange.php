@@ -35,7 +35,7 @@ use kornrunner\Solidity;
 use Elliptic\EC;
 use BN\BN;
 
-$version = '1.18.1365';
+$version = '1.20.84';
 
 // rounding mode
 const TRUNCATE = 0;
@@ -54,7 +54,7 @@ const PAD_WITH_ZERO = 1;
 
 class Exchange {
 
-    const VERSION = '1.18.1365';
+    const VERSION = '1.20.84';
 
     public static $eth_units = array (
         'wei'        => '1',
@@ -126,6 +126,7 @@ class Exchange {
         'btctradeua',
         'btcturk',
         'buda',
+        'bw',
         'bytetrade',
         'cex',
         'chilebit',
@@ -136,7 +137,6 @@ class Exchange {
         'coincheck',
         'coinegg',
         'coinex',
-        'coinexchange',
         'coinfalcon',
         'coinfloor',
         'coingi',
@@ -144,14 +144,12 @@ class Exchange {
         'coinmate',
         'coinone',
         'coinspot',
-        'cointiger',
         'coolcoin',
         'coss',
         'crex24',
         'deribit',
         'digifinex',
         'dsx',
-        'dx',
         'exmo',
         'exx',
         'fcoin',
@@ -185,7 +183,6 @@ class Exchange {
         'mandala',
         'mercado',
         'mixcoins',
-        'negociecoins',
         'oceanex',
         'okcoincny',
         'okcoinusd',
@@ -195,12 +192,14 @@ class Exchange {
         'poloniex',
         'rightbtc',
         'southxchange',
+        'stex',
         'stronghold',
         'surbitcoin',
         'theocean',
         'therock',
         'tidebit',
         'tidex',
+        'timex',
         'upbit',
         'vaultoro',
         'vbtc',
@@ -594,12 +593,21 @@ class Exchange {
         return preg_replace(array('#[=]+$#u', '#\+#u', '#\\/#'), array('', '-', '_'), \base64_encode($string));
     }
 
-    public function urlencode($string) {
-        return http_build_query($string, '', $this->urlencode_glue);
+    public function urlencode($array) {
+        foreach ($array as $key => $value) {
+            if (is_bool($value)) {
+                $array[$key] = var_export($value, true);
+            }
+        }
+        return http_build_query($array, '', $this->urlencode_glue);
     }
 
-    public function rawencode($string) {
-        return urldecode(http_build_query($string, '', $this->urlencode_glue));
+    public function urlencode_with_array_repeat($array) {
+        return preg_replace('/%5B\d*%5D/', '', $this->urlencode($array));
+    }
+
+    public function rawencode($array) {
+        return urldecode($this->urlencode($array));
     }
 
     public function encode_uri_component($string) {
@@ -750,6 +758,7 @@ class Exchange {
                 }
             }
         }
+        return true;
     }
 
     public function check_address($address) {
@@ -774,10 +783,6 @@ class Exchange {
         return array();
     }
 
-    public function __destruct() {
-        curl_close ($this->curl);
-    }
-
     public function __construct($options = array()) {
         // todo auto-camelcasing for methods in PHP
         // $method_names = get_class_methods ($this);
@@ -796,7 +801,7 @@ class Exchange {
         // }
 
         $this->defined_rest_api = array();
-        $this->curl = curl_init();
+        $this->curl = null;
         $this->curl_options = array(); // overrideable by user, empty by default
 
         $this->id = null;
@@ -1173,6 +1178,27 @@ class Exchange {
         return $this->fetch2($path, $api, $method, $params, $headers, $body);
     }
 
+    public function throwExactlyMatchedException($exact, $string, $message) {
+        return $this->throw_exactly_matched_exception($exact, $string, $message);
+    }
+
+    public function throw_exactly_matched_exception($exact, $string, $message) {
+        if (isset($exact[$string])) {
+            throw new $exact[$string]($message);
+        }
+    }
+
+    public function throwBroadlyMatchedException($broad, $string, $message) {
+        return $this->throw_broadly_matched_exception($broad, $string, $message);
+    }
+
+    public function throw_broadly_matched_exception($broad, $string, $message) {
+        $broad_key = $this->find_broadly_matched_key($broad, $string);
+        if ($broad_key !== null) {
+            throw new $broad[$broad_key]($message);
+        }
+    }
+
     public function findBroadlyMatchedKey($broad, $string) {
         return $this->find_broadly_matched_key($broad, $string);
     }
@@ -1227,7 +1253,11 @@ class Exchange {
         // we don't do a reset here to save those cookies in between the calls
         // if the user wants to reset the curl handle between his requests
         // then curl_reset can be called manually in userland
-        // curl_reset($this->curl);
+        // curl_reset($this->curl); // this was removed because it kills cookies
+        if ($this->curl) {
+            curl_close($this->curl); // we properly close the curl channel here to save cookies
+        }
+        $this->curl = curl_init(); // we need a "clean" curl object for additional calls, so we initialize curl again
 
         curl_setopt($this->curl, CURLOPT_URL, $url);
 
@@ -1426,7 +1456,7 @@ class Exchange {
     public function set_markets($markets, $currencies = null) {
         $values = is_array($markets) ? array_values($markets) : array();
         for ($i = 0; $i < count($values); $i++) {
-            $values[$i] = array_merge(
+            $values[$i] = array_replace_recursive(
                 $this->fees['trading'],
                 array('precision' => $this->precision, 'limits' => $this->limits),
                 $values[$i]
@@ -2305,33 +2335,6 @@ class Exchange {
                         $this->currencies[$code] : $code;
     }
 
-    public function find_market($string) {
-        if (!isset($this->markets)) {
-            throw new ExchangeError($this->id . ' markets not loaded');
-        }
-        if (gettype($string) === 'string') {
-            if (isset($this->markets_by_id[$string])) {
-                return $this->markets_by_id[$string];
-            }
-
-            if (isset($this->markets[$string])) {
-                return $this->markets[$string];
-            }
-        }
-
-        return $string;
-    }
-
-    public function find_symbol($string, $market = null) {
-        if (!isset($market)) {
-            $market = $this->find_market($string);
-        }
-        if ((gettype($market) === 'array') && static::is_associative($market)) {
-            return $market['symbol'];
-        }
-        return $string;
-    }
-
     public function market($symbol) {
         if (!isset($this->markets)) {
             throw new ExchangeError($this->id . ' markets not loaded');
@@ -2762,7 +2765,7 @@ class Exchange {
     }
 
     public function soliditySha3 ($array) {
-        return @call_user_func_array ('\\kornrunner\Solidity::sha3', $array);
+        return @call_user_func_array('\\kornrunner\Solidity::sha3', $array);
     }
 
     public static function totp($key) {

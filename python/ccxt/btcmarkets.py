@@ -14,7 +14,7 @@ from ccxt.base.errors import OrderNotFound
 from ccxt.base.errors import DDoSProtection
 
 
-class btcmarkets (Exchange):
+class btcmarkets(Exchange):
 
     def describe(self):
         return self.deep_extend(super(btcmarkets, self).describe(), {
@@ -684,9 +684,6 @@ class btcmarkets (Exchange):
         if 'success' in response:
             if not response['success']:
                 error = self.safe_string(response, 'errorCode')
-                message = self.id + ' ' + self.json(response)
-                if error in self.exceptions:
-                    ExceptionClass = self.exceptions[error]
-                    raise ExceptionClass(message)
-                else:
-                    raise ExchangeError(message)
+                feedback = self.id + ' ' + body
+                self.throw_exactly_matched_exception(self.exceptions, error, feedback)
+                raise ExchangeError(feedback)
