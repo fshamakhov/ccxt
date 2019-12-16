@@ -23,7 +23,7 @@ from ccxt.base.errors import OrderNotFound
 from ccxt.base.errors import NotSupported
 
 
-class coinbasepro (Exchange):
+class coinbasepro(Exchange):
 
     def describe(self):
         return self.deep_extend(super(coinbasepro, self).describe(), {
@@ -98,6 +98,7 @@ class coinbasepro (Exchange):
                         'coinbase-accounts/{id}/addresses',
                         'fills',
                         'funding',
+                        'fees',
                         'orders',
                         'orders/{id}',
                         'otc/orders',
@@ -438,8 +439,8 @@ class coinbasepro (Exchange):
                 symbol = base + '/' + quote
         status = self.parse_order_status(self.safe_string(order, 'status'))
         price = self.safe_float(order, 'price')
-        amount = self.safe_float(order, 'size')
         filled = self.safe_float(order, 'filled_size')
+        amount = self.safe_float(order, 'size', filled)
         remaining = None
         if amount is not None:
             if filled is not None:
@@ -776,13 +777,8 @@ class coinbasepro (Exchange):
             if body[0] == '{':
                 message = response['message']
                 feedback = self.id + ' ' + message
-                exact = self.exceptions['exact']
-                if message in exact:
-                    raise exact[message](feedback)
-                broad = self.exceptions['broad']
-                broadKey = self.findBroadlyMatchedKey(broad, message)
-                if broadKey is not None:
-                    raise broad[broadKey](feedback)
+                self.throw_exactly_matched_exception(self.exceptions['exact'], message, feedback)
+                self.throw_broadly_matched_exception(self.exceptions['broad'], message, feedback)
                 raise ExchangeError(feedback)  # unknown message
             raise ExchangeError(self.id + ' ' + body)
 

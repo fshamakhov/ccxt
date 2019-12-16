@@ -11,7 +11,7 @@ from ccxt.base.errors import InsufficientFunds
 from ccxt.base.errors import NotSupported
 
 
-class bitfinex2 (bitfinex):
+class bitfinex2(bitfinex):
 
     def describe(self):
         return self.deep_extend(super(bitfinex2, self).describe(), {
@@ -207,7 +207,7 @@ class bitfinex2 (bitfinex):
         })
 
     def is_fiat(self, code):
-        return(code in list(self.options['fiat'].keys()))
+        return(code in self.options['fiat'])
 
     def get_currency_id(self, code):
         return 'f' + code

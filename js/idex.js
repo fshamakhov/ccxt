@@ -110,6 +110,7 @@ module.exports = class idex extends Exchange {
                 'CRE': 'Carry Token',
                 'CST': 'CryptosolarTech',
                 'EXO': 'EXOLOVER',
+                'FT': 'Fabric Token',
                 'GBX': 'Globitex Token',
                 'GENE': 'GeneSourceCodeChain',
                 'GET': 'GUTS',
@@ -244,8 +245,8 @@ module.exports = class idex extends Exchange {
             'change': undefined,
             'percentage': percentage,
             'average': undefined,
-            'baseVolume': baseVolume,
-            'quoteVolume': quoteVolume,
+            'baseVolume': quoteVolume,
+            'quoteVolume': baseVolume,
             'info': ticker,
         };
     }

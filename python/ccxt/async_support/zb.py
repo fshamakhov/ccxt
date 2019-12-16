@@ -16,7 +16,7 @@ from ccxt.base.errors import DDoSProtection
 from ccxt.base.errors import ExchangeNotAvailable
 
 
-class zb (Exchange):
+class zb(Exchange):
 
     def describe(self):
         return self.deep_extend(super(zb, self).describe(), {
@@ -582,10 +582,8 @@ class zb (Exchange):
             feedback = self.id + ' ' + body
             if 'code' in response:
                 code = self.safe_string(response, 'code')
-                if code in self.exceptions:
-                    ExceptionClass = self.exceptions[code]
-                    raise ExceptionClass(feedback)
-                elif code != '1000':
+                self.throw_exactly_matched_exception(self.exceptions, code, feedback)
+                if code != '1000':
                     raise ExchangeError(feedback)
             # special case for {"result":false,"message":"服务端忙碌"}(a "Busy Server" reply)
             result = self.safe_value(response, 'result')
