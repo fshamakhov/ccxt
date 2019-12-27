@@ -445,7 +445,8 @@ class idex(Exchange):
                 orderAmount = amount - totalAmount
             totalAmount += orderAmount
             newOrder = self.prepare_order_for_trade(openOrder, orderAmount, nonce, side, params)
-            orders.append(newOrder)
+            if newOrder['amount'] != '0':
+                orders.append(newOrder)
         return await self.privatePostTrade(orders)
 
     async def create_order(self, symbol, type, side, amount, price=None, params={}):

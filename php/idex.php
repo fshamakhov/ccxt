@@ -8,6 +8,7 @@ namespace ccxt;
 use Exception; // a common import
 use \ccxt\ExchangeError;
 use \ccxt\ArgumentsRequired;
+use \ccxt\InvalidOrder;
 
 class idex extends Exchange {
 
@@ -99,11 +100,49 @@ class idex extends Exchange {
                 'apiKey' => false,
                 'secret' => false,
             ),
+            'idexContractAddress' => null,
             'commonCurrencies' => array(
-                'ONE' => 'Menlo One',
+                'ACC' => 'Accelerator',
+                'AIC' => 'Akaiito',
+                'AMB' => 'Amber Token',
+                'BIO' => 'BioCrypt',
+                'BLUE' => 'Ethereum Blue',
+                'BST' => 'Blocksquare Token',
+                'BTT' => 'Blocktrade',
+                'CAT2' => 'BitClave',
+                'CCC' => 'Container Crypto Coin',
+                'CRE' => 'Carry Token',
+                'CST' => 'CryptosolarTech',
+                'EXO' => 'EXOLOVER',
                 'FT' => 'Fabric Token',
+                'GBX' => 'Globitex Token',
+                'GENE' => 'GeneSourceCodeChain',
+                'GET' => 'GUTS',
+                'GET2' => 'GET',
+                'IPL' => 'InsurePal',
+                'NTK2' => 'Netkoin',
+                'ONE' => 'Menlo Token',
+                'ONG' => 'onG.social',
+                'PDX' => 'PdxToken',
+                'PRO' => 'ProChain',
+                'PRO2' => 'PRO',
+                'SAT' => 'Satisfaction Token',
+                'SET' => 'Swytch Energy Token',
+                'SMT' => 'Sun Money Token',
+                'TFT' => 'Travelling Free Token',
+                'VNT' => 'Vanta Network',
+                'WCT' => 'Wealth Chain Token',
             ),
+            'currencyById' => null,
+            'enableLastResponseHeaders' => true,
         ));
+    }
+
+    public function get_currency ($currency = '') {
+        if (is_array($this->currencyById) && array_key_exists($currency, $this->currencyById)) {
+            return $this->currencyById[$currency];
+        }
+        throw new ExchangeError('Exchange ' . $this->id . 'currency ' . $currency . ' not found');
     }
 
     public function fetch_markets ($params = array ()) {
@@ -119,6 +158,7 @@ class idex extends Exchange {
             $currency = $currencies[$i];
             $currenciesById[$currency['symbol']] = $currency;
         }
+        $this->currencyById = $currenciesById;
         $result = array();
         $limits = array(
             'amount' => array(
@@ -279,7 +319,7 @@ class idex extends Exchange {
     public function fetch_order_book ($symbol, $limit = null, $params = array ()) {
         $this->load_markets();
         $market = $this->market ($symbol);
-        $id = $market['quote'] . '_' . $market['base'];
+        $id = $market['id'];
         $request = array(
             'market' => $id,
             'count' => 100, // the default will only return one trade
@@ -370,6 +410,70 @@ class idex extends Exchange {
         return $this->parse_balance($result);
     }
 
+    public function prepare_order_for_trade ($order, $amount, $nonce, $side, $params = array ()) {
+        $orderHash = $order['orderHash'];
+        $address = $this->safe_string(array_merge(array( 'address' => $this->walletAddress ), $params), 'address');
+        $total = 0;
+        if ($side === 'buy') {
+            $price = $this->safe_float($order, 'price');
+            $total = $amount * $price;
+        } else if ($side === 'sell') {
+            $total = $amount;
+        } else {
+            throw new InvalidOrder($this->id . ' invalid $side value => ' . $side);
+        }
+        $amountBuy = $this->toWei ($total, 'ether', $order['params']['buyPrecision']);
+        $orderToSign = array(
+            'orderHash' => $orderHash,
+            'amount' => $amountBuy,
+            'address' => $address,
+            'nonce' => $nonce,
+        );
+        $hash = $this->get_idex_market_order_hash ($orderToSign);
+        $signature = $this->signMessage ($hash, $this->privateKey);
+        $request = array_merge($orderToSign, $signature);
+        return $request;
+    }
+
+    public function idex_trade ($base, $quote, $side, $amount, $nonce, $params = array ()) {
+        $symbol = $base['symbol'] . '/' . $quote['symbol'];
+        $market = $this->market ($symbol);
+        $request = array(
+            'market' => $market['id'],
+            'count' => 100,
+        );
+        $orderbook = $this->publicPostReturnOrderBook ($request);
+        $orderbookKey = null;
+        if ($side === 'buy') {
+            $orderbookKey = 'asks';
+        } else if ($side === 'sell') {
+            $orderbookKey = 'bids';
+        } else {
+            throw new InvalidOrder($this->id . ' invalid $side value => ' . $side);
+        }
+        $totalAmount = 0;
+        $orders = array();
+        for ($i = 0; $i < count($orderbook[$orderbookKey]); $i++) {
+            if ($totalAmount >= $amount) {
+                break;
+            }
+            $openOrder = $orderbook[$orderbookKey][$i];
+            $orderAmount = $this->safe_float($openOrder, 'amount');
+            if ($orderAmount === null) {
+                continue;
+            }
+            if ($totalAmount . $orderAmount > $amount) {
+                $orderAmount = $amount - $totalAmount;
+            }
+            $totalAmount .= $orderAmount;
+            $newOrder = $this->prepare_order_for_trade ($openOrder, $orderAmount, $nonce, $side, $params);
+            if ($newOrder['amount'] !== '0') {
+                $orders[] = $newOrder;
+            }
+        }
+        return $this->privatePostTrade ($orders);
+    }
+
     public function create_order ($symbol, $type, $side, $amount, $price = null, $params = array ()) {
         $this->check_required_dependencies();
         $this->load_markets();
@@ -436,9 +540,18 @@ class idex extends Exchange {
             //      user => '0x0ab991497116f7f5532a4c2f4f7b1784488628e1' } }
             return $this->parse_order($response, $market);
         } else if ($type === 'market') {
-            if (!(is_array($params) && array_key_exists('orderHash', $params))) {
-                throw new ArgumentsRequired($this->id . ' $market order requires an order structure such as that in fetchOrderBook()[\'bids\'][0][2], fetchOrder()[\'info\'], or fetchOpenOrders()[0][\'info\']');
+            $currencies = explode('/', $symbol);
+            $base = $this->get_currency ($currencies[0]);
+            $quote = $this->get_currency ($currencies[1]);
+            $nonce = $this->get_nonce ();
+            $amountFloat = floatval ($amount);
+            $trade_response = $this->idex_trade ($base, $quote, $side, $amountFloat, $nonce, $params);
+            $result = array();
+            for ($i = 0; $i < count($trade_response); $i++) {
+                $order = $this->parse_order($trade_response[$i], $market);
+                $result[] = $order;
             }
+            return $result;
             // { $price => '0.000132247803328924',
             //   $amount => '19980',
             //   total => '2.6423111105119',
@@ -456,17 +569,6 @@ class idex extends Exchange {
             //      $expires => 10000,
             //      $nonce => 1564656561510,
             //      user => '0xc3f8304270e49b8e8197bfcfd8567b83d9e4479b' } }
-            $orderToSign = array(
-                'orderHash' => $params['orderHash'],
-                'amount' => $params['params']['amountBuy'],
-                'address' => $params['params']['user'],
-                'nonce' => $params['params']['nonce'],
-            );
-            $orderHash = $this->get_idex_market_order_hash ($orderToSign);
-            $signature = $this->signMessage ($orderHash, $this->privateKey);
-            $signedOrder = array_merge($orderToSign, $signature);
-            $signedOrder['address'] = $this->walletAddress;
-            $signedOrder['nonce'] = $this->get_nonce ();
             //   array( {
             //     "$amount" => "0.07",
             //     "date" => "2017-10-13 16:25:36",
@@ -477,8 +579,6 @@ class idex extends Exchange {
             //     "$orderHash" => "0xcfe4018c59e50e0e1964c979e6213ce5eb8c751cbc98a44251eb48a0985adc52",
             //     "uuid" => "250d51a0-b033-11e7-9984-a9ab79bb8f35"
             //   } )
-            $response = $this->privatePostTrade ($signedOrder);
-            return $this->parse_orders($response, $market);
         }
     }
 
@@ -1050,7 +1150,7 @@ class idex extends Exchange {
     }
 
     public function get_idex_market_order_hash ($order) {
-        return $this->soliditySha3 ([
+        return $this->soliditySha3V2 ([
             $order['orderHash'], // address
             $order['amount'], // uint256
             $order['address'], // address
