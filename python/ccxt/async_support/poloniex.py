@@ -586,7 +586,7 @@ class poloniex(Exchange):
         request = {'currencyPair': pair}
         if since is not None:
             request['start'] = int(since / 1000)
-            request['end'] = self.seconds() + 1  # adding 1 is a fix for  #3411
+            request['end'] = self.sum(self.seconds(), 1)  # adding 1 is a fix for  #3411
         # limit is disabled(does not really work as expected)
         if limit is not None:
             request['limit'] = int(limit)
@@ -907,10 +907,11 @@ class poloniex(Exchange):
         await self.load_markets()
         method = 'privatePost' + self.capitalize(side)
         market = self.market(symbol)
+        amount = self.amount_to_precision(symbol, amount)
         request = {
             'currencyPair': market['id'],
             'rate': self.price_to_precision(symbol, price),
-            'amount': self.amount_to_precision(symbol, amount),
+            'amount': amount,
         }
         # remember the timestamp before issuing the request
         timestamp = self.milliseconds()
