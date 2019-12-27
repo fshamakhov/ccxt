@@ -609,7 +609,7 @@ module.exports = class poloniex extends Exchange {
         const request = { 'currencyPair': pair };
         if (since !== undefined) {
             request['start'] = parseInt (since / 1000);
-            request['end'] = this.seconds () + 1; // adding 1 is a fix for #3411
+            request['end'] = this.sum (this.seconds (), 1); // adding 1 is a fix for #3411
         }
         // limit is disabled (does not really work as expected)
         if (limit !== undefined) {
@@ -979,10 +979,11 @@ module.exports = class poloniex extends Exchange {
         await this.loadMarkets ();
         const method = 'privatePost' + this.capitalize (side);
         const market = this.market (symbol);
+        amount = this.amountToPrecision (symbol, amount);
         const request = {
             'currencyPair': market['id'],
             'rate': this.priceToPrecision (symbol, price),
-            'amount': this.amountToPrecision (symbol, amount),
+            'amount': amount,
         };
         // remember the timestamp before issuing the request
         const timestamp = this.milliseconds ();

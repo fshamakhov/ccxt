@@ -291,7 +291,7 @@ module.exports = class idex extends Exchange {
             const ticker = response[id];
             result[symbol] = this.parseTicker (ticker, market);
         }
-        return result;
+        return this.filterByArray (result, 'symbol', symbols);
     }
 
     async fetchTicker (symbol, params = {}) {
@@ -463,7 +463,9 @@ module.exports = class idex extends Exchange {
             }
             totalAmount += orderAmount;
             const newOrder = this.prepareOrderForTrade (openOrder, orderAmount, nonce, side, params);
-            orders.push (newOrder);
+            if (newOrder['amount'] !== '0') {
+                orders.push (newOrder);
+            }
         }
         return await this.privatePostTrade (orders);
     }

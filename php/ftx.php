@@ -6,17 +6,19 @@ namespace ccxt;
 // https://github.com/ccxt/ccxt/blob/master/CONTRIBUTING.md#how-to-contribute-code
 
 use Exception; // a common import
+use \ccxt\ExchangeError;
+use \ccxt\InvalidOrder;
 
 class ftx extends Exchange {
 
     public function describe () {
-        return array_replace_recursive (parent::describe (), array (
+        return array_replace_recursive(parent::describe (), array(
             'id' => 'ftx',
             'name' => 'FTX',
-            'countries' => array ( 'HK' ),
+            'countries' => array( 'HK' ),
             'rateLimit' => 100,
             'certified' => true,
-            'urls' => array (
+            'urls' => array(
                 'logo' => 'https://user-images.githubusercontent.com/1294454/67149189-df896480-f2b0-11e9-8816-41593e17f9ec.jpg',
                 'www' => 'https://ftx.com',
                 'api' => 'https://ftx.com',
@@ -24,7 +26,7 @@ class ftx extends Exchange {
                 'fees' => 'https://ftexchange.zendesk.com/hc/en-us/articles/360024479432-Fees',
                 'referral' => 'https://ftx.com/#a=1623029',
             ),
-            'has' => array (
+            'has' => array(
                 'cancelAllOrders' => true,
                 'fetchClosedOrders' => false,
                 'fetchCurrencies' => true,
@@ -44,7 +46,7 @@ class ftx extends Exchange {
                 'fetchWithdrawals' => true,
                 'withdraw' => true,
             ),
-            'timeframes' => array (
+            'timeframes' => array(
                 '15s' => '15',
                 '1m' => '60',
                 '5m' => '300',
@@ -53,9 +55,9 @@ class ftx extends Exchange {
                 '4h' => '14400',
                 '24h' => '86400',
             ),
-            'api' => array (
-                'public' => array (
-                    'get' => array (
+            'api' => array(
+                'public' => array(
+                    'get' => array(
                         'coins',
                         'markets',
                         'markets/{market_name}',
@@ -70,8 +72,8 @@ class ftx extends Exchange {
                         'lt/{token_name}',
                     ),
                 ),
-                'private' => array (
-                    'get' => array (
+                'private' => array(
+                    'get' => array(
                         'account',
                         'positions',
                         'wallet/coins',
@@ -91,7 +93,7 @@ class ftx extends Exchange {
                         'lt/creations',
                         'lt/redemptions',
                     ),
-                    'post' => array (
+                    'post' => array(
                         'account/leverage',
                         'wallet/withdrawals',
                         'orders',
@@ -99,7 +101,7 @@ class ftx extends Exchange {
                         'lt/{token_name}/create',
                         'lt/{token_name}/redeem',
                     ),
-                    'delete' => array (
+                    'delete' => array(
                         'orders/{order_id}',
                         'orders/by_client_id/{client_order_id}',
                         'orders',
@@ -107,13 +109,13 @@ class ftx extends Exchange {
                     ),
                 ),
             ),
-            'fees' => array (
-                'trading' => array (
+            'fees' => array(
+                'trading' => array(
                     'tierBased' => true,
                     'percentage' => true,
                     'maker' => 0.02 / 100,
                     'taker' => 0.07 / 100,
-                    'tiers' => array (
+                    'tiers' => array(
                         'taker' => [
                             [0, 0.07 / 100],
                             [1000000, 0.06 / 100],
@@ -132,19 +134,19 @@ class ftx extends Exchange {
                         ],
                     ),
                 ),
-                'funding' => array (
+                'funding' => array(
                     'withdraw' => array(),
                 ),
             ),
-            'exceptions' => array (
-                'exact' => array (
+            'exceptions' => array(
+                'exact' => array(
                     'Not enough balances' => '\\ccxt\\InsufficientFunds', // array("error":"Not enough balances","success":false)
                     'InvalidPrice' => '\\ccxt\\InvalidOrder', // array("error":"Invalid price","success":false)
                     'Size too small' => '\\ccxt\\InvalidOrder', // array("error":"Size too small","success":false)
                     'Missing parameter price' => '\\ccxt\\InvalidOrder', // array("error":"Missing parameter price","success":false)
                     'Order not found' => '\\ccxt\\OrderNotFound', // array("error":"Order not found","success":false)
                 ),
-                'broad' => array (
+                'broad' => array(
                     'Invalid parameter' => '\\ccxt\\BadRequest', // array("error":"Invalid parameter start_time","success":false)
                     'The requested URL was not found on the server' => '\\ccxt\\BadRequest',
                     'No such coin' => '\\ccxt\\BadRequest',
@@ -162,7 +164,7 @@ class ftx extends Exchange {
         //
         //     {
         //         "success":true,
-        //         "$result" => array (
+        //         "$result" => array(
         //             array("$id":"BTC","$name":"Bitcoin"),
         //             array("$id":"ETH","$name":"Ethereum"),
         //             array("$id":"ETHMOON","$name":"10X Long Ethereum Token","underlying":"ETH"),
@@ -171,12 +173,12 @@ class ftx extends Exchange {
         //     }
         //
         $result = array();
-        for ($i = 0; $i < count ($currencies); $i++) {
+        for ($i = 0; $i < count($currencies); $i++) {
             $currency = $currencies[$i];
             $id = $this->safe_string($currency, 'id');
             $code = $this->safe_currency_code($id);
             $name = $this->safe_string($currency, 'name');
-            $result[$code] = array (
+            $result[$code] = array(
                 'id' => $id,
                 'code' => $code,
                 'info' => $currency,
@@ -185,7 +187,7 @@ class ftx extends Exchange {
                 'active' => null,
                 'fee' => null,
                 'precision' => null,
-                'limits' => array (
+                'limits' => array(
                     'withdraw' => array( 'min' => null, 'max' => null ),
                     'amount' => array( 'min' => null, 'max' => null ),
                     'price' => array( 'min' => null, 'max' => null ),
@@ -201,8 +203,8 @@ class ftx extends Exchange {
         //
         //     {
         //         'success' => true,
-        //         "$result" => array (
-        //             array (
+        //         "$result" => array(
+        //             array(
         //                 "ask":170.37,
         //                 "baseCurrency":null,
         //                 "bid":170.31,
@@ -221,7 +223,7 @@ class ftx extends Exchange {
         //                 "underlying":"ETH",
         //                 "volumeUsd24h":7742164.59889
         //             ),
-        //             array (
+        //             array(
         //                 "ask":170.44,
         //                 "baseCurrency":"ETH",
         //                 "bid":170.41,
@@ -245,7 +247,7 @@ class ftx extends Exchange {
         //
         $result = array();
         $markets = $this->safe_value($response, 'result', array());
-        for ($i = 0; $i < count ($markets); $i++) {
+        for ($i = 0; $i < count($markets); $i++) {
             $market = $markets[$i];
             $id = $this->safe_string($market, 'name');
             $baseId = $this->safe_string_2($market, 'baseCurrency', 'underlying');
@@ -258,11 +260,11 @@ class ftx extends Exchange {
             $active = $this->safe_value($market, 'enabled');
             $sizeIncrement = $this->safe_float($market, 'sizeIncrement');
             $priceIncrement = $this->safe_float($market, 'priceIncrement');
-            $precision = array (
+            $precision = array(
                 'amount' => $sizeIncrement,
                 'price' => $priceIncrement,
             );
-            $entry = array (
+            $entry = array(
                 'id' => $id,
                 'symbol' => $symbol,
                 'base' => $base,
@@ -274,16 +276,16 @@ class ftx extends Exchange {
                 'spot' => ($type === 'spot'),
                 'active' => $active,
                 'precision' => $precision,
-                'limits' => array (
-                    'amount' => array (
+                'limits' => array(
+                    'amount' => array(
                         'min' => $sizeIncrement,
                         'max' => null,
                     ),
-                    'price' => array (
+                    'price' => array(
                         'min' => $priceIncrement,
                         'max' => null,
                     ),
-                    'cost' => array (
+                    'cost' => array(
                         'min' => null,
                         'max' => null,
                     ),
@@ -336,7 +338,7 @@ class ftx extends Exchange {
         }
         $last = $this->safe_float($ticker, 'last');
         $timestamp = $this->milliseconds ();
-        return array (
+        return array(
             'symbol' => $symbol,
             'timestamp' => $timestamp,
             'datetime' => $this->iso8601 ($timestamp),
@@ -363,10 +365,10 @@ class ftx extends Exchange {
     public function fetch_ticker ($symbol, $params = array ()) {
         $this->load_markets();
         $market = $this->market ($symbol);
-        $request = array (
+        $request = array(
             'market_name' => $market['id'],
         );
-        $response = $this->publicGetMarketsMarketName (array_merge ($request, $params));
+        $response = $this->publicGetMarketsMarketName (array_merge($request, $params));
         //
         //     {
         //         "success":true,
@@ -397,7 +399,7 @@ class ftx extends Exchange {
 
     public function parse_tickers ($tickers, $symbols = null) {
         $result = array();
-        for ($i = 0; $i < count ($tickers); $i++) {
+        for ($i = 0; $i < count($tickers); $i++) {
             $result[] = $this->parse_ticker($tickers[$i]);
         }
         return $this->filter_by_array($result, 'symbol', $symbols);
@@ -409,8 +411,8 @@ class ftx extends Exchange {
         //
         //     {
         //         'success' => true,
-        //         "result" => array (
-        //             array (
+        //         "result" => array(
+        //             array(
         //                 "ask":170.44,
         //                 "baseCurrency":"ETH",
         //                 "bid":170.41,
@@ -439,13 +441,13 @@ class ftx extends Exchange {
     public function fetch_order_book ($symbol, $limit = null, $params = array ()) {
         $this->load_markets();
         $market = $this->market ($symbol);
-        $request = array (
+        $request = array(
             'market_name' => $market['id'],
         );
         if ($limit !== null) {
             $request['depth'] = $limit; // max 100, default 20
         }
-        $response = $this->publicGetMarketsMarketNameOrderbook (array_merge ($request, $params));
+        $response = $this->publicGetMarketsMarketNameOrderbook (array_merge($request, $params));
         //
         //     {
         //         "success":true,
@@ -479,7 +481,7 @@ class ftx extends Exchange {
         //         "volume":0.0
         //     }
         //
-        return array (
+        return array(
             $this->safe_integer($ohlcv, 'time'),
             $this->safe_float($ohlcv, 'open'),
             $this->safe_float($ohlcv, 'high'),
@@ -492,7 +494,7 @@ class ftx extends Exchange {
     public function fetch_ohlcv ($symbol, $timeframe = '1m', $since = null, $limit = null, $params = array ()) {
         $this->load_markets();
         $market = $this->market ($symbol);
-        $request = array (
+        $request = array(
             'market_name' => $market['id'],
             'resolution' => $this->timeframes[$timeframe],
         );
@@ -502,12 +504,12 @@ class ftx extends Exchange {
         if ($since !== null) {
             $request['start_time'] = intval ($since / 1000);
         }
-        $response = $this->publicGetMarketsMarketNameCandles (array_merge ($request, $params));
+        $response = $this->publicGetMarketsMarketNameCandles (array_merge($request, $params));
         //
         //     {
         //         "success" => true,
-        //         "$result":array (
-        //             array (
+        //         "$result":array(
+        //             array(
         //                 "close":177.23,
         //                 "high":177.45,
         //                 "low":177.2,
@@ -516,7 +518,7 @@ class ftx extends Exchange {
         //                 "time":1571318820000.0,
         //                 "volume":0.0
         //             ),
-        //             array (
+        //             array(
         //                 "close":177.26,
         //                 "high":177.33,
         //                 "low":177.23,
@@ -570,7 +572,7 @@ class ftx extends Exchange {
         $symbol = null;
         if ($marketId !== null) {
             if (is_array($this->markets_by_id) && array_key_exists($marketId, $this->markets_by_id)) {
-                $market = $this->markets_by_id;
+                $market = $this->markets_by_id[$marketId];
                 $symbol = $market['symbol'];
             } else {
                 $base = $this->safe_currency_code($this->safe_string($trade, 'baseCurrency'));
@@ -596,13 +598,13 @@ class ftx extends Exchange {
         $fee = null;
         $feeCost = $this->safe_float($trade, 'fee');
         if ($feeCost !== null) {
-            $fee = array (
+            $fee = array(
                 'cost' => $feeCost,
                 'rate' => $this->safe_float($trade, 'feeRate'),
             );
         }
         $orderId = $this->safe_string($trade, 'orderId');
-        return array (
+        return array(
             'info' => $trade,
             'timestamp' => $timestamp,
             'datetime' => $this->iso8601 ($timestamp),
@@ -622,7 +624,7 @@ class ftx extends Exchange {
     public function fetch_trades ($symbol, $since = null, $limit = null, $params = array ()) {
         $this->load_markets();
         $market = $this->market ($symbol);
-        $request = array (
+        $request = array(
             'market_name' => $market['id'],
         );
         if ($since !== null) {
@@ -633,12 +635,12 @@ class ftx extends Exchange {
         if ($limit !== null) {
             $request['limit'] = $limit;
         }
-        $response = $this->publicGetMarketsMarketNameTrades (array_merge ($request, $params));
+        $response = $this->publicGetMarketsMarketNameTrades (array_merge($request, $params));
         //
         //     {
         //         "success":true,
-        //         "$result":array (
-        //             array (
+        //         "$result":array(
+        //             array(
         //                 "id":1715826,
         //                 "liquidation":false,
         //                 "price":171.62,
@@ -646,7 +648,7 @@ class ftx extends Exchange {
         //                 "size":2.095,
         //                 "time":"2019-10-18T12:59:54.288166+00:00"
         //             ),
-        //             array (
+        //             array(
         //                 "id":1715763,
         //                 "liquidation":false,
         //                 "price":171.89,
@@ -667,7 +669,7 @@ class ftx extends Exchange {
         //
         //     {
         //         "success" => true,
-        //         "$result" => array (
+        //         "$result" => array(
         //             "backstopProvider" => true,
         //             "collateral" => 3568181.02691129,
         //             "freeCollateral" => 1786071.456884368,
@@ -681,8 +683,8 @@ class ftx extends Exchange {
         //             "totalAccountValue" => 3568180.98341129,
         //             "totalPositionSize" => 6384939.6992,
         //             "username" => "user@domain.com",
-        //             "positions" => array (
-        //                 array (
+        //             "positions" => array(
+        //                 array(
         //                     "cost" => -31.7906,
         //                     "entryPrice" => 138.22,
         //                     "future" => "ETH-PERP",
@@ -702,7 +704,7 @@ class ftx extends Exchange {
         //     }
         //
         $result = $this->safe_value($response, 'result', array());
-        return array (
+        return array(
             'info' => $response,
             'maker' => $this->safe_float($result, 'makerFee'),
             'taker' => $this->safe_float($result, 'takerFee'),
@@ -715,8 +717,8 @@ class ftx extends Exchange {
         //
         //     {
         //         "success" => true,
-        //         "$result" => array (
-        //             array (
+        //         "$result" => array(
+        //             array(
         //                 "coin" => "USDTBEAR",
         //                 "free" => 2320.2,
         //                 "total" => 2340.2
@@ -724,11 +726,11 @@ class ftx extends Exchange {
         //         ),
         //     }
         //
-        $result = array (
+        $result = array(
             'info' => $response,
         );
         $balances = $this->safe_value($response, 'result', array());
-        for ($i = 0; $i < count ($balances); $i++) {
+        for ($i = 0; $i < count($balances); $i++) {
             $balance = $balances[$i];
             $code = $this->safe_currency_code($this->safe_string($balance, 'coin'));
             $account = $this->account ();
@@ -740,7 +742,7 @@ class ftx extends Exchange {
     }
 
     public function parse_order_status ($status) {
-        $statuses = array (
+        $statuses = array(
             'new' => 'open',
             'open' => 'open',
             'closed' => 'closed', // filled or canceled
@@ -812,7 +814,7 @@ class ftx extends Exchange {
         }
         $price = $this->safe_float_2($order, 'price', 'triggerPrice');
         $lastTradeTimestamp = $this->parse8601 ($this->safe_string($order, 'triggeredAt'));
-        return array (
+        return array(
             'info' => $order,
             'id' => $id,
             'timestamp' => $timestamp,
@@ -836,7 +838,7 @@ class ftx extends Exchange {
     public function create_order ($symbol, $type, $side, $amount, $price = null, $params = array ()) {
         $this->load_markets();
         $market = $this->market ($symbol);
-        $request = array (
+        $request = array(
             'market' => $market['id'],
             'side' => $side, // "buy" or "sell"
             // 'price' => 0.306525, // send null for $market orders
@@ -866,13 +868,13 @@ class ftx extends Exchange {
         } else {
             throw new InvalidOrder($this->id . ' createOrder () does not support order $type ' . $type . ', only limit, $market, stop, trailingStop, or takeProfit orders are supported');
         }
-        $response = $this->$method (array_merge ($request, $params));
+        $response = $this->$method (array_merge($request, $params));
         //
         // orders
         //
         //     {
         //         "success" => true,
-        //         "$result" => array (
+        //         "$result" => array(
         //             {
         //                 "createdAt" => "2019-03-05T09:56:55.728933+00:00",
         //                 "filledSize" => 0,
@@ -897,7 +899,7 @@ class ftx extends Exchange {
         //
         //     {
         //         "success" => true,
-        //         "$result" => array (
+        //         "$result" => array(
         //             {
         //                 "createdAt" => "2019-03-05T09:56:55.728933+00:00",
         //                 "future" => "XRP-PERP",
@@ -924,10 +926,10 @@ class ftx extends Exchange {
 
     public function cancel_order ($id, $symbol = null, $params = array ()) {
         $this->load_markets();
-        $request = array (
+        $request = array(
             'order_id' => intval ($id),
         );
-        $response = $this->privateDeleteOrdersOrderId (array_merge ($request, $params));
+        $response = $this->privateDeleteOrdersOrderId (array_merge($request, $params));
         //
         //     {
         //         "success" => true,
@@ -940,7 +942,7 @@ class ftx extends Exchange {
 
     public function cancel_all_orders ($symbol = null, $params = array ()) {
         $this->load_markets();
-        $request = array (
+        $request = array(
             // 'market' => $market['id'], // optional
             'conditionalOrdersOnly' => false, // cancel conditional orders only
             'limitOrdersOnly' => false, // cancel existing limit orders (non-conditional orders) only
@@ -950,7 +952,7 @@ class ftx extends Exchange {
             $market = $this->market ($symbol);
             $request['market'] = $market['id'];
         }
-        $response = $this->privateDeleteOrders (array_merge ($request, $params));
+        $response = $this->privateDeleteOrders (array_merge($request, $params));
         $result = $this->safe_value($response, 'result', array());
         //
         //     {
@@ -963,10 +965,10 @@ class ftx extends Exchange {
 
     public function fetch_order ($id, $symbol = null, $params = array ()) {
         $this->load_markets();
-        $request = array (
+        $request = array(
             'order_id' => $id,
         );
-        $response = $this->privateGetOrdersOrderId (array_merge ($request, $params));
+        $response = $this->privateGetOrdersOrderId (array_merge($request, $params));
         //
         //     {
         //         "success" => true,
@@ -1002,11 +1004,11 @@ class ftx extends Exchange {
             $market = $this->market ($symbol);
             $request['market'] = $market['id'];
         }
-        $response = $this->privateGetOrders (array_merge ($request, $params));
+        $response = $this->privateGetOrders (array_merge($request, $params));
         //
         //     {
         //         "success" => true,
-        //         "$result" => array (
+        //         "$result" => array(
         //             {
         //                 "createdAt" => "2019-03-05T09:56:55.728933+00:00",
         //                 "filledSize" => 10,
@@ -1046,11 +1048,11 @@ class ftx extends Exchange {
         if ($since !== null) {
             $request['start_time'] = intval ($since / 1000);
         }
-        $response = $this->privateGetOrdersHistory (array_merge ($request, $params));
+        $response = $this->privateGetOrdersHistory (array_merge($request, $params));
         //
         //     {
         //         "success" => true,
-        //         "$result" => array (
+        //         "$result" => array(
         //             {
         //                 "createdAt" => "2019-03-05T09:56:55.728933+00:00",
         //                 "filledSize" => 10,
@@ -1079,7 +1081,7 @@ class ftx extends Exchange {
     public function fetch_my_trades ($symbol = null, $since = null, $limit = null, $params = array ()) {
         $this->load_markets();
         $market = $this->market ($symbol);
-        $request = array (
+        $request = array(
             'market' => $market['id'],
         );
         if ($limit !== null) {
@@ -1088,11 +1090,11 @@ class ftx extends Exchange {
         if ($since !== null) {
             $request['start_time'] = intval ($since / 1000);
         }
-        $response = $this->privateGetFills (array_merge ($request, $params));
+        $response = $this->privateGetFills (array_merge($request, $params));
         //
         //     {
         //         "success" => true,
-        //         "result" => array (
+        //         "result" => array(
         //             {
         //                 "fee" => 20.1374935,
         //                 "feeRate" => 0.0005,
@@ -1120,7 +1122,7 @@ class ftx extends Exchange {
         $this->load_markets();
         $this->check_address($address);
         $currency = $this->currency ($code);
-        $request = array (
+        $request = array(
             'coin' => $currency['id'],
             'size' => $amount,
             'address' => $address,
@@ -1130,7 +1132,7 @@ class ftx extends Exchange {
         if ($tag !== null) {
             $request['tag'] = $tag;
         }
-        $response = $this->privatePostWalletWithdrawals (array_merge ($request, $params));
+        $response = $this->privatePostWalletWithdrawals (array_merge($request, $params));
         //
         //     {
         //         "success" => true,
@@ -1154,10 +1156,10 @@ class ftx extends Exchange {
     public function fetch_deposit_address ($code, $params = array ()) {
         $this->load_markets();
         $currency = $this->currency ($code);
-        $request = array (
+        $request = array(
             'coin' => $currency['id'],
         );
-        $response = $this->privateGetWalletDepositAddressCoin (array_merge ($request, $params));
+        $response = $this->privateGetWalletDepositAddressCoin (array_merge($request, $params));
         //
         //     {
         //         "success" => true,
@@ -1171,7 +1173,7 @@ class ftx extends Exchange {
         $address = $this->safe_string($result, 'address');
         $tag = $this->safe_string($result, 'tag');
         $this->check_address($address);
-        return array (
+        return array(
             'currency' => $code,
             'address' => $address,
             'tag' => $tag,
@@ -1180,7 +1182,7 @@ class ftx extends Exchange {
     }
 
     public function parse_transaction_status ($status) {
-        $statuses = array (
+        $statuses = array(
             // what are other $statuses here?
             'confirmed' => 'ok', // deposits
             'complete' => 'ok', // withdrawals
@@ -1228,7 +1230,7 @@ class ftx extends Exchange {
         $address = $this->safe_string($transaction, 'address');
         $tag = $this->safe_string($transaction, 'tag');
         $fee = $this->safe_float($transaction, 'fee');
-        return array (
+        return array(
             'info' => $transaction,
             'id' => $id,
             'txid' => $txid,
@@ -1245,7 +1247,7 @@ class ftx extends Exchange {
             'currency' => $code,
             'status' => $status,
             'updated' => null,
-            'fee' => array (
+            'fee' => array(
                 'currency' => $code,
                 'cost' => $fee,
                 'rate' => null,
@@ -1315,7 +1317,7 @@ class ftx extends Exchange {
             $this->check_required_credentials();
             $timestamp = (string) $this->milliseconds ();
             $auth = $timestamp . $method . $request;
-            $headers = array (
+            $headers = array(
                 'FTX-KEY' => $this->apiKey,
                 'FTX-TS' => $timestamp,
             );

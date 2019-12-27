@@ -2,6 +2,8 @@
 
 /*  ------------------------------------------------------------------------ */
 
+const http = require ('http')
+const https = require ('https')
 const functions = require ('./functions')
 
 const {
@@ -287,6 +289,14 @@ module.exports = class Exchange {
         // merge to this
         for (const [property, value] of Object.entries (config))
             this[property] = deepExtend (this[property], value)
+        
+        if (!this.httpAgent) {
+            this.httpAgent = new http.Agent ({ 'keepAlive': true })
+        }
+        
+        if (!this.httpsAgent) {
+            this.httpsAgent = new https.Agent ({ 'keepAlive': true })
+        }
 
         // generate old metainfo interface
         for (const k in this.has) {
@@ -367,12 +377,13 @@ module.exports = class Exchange {
 
             const params = { method, headers, body, timeout: this.timeout }
 
-            if (this.httpAgent && url.indexOf ('http://') === 0) {
-                params['agent'] = this.httpAgent;
+            if (this.agent) {
+                this.agent.keepAlive = true
+                params['agent'] = this.agent
+            } else if (this.httpAgent && url.indexOf ('http://') === 0) {
+                params['agent'] = this.httpAgent
             } else if (this.httpsAgent && url.indexOf ('https://') === 0) {
-                params['agent'] = this.httpsAgent;
-            } else if (this.agent) {
-                params['agent'] = this.agent;
+                params['agent'] = this.httpsAgent
             }
 
             const promise =
@@ -920,21 +931,6 @@ module.exports = class Exchange {
             'datetime': this.iso8601 (timestamp),
             'nonce': undefined,
         }
-    }
-
-    getCurrencyUsedOnOpenOrders (currency) {
-        return Object.values (this.orders).filter (order => (order['status'] === 'open')).reduce ((total, order) => {
-            const symbol = order['symbol']
-            const market = this.markets[symbol]
-            const remaining = order['remaining']
-            if (currency === market['base'] && order['side'] === 'sell') {
-                return total + remaining
-            } else if (currency === market['quote'] && order['side'] === 'buy') {
-                return total + (order['price'] * remaining)
-            } else {
-                return total
-            }
-        }, 0)
     }
 
     parseBalance (balance) {
