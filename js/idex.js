@@ -463,7 +463,9 @@ module.exports = class idex extends Exchange {
             }
             totalAmount += orderAmount;
             const newOrder = this.prepareOrderForTrade (openOrder, orderAmount, nonce, side, params);
-            orders.push (newOrder);
+            if (newOrder['amount'] !== '0') {
+                orders.push (newOrder);
+            }
         }
         return await this.privatePostTrade (orders);
     }
