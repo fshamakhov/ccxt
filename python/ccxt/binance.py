@@ -46,6 +46,8 @@ class binance(Exchange):
                 'fetchDeposits': True,
                 'fetchWithdrawals': True,
                 'fetchTransactions': False,
+                'fetchTradingFee': True,
+                'fetchTradingFees': True,
             },
             'timeframes': {
                 '1m': '1m',
@@ -182,11 +184,14 @@ class binance(Exchange):
                         'order',
                         'account',
                         'balance',
+                        'positionMargin/history',
                         'positionRisk',
                         'userTrades',
                         'income',
                     ],
                     'post': [
+                        'positionMargin',
+                        'marginType',
                         'order',
                         'leverage',
                     ],
@@ -815,6 +820,8 @@ class binance(Exchange):
         if self.options['fetchTradesMethod'] == 'publicGetAggTrades':
             if since is not None:
                 request['startTime'] = since
+                # https://github.com/ccxt/ccxt/issues/6400
+                # https://github.com/binance-exchange/binance-official-api-docs/blob/master/rest-api.md#compressedaggregate-trades-list
                 request['endTime'] = self.sum(since, 3600000)
         if limit is not None:
             request['limit'] = limit  # default = 500, maximum = 1000
@@ -868,7 +875,7 @@ class binance(Exchange):
             'CANCELED': 'canceled',
             'PENDING_CANCEL': 'canceling',  # currently unused
             'REJECTED': 'rejected',
-            'EXPIRED': 'expired',
+            'EXPIRED': 'canceled',
         }
         return self.safe_string(statuses, status, status)
 
@@ -911,6 +918,8 @@ class binance(Exchange):
                         price = cost / filled
                         if self.options['parseOrderToPrecision']:
                             price = float(self.price_to_precision(symbol, price))
+        elif type == 'limit_maker':
+            type = 'limit'
         side = self.safe_string_lower(order, 'side')
         fee = None
         trades = None
@@ -971,10 +980,19 @@ class binance(Exchange):
             raise InvalidOrder(self.id + ' ' + type + ' is not a valid order type in ' + market['type'] + ' market ' + symbol)
         request = {
             'symbol': market['id'],
-            'quantity': self.amount_to_precision(symbol, amount),
             'type': uppercaseType,
             'side': side.upper(),
         }
+        if uppercaseType == 'MARKET':
+            quoteOrderQty = self.safe_float(params, 'quoteOrderQty')
+            if quoteOrderQty is not None:
+                request['quoteOrderQty'] = self.cost_to_precision(symbol, quoteOrderQty)
+            elif price is not None:
+                request['quoteOrderQty'] = self.cost_to_precision(symbol, amount * price)
+            else:
+                request['quantity'] = self.amount_to_precision(symbol, amount)
+        else:
+            request['quantity'] = self.amount_to_precision(symbol, amount)
         if market['spot']:
             request['newOrderRespType'] = self.safe_value(self.options['newOrderRespType'], type, 'RESULT')  # 'ACK' for order id, 'RESULT' for full order or 'FULL' for order with fills
         timeInForceIsRequired = False
@@ -1315,6 +1333,7 @@ class binance(Exchange):
         #     {withdrawList: [{     amount:  14,
         #                             address: "0x0123456789abcdef...",
         #                         successTime:  1514489710000,
+        #                      transactionFee:  0.01,
         #                          addressTag: "",
         #                                txId: "0x0123456789abcdef...",
         #                                  id: "0123456789abcdef...",
@@ -1324,6 +1343,7 @@ class binance(Exchange):
         #                       {     amount:  7600,
         #                             address: "0x0123456789abcdef...",
         #                         successTime:  1515323226000,
+        #                      transactionFee:  0.01,
         #                          addressTag: "",
         #                                txId: "0x0123456789abcdef...",
         #                                  id: "0123456789abcdef...",
@@ -1370,6 +1390,7 @@ class binance(Exchange):
         #       {     amount:  14,
         #             address: "0x0123456789abcdef...",
         #         successTime:  1514489710000,
+        #      transactionFee:  0.01,
         #          addressTag: "",
         #                txId: "0x0123456789abcdef...",
         #                  id: "0123456789abcdef...",
@@ -1399,6 +1420,10 @@ class binance(Exchange):
                 timestamp = applyTime
         status = self.parse_transaction_status_by_type(self.safe_string(transaction, 'status'), type)
         amount = self.safe_float(transaction, 'amount')
+        feeCost = self.safe_float(transaction, 'transactionFee')
+        fee = None
+        if feeCost is not None:
+            fee = {'currency': code, 'cost': feeCost}
         return {
             'info': transaction,
             'id': id,
@@ -1412,7 +1437,7 @@ class binance(Exchange):
             'currency': code,
             'status': status,
             'updated': None,
-            'fee': None,
+            'fee': fee,
         }
 
     def fetch_deposit_address(self, code, params={}):
@@ -1493,6 +1518,72 @@ class binance(Exchange):
             'id': self.safe_string(response, 'id'),
         }
 
+    def parse_trading_fee(self, fee, market=None):
+        #
+        #     {
+        #         "symbol": "ADABNB",
+        #         "maker": 0.9000,
+        #         "taker": 1.0000
+        #     }
+        #
+        marketId = self.safe_string(fee, 'symbol')
+        symbol = marketId
+        if marketId in self.markets_by_id:
+            market = self.markets_by_id[marketId]
+            symbol = market['symbol']
+        return {
+            'info': fee,
+            'symbol': symbol,
+            'maker': self.safe_float(fee, 'maker'),
+            'taker': self.safe_float(fee, 'taker'),
+        }
+
+    def fetch_trading_fee(self, symbol, params={}):
+        self.load_markets()
+        market = self.market(symbol)
+        request = {
+            'symbol': market['id'],
+        }
+        response = self.wapiGetTradeFee(self.extend(request, params))
+        #
+        #     {
+        #         "tradeFee": [
+        #             {
+        #                 "symbol": "ADABNB",
+        #                 "maker": 0.9000,
+        #                 "taker": 1.0000
+        #             }
+        #         ],
+        #         "success": True
+        #     }
+        #
+        tradeFee = self.safe_value(response, 'tradeFee', [])
+        first = self.safe_value(tradeFee, 0, {})
+        return self.parse_trading_fee(first)
+
+    def fetch_trading_fees(self, params={}):
+        self.load_markets()
+        response = self.wapiGetTradeFee(params)
+        #
+        #     {
+        #         "tradeFee": [
+        #             {
+        #                 "symbol": "ADABNB",
+        #                 "maker": 0.9000,
+        #                 "taker": 1.0000
+        #             }
+        #         ],
+        #         "success": True
+        #     }
+        #
+        tradeFee = self.safe_value(response, 'tradeFee', [])
+        result = {}
+        for i in range(0, len(tradeFee)):
+            fee = self.parse_trading_fee(tradeFee[i])
+            symbol = fee['symbol']
+            result[symbol] = fee
+        return result
+
     def sign(self, path, api='public', method='GET', params={}, headers=None, body=None):
         url = self.urls['api'][api]
         url += '/' + path
@@ -1500,16 +1591,22 @@ class binance(Exchange):
             url += '.html'
         userDataStream = ((path == 'userDataStream') or (path == 'listenKey'))
         if path == 'historicalTrades':
-            headers = {
-                'X-MBX-APIKEY': self.apiKey,
-            }
+            if self.apiKey:
+                headers = {
+                    'X-MBX-APIKEY': self.apiKey,
+                }
+            else:
+                raise AuthenticationError(self.id + ' historicalTrades endpoint requires `apiKey` credential')
         elif userDataStream:
-            # v1 special case for userDataStream
-            body = self.urlencode(params)
-            headers = {
-                'X-MBX-APIKEY': self.apiKey,
-                'Content-Type': 'application/x-www-form-urlencoded',
-            }
+            if self.apiKey:
+                # v1 special case for userDataStream
+                body = self.urlencode(params)
+                headers = {
+                    'X-MBX-APIKEY': self.apiKey,
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                }
+            else:
+                raise AuthenticationError(self.id + ' userDataStream endpoint requires `apiKey` credential')
         if (api == 'private') or (api == 'sapi') or (api == 'wapi' and path != 'systemStatus') or (api == 'fapiPrivate'):
             self.check_required_credentials()
             query = self.urlencode(self.extend({
