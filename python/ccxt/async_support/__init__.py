@@ -4,7 +4,7 @@
 
 # -----------------------------------------------------------------------------
 
-__version__ = '1.21.20'
+__version__ = '1.21.98'
 
 # -----------------------------------------------------------------------------
 
@@ -51,7 +51,6 @@ from ccxt.base.errors import OrderNotFillable                   # noqa: F401
 from ccxt.async_support._1btcxe import _1btcxe                            # noqa: F401
 from ccxt.async_support.acx import acx                                    # noqa: F401
 from ccxt.async_support.adara import adara                                # noqa: F401
-from ccxt.async_support.allcoin import allcoin                            # noqa: F401
 from ccxt.async_support.anxpro import anxpro                              # noqa: F401
 from ccxt.async_support.bcex import bcex                                  # noqa: F401
 from ccxt.async_support.bequant import bequant                            # noqa: F401
@@ -166,7 +165,6 @@ from ccxt.async_support.timex import timex                                # noqa
 from ccxt.async_support.upbit import upbit                                # noqa: F401
 from ccxt.async_support.vaultoro import vaultoro                          # noqa: F401
 from ccxt.async_support.vbtc import vbtc                                  # noqa: F401
-from ccxt.async_support.virwox import virwox                              # noqa: F401
 from ccxt.async_support.whitebit import whitebit                          # noqa: F401
 from ccxt.async_support.xbtce import xbtce                                # noqa: F401
 from ccxt.async_support.yobit import yobit                                # noqa: F401
@@ -177,7 +175,6 @@ exchanges = [
     '_1btcxe',
     'acx',
     'adara',
-    'allcoin',
     'anxpro',
     'bcex',
     'bequant',
@@ -292,7 +289,6 @@ exchanges = [
     'upbit',
     'vaultoro',
     'vbtc',
-    'virwox',
     'whitebit',
     'xbtce',
     'yobit',

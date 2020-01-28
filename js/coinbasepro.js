@@ -42,9 +42,15 @@ module.exports = class coinbasepro extends Exchange {
                 '1d': 86400,
             },
             'urls': {
-                'test': 'https://api-public.sandbox.pro.coinbase.com',
+                'test': {
+                    'public': 'https://api-public.sandbox.pro.coinbase.com',
+                    'private': 'https://api-public.sandbox.pro.coinbase.com',
+                },
                 'logo': 'https://user-images.githubusercontent.com/1294454/41764625-63b7ffde-760a-11e8-996d-a6328fa9347a.jpg',
-                'api': 'https://api.pro.coinbase.com',
+                'api': {
+                    'public': 'https://api.pro.coinbase.com',
+                    'private': 'https://api.pro.coinbase.com',
+                },
                 'www': 'https://pro.coinbase.com/',
                 'doc': 'https://docs.pro.coinbase.com',
                 'fees': [
@@ -261,12 +267,32 @@ module.exports = class coinbasepro extends Exchange {
 
     async fetchOrderBook (symbol, limit = undefined, params = {}) {
         await this.loadMarkets ();
+        // level 1 - only the best bid and ask
+        // level 2 - top 50 bids and asks (aggregated)
+        // level 3 - full order book (non aggregated)
         const request = {
             'id': this.marketId (symbol),
             'level': 2, // 1 best bidask, 2 aggregated, 3 full
         };
         const response = await this.publicGetProductsIdBook (this.extend (request, params));
-        return this.parseOrderBook (response);
+        //
+        //     {
+        //         "sequence":1924393896,
+        //         "bids":[
+        //             ["0.01825","24.34811287",2],
+        //             ["0.01824","72.5463",3],
+        //             ["0.01823","424.54298049",6],
+        //         ],
+        //         "asks":[
+        //             ["0.01826","171.10414904",4],
+        //             ["0.01827","22.60427028",1],
+        //             ["0.01828","397.46018784",7],
+        //         ]
+        //     }
+        //
+        const orderbook = this.parseOrderBook (response);
+        orderbook['nonce'] = this.safeInteger (response, 'sequence');
+        return orderbook;
     }
 
     async fetchTicker (symbol, params = {}) {
@@ -275,32 +301,56 @@ module.exports = class coinbasepro extends Exchange {
         const request = {
             'id': market['id'],
         };
-        const ticker = await this.publicGetProductsIdTicker (this.extend (request, params));
-        const timestamp = this.parse8601 (this.safeValue (ticker, 'time'));
-        const bid = this.safeFloat (ticker, 'bid');
-        const ask = this.safeFloat (ticker, 'ask');
-        const last = this.safeFloat (ticker, 'price');
+        // publicGetProductsIdTicker or publicGetProductsIdStats
+        const method = this.safeString (this.options, 'fetchTickerMethod', 'publicGetProductsIdTicker');
+        const response = await this[method] (this.extend (request, params));
+        //
+        // publicGetProductsIdTicker
+        //
+        //     {
+        //         "trade_id":843439,
+        //         "price":"0.997999",
+        //         "size":"80.29769",
+        //         "time":"2020-01-28T02:13:33.012523Z",
+        //         "bid":"0.997094",
+        //         "ask":"0.998",
+        //         "volume":"1903188.03750000"
+        //     }
+        //
+        // publicGetProductsIdStats
+        //
+        //     {
+        //         "open": "34.19000000",
+        //         "high": "95.70000000",
+        //         "low": "7.06000000",
+        //         "volume": "2.41000000"
+        //     }
+        //
+        const timestamp = this.parse8601 (this.safeValue (response, 'time'));
+        const bid = this.safeFloat (response, 'bid');
+        const ask = this.safeFloat (response, 'ask');
+        const last = this.safeFloat (response, 'price');
         return {
             'symbol': symbol,
             'timestamp': timestamp,
             'datetime': this.iso8601 (timestamp),
-            'high': undefined,
-            'low': undefined,
+            'high': this.safeFloat (response, 'high'),
+            'low': this.safeFloat (response, 'low'),
             'bid': bid,
             'bidVolume': undefined,
             'ask': ask,
             'askVolume': undefined,
             'vwap': undefined,
-            'open': undefined,
+            'open': this.safeFloat (response, 'open'),
             'close': last,
             'last': last,
             'previousClose': undefined,
             'change': undefined,
             'percentage': undefined,
             'average': undefined,
-            'baseVolume': this.safeFloat (ticker, 'volume'),
+            'baseVolume': this.safeFloat (response, 'volume'),
             'quoteVolume': undefined,
-            'info': ticker,
+            'info': response,
         };
     }
 
@@ -749,7 +799,7 @@ module.exports = class coinbasepro extends Exchange {
                 request += '?' + this.urlencode (query);
             }
         }
-        const url = this.urls['api'] + request;
+        const url = this.urls['api'][api] + request;
         if (api === 'private') {
             this.checkRequiredCredentials ();
             const nonce = this.nonce ().toString ();
