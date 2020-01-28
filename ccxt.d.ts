@@ -453,7 +453,6 @@ declare module 'ccxt' {
     export class _1btcxe extends Exchange {}
     export class acx extends Exchange {}
     export class adara extends Exchange {}
-    export class allcoin extends okcoinusd {}
     export class anxpro extends Exchange {}
     export class bcex extends Exchange {}
     export class bequant extends hitbtc2 {}
@@ -567,7 +566,6 @@ declare module 'ccxt' {
     export class upbit extends Exchange {}
     export class vaultoro extends Exchange {}
     export class vbtc extends foxbit {}
-    export class virwox extends Exchange {}
     export class whitebit extends Exchange {}
     export class xbtce extends Exchange {}
     export class yobit extends Exchange {}

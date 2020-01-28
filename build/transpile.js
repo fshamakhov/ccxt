@@ -140,6 +140,8 @@ class Transpiler {
             [ /\.base16ToBinary/g, '.base16_to_binary'],
             [ /\'use strict\';?\s+/g, '' ],
             [ /\.urlencodeWithArrayRepeat\s/g, '.urlencode_with_array_repeat' ],
+            [ /\.bind\s*\(this\)([,;])$/mg, '$1' ],
+            [ /\.call\s*\(this, /g, '(' ]
         ]
     }
 
@@ -176,6 +178,7 @@ class Transpiler {
             [ /this\.binaryToBase16\s/g, 'base64.b16encode' ],
             [ /this\.base64ToBinary\s/g, 'base64.b64decode' ],
             [ /\.shift\s*\(\)/g, '.pop(0)' ],
+            [ /Number\.MAX_SAFE_INTEGER/g, 'float(\'inf\')']
 
         // insert common regexes in the middle (critical)
         ].concat (this.getCommonRegexes ()).concat ([
@@ -236,8 +239,8 @@ class Transpiler {
             [ /(^|\s)\/\//g, '$1#' ],
             [ /([^\n\s]) #/g, '$1  #' ],   // PEP8 E261
             [ /\.indexOf/g, '.find'],
-            [ /\strue/g, ' True'],
-            [ /\sfalse/g, ' False'],
+            [ /(\s|\()true/g, '$1True'],
+            [ /(\s|\()false/g, '$1False'],
             [ /([^\s]+\s*\(\))\.toString\s+\(\)/g, 'str($1)' ],
             [ /([^\s]+)\.toString \(\)/g, 'str($1)' ],
             [ /([^\s]+)\.join\s*\(\s*([^\)\[\]]+?)\s*\)/g, '$2.join($1)' ],
@@ -299,6 +302,7 @@ class Transpiler {
             [ /this\.deepExtend\s/g, 'array_replace_recursive'],
             [ /(\w+)\.shift\s*\(\)/g, 'array_shift($1)' ],
             [ /(\w+)\.pop\s*\(\)/g, 'array_pop($1)' ],
+            [ /Number\.MAX_SAFE_INTEGER/g, 'PHP_INT_MAX' ],
 
         // insert common regexes in the middle (critical)
         ].concat (this.getCommonRegexes ()).concat ([
@@ -362,7 +366,7 @@ class Transpiler {
             [ /Math\.ceil\s*\(([^\)]+)\)/g, '(int) ceil($1)' ],
             [ /Math\.pow\s*\(([^\)]+)\)/g, 'pow($1)' ],
             [ /Math\.log/g, 'log' ],
-            [ /([^\(\s]+)\s+%\s+([^\s\)]+)/g, 'fmod($1, $2)' ],
+            [ /([^\(\s]+)\s+%\s+([^\s\,\;\)]+)/g, 'fmod($1, $2)' ],
             [ /\(([^\s\(]+)\.indexOf\s*\(([^\)]+)\)\s*\>\=\s*0\)/g, '(mb_strpos($1, $2) !== false)' ],
             [ /([^\s\(]+)\.indexOf\s*\(([^\)]+)\)\s*\>\=\s*0/g, 'mb_strpos($1, $2) !== false' ],
             [ /([^\s\(]+)\.indexOf\s*\(([^\)]+)\)/g, 'mb_strpos($1, $2)' ],
@@ -376,6 +380,14 @@ class Transpiler {
             [ /\sdelete\s([^\n]+)\;/g, ' unset($1);' ],
             [ /\~([a-zA-Z0-9_]+?)\~/g, '{$1}' ], // resolve the "arrays vs url params" conflict (both are in {}-brackets)
         ])
+    }
+
+    getPythonBaseMethods () {
+        return []
+    }
+
+    getPHPBaseMethods () {
+        return []
     }
 
     //-------------------------------------------------------------------------
@@ -504,8 +516,10 @@ class Transpiler {
 
         header = header.concat (libraries, errorImports, precisionImports)
 
+        methods = methods.concat (this.getPythonBaseMethods ())
+
         for (let method of methods) {
-            const regex = new RegExp ('self\\.(' + method + ')([^a-zA-Z0-9])', 'g')
+            const regex = new RegExp ('self\\.(' + method + ')([^a-zA-Z0-9_])', 'g')
             bodyAsString = bodyAsString.replace (regex,
                 (match, p1, p2) => ('self.' + unCamelCase (p1) + p2))
         }
@@ -556,8 +570,10 @@ class Transpiler {
 
         header = header.concat (errorImports)
 
+        methods = methods.concat (this.getPHPBaseMethods ())
+
         for (let method of methods) {
-            const regex = new RegExp ('\\$this->(' + method + ')(\\s\\(|[^a-zA-Z0-9])', 'g')
+            const regex = new RegExp ('\\$this->(' + method + ')(\\s\\(|[^a-zA-Z0-9_])', 'g')
             bodyAsString = bodyAsString.replace (regex,
                 (match, p1, p2) => {
                     return ((p2 === ' (') ?
