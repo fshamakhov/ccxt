@@ -540,18 +540,9 @@ class idex extends Exchange {
             //      user => '0x0ab991497116f7f5532a4c2f4f7b1784488628e1' } }
             return $this->parse_order($response, $market);
         } else if ($type === 'market') {
-            $currencies = explode('/', $symbol);
-            $base = $this->get_currency ($currencies[0]);
-            $quote = $this->get_currency ($currencies[1]);
-            $nonce = $this->get_nonce ();
-            $amountFloat = floatval ($amount);
-            $trade_response = $this->idex_trade ($base, $quote, $side, $amountFloat, $nonce, $params);
-            $result = array();
-            for ($i = 0; $i < count($trade_response); $i++) {
-                $order = $this->parse_order($trade_response[$i], $market);
-                $result[] = $order;
+            if (!(is_array($params) && array_key_exists('orderHash', $params))) {
+                throw new ArgumentsRequired($this->id . ' $market order requires an order structure such as that in fetchOrderBook()[\'bids\'][0][2], fetchOrder()[\'info\'], or fetchOpenOrders()[0][\'info\']');
             }
-            return $result;
             // { $price => '0.000132247803328924',
             //   $amount => '19980',
             //   total => '2.6423111105119',
@@ -569,6 +560,17 @@ class idex extends Exchange {
             //      $expires => 10000,
             //      $nonce => 1564656561510,
             //      user => '0xc3f8304270e49b8e8197bfcfd8567b83d9e4479b' } }
+            $orderToSign = array(
+                'orderHash' => $params['orderHash'],
+                'amount' => $params['params']['amountBuy'],
+                'address' => $params['params']['user'],
+                'nonce' => $params['params']['nonce'],
+            );
+            $orderHash = $this->get_idex_market_order_hash ($orderToSign);
+            $signature = $this->signMessage ($orderHash, $this->privateKey);
+            $signedOrder = array_merge($orderToSign, $signature);
+            $signedOrder['address'] = $this->walletAddress;
+            $signedOrder['nonce'] = $this->get_nonce ();
             //   array( {
             //     "$amount" => "0.07",
             //     "date" => "2017-10-13 16:25:36",
@@ -579,6 +581,8 @@ class idex extends Exchange {
             //     "$orderHash" => "0xcfe4018c59e50e0e1964c979e6213ce5eb8c751cbc98a44251eb48a0985adc52",
             //     "uuid" => "250d51a0-b033-11e7-9984-a9ab79bb8f35"
             //   } )
+            $response = $this->privatePostTrade ($signedOrder);
+            return $this->parse_orders($response, $market);
         }
     }
 
@@ -1150,7 +1154,7 @@ class idex extends Exchange {
     }
 
     public function get_idex_market_order_hash ($order) {
-        return $this->soliditySha3V2 ([
+        return $this->soliditySha3 ([
             $order['orderHash'], // address
             $order['amount'], // uint256
             $order['address'], // address

@@ -514,17 +514,8 @@ class idex(Exchange):
             #      user: '0x0ab991497116f7f5532a4c2f4f7b1784488628e1'}}
             return self.parse_order(response, market)
         elif type == 'market':
-            currencies = symbol.split('/')
-            base = self.get_currency(currencies[0])
-            quote = self.get_currency(currencies[1])
-            nonce = await self.get_nonce()
-            amountFloat = float(amount)
-            trade_response = await self.idex_trade(base, quote, side, amountFloat, nonce, params)
-            result = []
-            for i in range(0, len(trade_response)):
-                order = self.parse_order(trade_response[i], market)
-                result.append(order)
-            return result
+            if not ('orderHash' in params):
+                raise ArgumentsRequired(self.id + ' market order requires an order structure such as that in fetchOrderBook()[\'bids\'][0][2], fetchOrder()[\'info\'], or fetchOpenOrders()[0][\'info\']')
             # {price: '0.000132247803328924',
             #   amount: '19980',
             #   total: '2.6423111105119',
@@ -542,6 +533,17 @@ class idex(Exchange):
             #      expires: 10000,
             #      nonce: 1564656561510,
             #      user: '0xc3f8304270e49b8e8197bfcfd8567b83d9e4479b'}}
+            orderToSign = {
+                'orderHash': params['orderHash'],
+                'amount': params['params']['amountBuy'],
+                'address': params['params']['user'],
+                'nonce': params['params']['nonce'],
+            }
+            orderHash = self.get_idex_market_order_hash(orderToSign)
+            signature = self.signMessage(orderHash, self.privateKey)
+            signedOrder = self.extend(orderToSign, signature)
+            signedOrder['address'] = self.walletAddress
+            signedOrder['nonce'] = await self.get_nonce()
             #   [{
             #     "amount": "0.07",
             #     "date": "2017-10-13 16:25:36",
@@ -552,6 +554,8 @@ class idex(Exchange):
             #     "orderHash": "0xcfe4018c59e50e0e1964c979e6213ce5eb8c751cbc98a44251eb48a0985adc52",
             #     "uuid": "250d51a0-b033-11e7-9984-a9ab79bb8f35"
             #   }]
+            response = await self.privatePostTrade(signedOrder)
+            return self.parse_orders(response, market)
 
     async def get_nonce(self):
         if self.options['orderNonce'] is None:
@@ -1076,7 +1080,7 @@ class idex(Exchange):
         ])
 
     def get_idex_market_order_hash(self, order):
-        return self.soliditySha3V2([
+        return self.soliditySha3([
             order['orderHash'],  # address
             order['amount'],  # uint256
             order['address'],  # address
