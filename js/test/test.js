@@ -9,13 +9,11 @@ const debug = process.argv.includes ('--debug') || false
 /*  ------------------------------------------------------------------------ */
 
 const asTable   = require ('as-table')
-    , util      = require ('util')
     , log       = require ('ololog')
     , ansi      = require ('ansicolor').nice
     , fs        = require ('fs')
     , ccxt      = require ('../../ccxt.js')
     , chai      = require ('chai')
-    , expect    = chai.expect
     , assert    = chai.assert
 
 /*  ------------------------------------------------------------------------ */
