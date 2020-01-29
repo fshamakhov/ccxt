@@ -533,17 +533,16 @@ class idex(Exchange):
             #      expires: 10000,
             #      nonce: 1564656561510,
             #      user: '0xc3f8304270e49b8e8197bfcfd8567b83d9e4479b'}}
+            nonce = self.get_nonce()
             orderToSign = {
                 'orderHash': params['orderHash'],
                 'amount': params['params']['amountBuy'],
-                'address': params['params']['user'],
-                'nonce': params['params']['nonce'],
+                'address': self.walletAddress,
+                'nonce': nonce,
             }
             orderHash = self.get_idex_market_order_hash(orderToSign)
             signature = self.signMessage(orderHash, self.privateKey)
             signedOrder = self.extend(orderToSign, signature)
-            signedOrder['address'] = self.walletAddress
-            signedOrder['nonce'] = self.get_nonce()
             #   [{
             #     "amount": "0.07",
             #     "date": "2017-10-13 16:25:36",
