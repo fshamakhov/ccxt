@@ -134,6 +134,7 @@ class crex24(Exchange):
             },
             'commonCurrencies': {
                 'YOYO': 'YOYOW',
+                'BULL': 'BuySell',
                 'BCC': 'BCH',
             },
             # exchange-specific options
@@ -142,7 +143,6 @@ class crex24(Exchange):
                 'fetchClosedOrdersMethod': 'tradingGetOrderHistory',  # or 'tradingGetActiveOrders'
                 'fetchTickersMethod': 'publicGetTicker24hr',
                 'defaultTimeInForce': 'GTC',  # 'GTC' = Good To Cancel(default), 'IOC' = Immediate Or Cancel
-                'defaultLimitOrderType': 'limit',  # or 'limit_maker'
                 'hasAlreadyAuthenticatedSuccessfully': False,
                 'warnOnFetchOpenOrdersWithoutSymbol': True,
                 'parseOrderToPrecision': False,  # force amounts and costs in parseOrder to precision
@@ -323,9 +323,6 @@ class crex24(Exchange):
         #         }
         #     ]
         #
-        # log = require('ololog').unlimited.green
-        # log(response)
-        # sys.exit()
         result = {'info': response}
         for i in range(0, len(response)):
             balance = response[i]
@@ -679,6 +676,7 @@ class crex24(Exchange):
         return {
             'info': order,
             'id': id,
+            'clientOrderId': None,
             'timestamp': timestamp,
             'datetime': self.iso8601(timestamp),
             'lastTradeTimestamp': lastTradeTimestamp,

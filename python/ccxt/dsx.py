@@ -50,7 +50,7 @@ class dsx(Exchange):
                 'withdraw': True,
             },
             'urls': {
-                'logo': 'https://user-images.githubusercontent.com/1294454/27990275-1413158a-645a-11e7-931c-94717f7510e3.jpg',
+                'logo': 'https://user-images.githubusercontent.com/51840849/76909626-cb2bb100-68bc-11ea-99e0-28ba54f04792.jpg',
                 'api': {
                     'public': 'https://dsx.uk/mapi',  # market data
                     'private': 'https://dsx.uk/tapi',  # trading
@@ -682,6 +682,9 @@ class dsx(Exchange):
             'filled': filled,
             'fee': None,
             # 'trades': self.parse_trades(order['trades'], market),
+            'clientOrderId': None,
+            'average': None,
+            'trades': None,
         }
 
     def parse_order_status(self, status):
@@ -780,6 +783,7 @@ class dsx(Exchange):
         return {
             'info': order,
             'id': id,
+            'clientOrderId': None,
             'symbol': symbol,
             'timestamp': timestamp,
             'datetime': self.iso8601(timestamp),
@@ -794,6 +798,7 @@ class dsx(Exchange):
             'status': status,
             'fee': fee,
             'trades': trades,
+            'average': None,
         }
 
     def fetch_order(self, id, symbol=None, params={}):

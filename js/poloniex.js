@@ -3,7 +3,7 @@
 //  ---------------------------------------------------------------------------
 
 const Exchange = require ('./base/Exchange');
-const { ExchangeError, ExchangeNotAvailable, RequestTimeout, AuthenticationError, PermissionDenied, DDoSProtection, InsufficientFunds, OrderNotFound, OrderNotCached, InvalidOrder, AccountSuspended, CancelPending, InvalidNonce } = require ('./base/errors');
+const { ExchangeError, ExchangeNotAvailable, RequestTimeout, AuthenticationError, PermissionDenied, DDoSProtection, InsufficientFunds, OrderNotFound, OrderNotCached, InvalidOrder, AccountSuspended, CancelPending, InvalidNonce, OnMaintenance } = require ('./base/errors');
 
 //  ---------------------------------------------------------------------------
 
@@ -15,6 +15,7 @@ module.exports = class poloniex extends Exchange {
             'countries': [ 'US' ],
             'rateLimit': 1000, // up to 6 calls per second
             'certified': true, // 2019-06-07
+            'pro': true,
             'has': {
                 'CORS': false,
                 'createDepositAddress': true,
@@ -169,6 +170,7 @@ module.exports = class poloniex extends Exchange {
                     'Permission denied': PermissionDenied,
                     'Connection timed out. Please try again.': RequestTimeout,
                     'Internal error. Please try again.': ExchangeNotAvailable,
+                    'Currently in maintenance mode.': OnMaintenance,
                     'Order not found, or you are not the person who placed it.': OrderNotFound,
                     'Invalid API key/secret pair.': AuthenticationError,
                     'Please do not make more than 8 API calls per second.': DDoSProtection,
@@ -228,7 +230,7 @@ module.exports = class poloniex extends Exchange {
             if (limit === undefined) {
                 request['start'] = request['end'] - this.parseTimeframe ('1w'); // max range = 1 week
             } else {
-                request['start'] = request['end'] - this.sum (limit) * this.parseTimeframe (timeframe);
+                request['start'] = request['end'] - limit * this.parseTimeframe (timeframe);
             }
         } else {
             request['start'] = parseInt (since / 1000);
@@ -423,9 +425,6 @@ module.exports = class poloniex extends Exchange {
         for (let i = 0; i < ids.length; i++) {
             const id = ids[i];
             const currency = response[id];
-            // todo: will need to rethink the fees
-            // to add support for multiple withdrawal/deposit methods and
-            // differentiated fees for each particular method
             const precision = 8; // default precision, todo: fix "magic constants"
             const code = this.safeCurrencyCode (id);
             const active = (currency['delisted'] === 0) && !currency['disabled'];
@@ -751,6 +750,7 @@ module.exports = class poloniex extends Exchange {
         //             },
         //         ],
         //         'fee': '0.00000000',
+        //         'clientOrderId': '12345',
         //         'currencyPair': 'BTC_MANA',
         //         // ---------------------------------------------------------
         //         // the following fields are injected by createOrder
@@ -837,9 +837,11 @@ module.exports = class poloniex extends Exchange {
                 'currency': feeCurrencyCode,
             };
         }
+        const clientOrderId = this.safeString (order, 'clientOrderId');
         return {
             'info': order,
             'id': id,
+            'clientOrderId': clientOrderId,
             'timestamp': timestamp,
             'datetime': this.iso8601 (timestamp),
             'lastTradeTimestamp': lastTradeTimestamp,
@@ -1033,6 +1035,7 @@ module.exports = class poloniex extends Exchange {
                 'id': newid,
                 'price': price,
                 'status': 'open',
+                'trades': [],
             });
             if (amount !== undefined) {
                 this.orders[newid]['amount'] = amount;
