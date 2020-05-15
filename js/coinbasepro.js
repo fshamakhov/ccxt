@@ -3,7 +3,7 @@
 // ----------------------------------------------------------------------------
 
 const Exchange = require ('./base/Exchange');
-const { InsufficientFunds, ArgumentsRequired, ExchangeError, InvalidOrder, InvalidAddress, AuthenticationError, NotSupported, OrderNotFound } = require ('./base/errors');
+const { InsufficientFunds, ArgumentsRequired, ExchangeError, InvalidOrder, InvalidAddress, AuthenticationError, NotSupported, OrderNotFound, OnMaintenance, RateLimitExceeded } = require ('./base/errors');
 
 // ----------------------------------------------------------------------------
 
@@ -15,6 +15,7 @@ module.exports = class coinbasepro extends Exchange {
             'countries': [ 'US' ],
             'rateLimit': 1000,
             'userAgent': this.userAgents['chrome'],
+            'pro': true,
             'has': {
                 'cancelAllOrders': true,
                 'CORS': true,
@@ -152,12 +153,14 @@ module.exports = class coinbasepro extends Exchange {
                     'invalid signature': AuthenticationError,
                     'Invalid Passphrase': AuthenticationError,
                     'Invalid order id': InvalidOrder,
+                    'Private rate limit exceeded': RateLimitExceeded,
                 },
                 'broad': {
                     'Order already done': OrderNotFound,
                     'order not found': OrderNotFound,
                     'price too small': InvalidOrder,
                     'price too precise': InvalidOrder,
+                    'under maintenance': OnMaintenance,
                 },
             },
         });
@@ -295,6 +298,58 @@ module.exports = class coinbasepro extends Exchange {
         return orderbook;
     }
 
+    parseTicker (ticker, market = undefined) {
+        //
+        // publicGetProductsIdTicker
+        //
+        //     {
+        //         "trade_id":843439,
+        //         "price":"0.997999",
+        //         "size":"80.29769",
+        //         "time":"2020-01-28T02:13:33.012523Z",
+        //         "bid":"0.997094",
+        //         "ask":"0.998",
+        //         "volume":"1903188.03750000"
+        //     }
+        //
+        // publicGetProductsIdStats
+        //
+        //     {
+        //         "open": "34.19000000",
+        //         "high": "95.70000000",
+        //         "low": "7.06000000",
+        //         "volume": "2.41000000"
+        //     }
+        //
+        const timestamp = this.parse8601 (this.safeValue (ticker, 'time'));
+        const bid = this.safeFloat (ticker, 'bid');
+        const ask = this.safeFloat (ticker, 'ask');
+        const last = this.safeFloat (ticker, 'price');
+        const symbol = (market === undefined) ? undefined : market['symbol'];
+        return {
+            'symbol': symbol,
+            'timestamp': timestamp,
+            'datetime': this.iso8601 (timestamp),
+            'high': this.safeFloat (ticker, 'high'),
+            'low': this.safeFloat (ticker, 'low'),
+            'bid': bid,
+            'bidVolume': undefined,
+            'ask': ask,
+            'askVolume': undefined,
+            'vwap': undefined,
+            'open': this.safeFloat (ticker, 'open'),
+            'close': last,
+            'last': last,
+            'previousClose': undefined,
+            'change': undefined,
+            'percentage': undefined,
+            'average': undefined,
+            'baseVolume': this.safeFloat (ticker, 'volume'),
+            'quoteVolume': undefined,
+            'info': ticker,
+        };
+    }
+
     async fetchTicker (symbol, params = {}) {
         await this.loadMarkets ();
         const market = this.market (symbol);
@@ -326,42 +381,38 @@ module.exports = class coinbasepro extends Exchange {
         //         "volume": "2.41000000"
         //     }
         //
-        const timestamp = this.parse8601 (this.safeValue (response, 'time'));
-        const bid = this.safeFloat (response, 'bid');
-        const ask = this.safeFloat (response, 'ask');
-        const last = this.safeFloat (response, 'price');
-        return {
-            'symbol': symbol,
-            'timestamp': timestamp,
-            'datetime': this.iso8601 (timestamp),
-            'high': this.safeFloat (response, 'high'),
-            'low': this.safeFloat (response, 'low'),
-            'bid': bid,
-            'bidVolume': undefined,
-            'ask': ask,
-            'askVolume': undefined,
-            'vwap': undefined,
-            'open': this.safeFloat (response, 'open'),
-            'close': last,
-            'last': last,
-            'previousClose': undefined,
-            'change': undefined,
-            'percentage': undefined,
-            'average': undefined,
-            'baseVolume': this.safeFloat (response, 'volume'),
-            'quoteVolume': undefined,
-            'info': response,
-        };
+        return this.parseTicker (response, market);
     }
 
     parseTrade (trade, market = undefined) {
+        //
+        //     {
+        //         type: 'match',
+        //         trade_id: 82047307,
+        //         maker_order_id: '0f358725-2134-435e-be11-753912a326e0',
+        //         taker_order_id: '252b7002-87a3-425c-ac73-f5b9e23f3caf',
+        //         side: 'sell',
+        //         size: '0.00513192',
+        //         price: '9314.78',
+        //         product_id: 'BTC-USD',
+        //         sequence: 12038915443,
+        //         time: '2020-01-31T20:03:41.158814Z'
+        //     }
+        //
         const timestamp = this.parse8601 (this.safeString2 (trade, 'time', 'created_at'));
         let symbol = undefined;
-        if (market === undefined) {
-            const marketId = this.safeString (trade, 'product_id');
-            market = this.safeValue (this.markets_by_id, marketId);
+        const marketId = this.safeString (trade, 'product_id');
+        if (marketId !== undefined) {
+            if (marketId in this.markets_by_id) {
+                market = this.markets_by_id[marketId];
+            } else {
+                const [ baseId, quoteId ] = marketId.split ('-');
+                const base = this.safeCurrencyCode (baseId);
+                const quote = this.safeCurrencyCode (quoteId);
+                symbol = base + '/' + quote;
+            }
         }
-        if (market) {
+        if ((symbol === undefined) && (market !== undefined)) {
             symbol = market['symbol'];
         }
         let feeRate = undefined;
@@ -467,7 +518,13 @@ module.exports = class coinbasepro extends Exchange {
 
     async fetchTime (params = {}) {
         const response = await this.publicGetTime (params);
-        return this.parse8601 (this.safeString (response, 'iso'));
+        //
+        //     {
+        //         "iso":"2020-05-12T08:00:51.504Z",
+        //         "epoch":1589270451.504
+        //     }
+        //
+        return this.safeTimestamp (response, 'epoch');
     }
 
     parseOrderStatus (status) {
@@ -531,6 +588,7 @@ module.exports = class coinbasepro extends Exchange {
         const side = this.safeString (order, 'side');
         return {
             'id': id,
+            'clientOrderId': undefined,
             'info': order,
             'timestamp': timestamp,
             'datetime': this.iso8601 (timestamp),
@@ -545,6 +603,8 @@ module.exports = class coinbasepro extends Exchange {
             'filled': filled,
             'remaining': remaining,
             'fee': fee,
+            'average': undefined,
+            'trades': undefined,
         };
     }
 
@@ -885,7 +945,7 @@ module.exports = class coinbasepro extends Exchange {
     handleErrors (code, reason, url, method, headers, body, response, requestHeaders, requestBody) {
         if ((code === 400) || (code === 404)) {
             if (body[0] === '{') {
-                const message = response['message'];
+                const message = this.safeString (response, 'message');
                 const feedback = this.id + ' ' + message;
                 this.throwExactlyMatchedException (this.exceptions['exact'], message, feedback);
                 this.throwBroadlyMatchedException (this.exceptions['broad'], message, feedback);

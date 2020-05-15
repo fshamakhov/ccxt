@@ -21,6 +21,8 @@ from ccxt.base.errors import InvalidAddress
 from ccxt.base.errors import InvalidOrder
 from ccxt.base.errors import OrderNotFound
 from ccxt.base.errors import NotSupported
+from ccxt.base.errors import RateLimitExceeded
+from ccxt.base.errors import OnMaintenance
 
 
 class coinbasepro(Exchange):
@@ -32,6 +34,7 @@ class coinbasepro(Exchange):
             'countries': ['US'],
             'rateLimit': 1000,
             'userAgent': self.userAgents['chrome'],
+            'pro': True,
             'has': {
                 'cancelAllOrders': True,
                 'CORS': True,
@@ -169,12 +172,14 @@ class coinbasepro(Exchange):
                     'invalid signature': AuthenticationError,
                     'Invalid Passphrase': AuthenticationError,
                     'Invalid order id': InvalidOrder,
+                    'Private rate limit exceeded': RateLimitExceeded,
                 },
                 'broad': {
                     'Order already done': OrderNotFound,
                     'order not found': OrderNotFound,
                     'price too small': InvalidOrder,
                     'price too precise': InvalidOrder,
+                    'under maintenance': OnMaintenance,
                 },
             },
         })
@@ -304,6 +309,57 @@ class coinbasepro(Exchange):
         orderbook['nonce'] = self.safe_integer(response, 'sequence')
         return orderbook
 
+    def parse_ticker(self, ticker, market=None):
+        #
+        # publicGetProductsIdTicker
+        #
+        #     {
+        #         "trade_id":843439,
+        #         "price":"0.997999",
+        #         "size":"80.29769",
+        #         "time":"2020-01-28T02:13:33.012523Z",
+        #         "bid":"0.997094",
+        #         "ask":"0.998",
+        #         "volume":"1903188.03750000"
+        #     }
+        #
+        # publicGetProductsIdStats
+        #
+        #     {
+        #         "open": "34.19000000",
+        #         "high": "95.70000000",
+        #         "low": "7.06000000",
+        #         "volume": "2.41000000"
+        #     }
+        #
+        timestamp = self.parse8601(self.safe_value(ticker, 'time'))
+        bid = self.safe_float(ticker, 'bid')
+        ask = self.safe_float(ticker, 'ask')
+        last = self.safe_float(ticker, 'price')
+        symbol = None if (market is None) else market['symbol']
+        return {
+            'symbol': symbol,
+            'timestamp': timestamp,
+            'datetime': self.iso8601(timestamp),
+            'high': self.safe_float(ticker, 'high'),
+            'low': self.safe_float(ticker, 'low'),
+            'bid': bid,
+            'bidVolume': None,
+            'ask': ask,
+            'askVolume': None,
+            'vwap': None,
+            'open': self.safe_float(ticker, 'open'),
+            'close': last,
+            'last': last,
+            'previousClose': None,
+            'change': None,
+            'percentage': None,
+            'average': None,
+            'baseVolume': self.safe_float(ticker, 'volume'),
+            'quoteVolume': None,
+            'info': ticker,
+        }
+
     def fetch_ticker(self, symbol, params={}):
         self.load_markets()
         market = self.market(symbol)
@@ -335,40 +391,35 @@ class coinbasepro(Exchange):
         #         "volume": "2.41000000"
         #     }
         #
-        timestamp = self.parse8601(self.safe_value(response, 'time'))
-        bid = self.safe_float(response, 'bid')
-        ask = self.safe_float(response, 'ask')
-        last = self.safe_float(response, 'price')
-        return {
-            'symbol': symbol,
-            'timestamp': timestamp,
-            'datetime': self.iso8601(timestamp),
-            'high': self.safe_float(response, 'high'),
-            'low': self.safe_float(response, 'low'),
-            'bid': bid,
-            'bidVolume': None,
-            'ask': ask,
-            'askVolume': None,
-            'vwap': None,
-            'open': self.safe_float(response, 'open'),
-            'close': last,
-            'last': last,
-            'previousClose': None,
-            'change': None,
-            'percentage': None,
-            'average': None,
-            'baseVolume': self.safe_float(response, 'volume'),
-            'quoteVolume': None,
-            'info': response,
-        }
+        return self.parse_ticker(response, market)
 
     def parse_trade(self, trade, market=None):
+        #
+        #     {
+        #         type: 'match',
+        #         trade_id: 82047307,
+        #         maker_order_id: '0f358725-2134-435e-be11-753912a326e0',
+        #         taker_order_id: '252b7002-87a3-425c-ac73-f5b9e23f3caf',
+        #         side: 'sell',
+        #         size: '0.00513192',
+        #         price: '9314.78',
+        #         product_id: 'BTC-USD',
+        #         sequence: 12038915443,
+        #         time: '2020-01-31T20:03:41.158814Z'
+        #     }
+        #
         timestamp = self.parse8601(self.safe_string_2(trade, 'time', 'created_at'))
         symbol = None
-        if market is None:
-            marketId = self.safe_string(trade, 'product_id')
-            market = self.safe_value(self.markets_by_id, marketId)
-        if market:
+        marketId = self.safe_string(trade, 'product_id')
+        if marketId is not None:
+            if marketId in self.markets_by_id:
+                market = self.markets_by_id[marketId]
+            else:
+                baseId, quoteId = marketId.split('-')
+                base = self.safe_currency_code(baseId)
+                quote = self.safe_currency_code(quoteId)
+                symbol = base + '/' + quote
+        if (symbol is None) and (market is not None):
             symbol = market['symbol']
         feeRate = None
         feeCurrency = None
@@ -461,7 +512,13 @@ class coinbasepro(Exchange):
 
     def fetch_time(self, params={}):
         response = self.publicGetTime(params)
-        return self.parse8601(self.safe_string(response, 'iso'))
+        #
+        #     {
+        #         "iso":"2020-05-12T08:00:51.504Z",
+        #         "epoch":1589270451.504
+        #     }
+        #
+        return self.safe_timestamp(response, 'epoch')
 
     def parse_order_status(self, status):
         statuses = {
@@ -516,6 +573,7 @@ class coinbasepro(Exchange):
         side = self.safe_string(order, 'side')
         return {
             'id': id,
+            'clientOrderId': None,
             'info': order,
             'timestamp': timestamp,
             'datetime': self.iso8601(timestamp),
@@ -530,6 +588,8 @@ class coinbasepro(Exchange):
             'filled': filled,
             'remaining': remaining,
             'fee': fee,
+            'average': None,
+            'trades': None,
         }
 
     def fetch_order(self, id, symbol=None, params={}):
@@ -825,7 +885,7 @@ class coinbasepro(Exchange):
     def handle_errors(self, code, reason, url, method, headers, body, response, requestHeaders, requestBody):
         if (code == 400) or (code == 404):
             if body[0] == '{':
-                message = response['message']
+                message = self.safe_string(response, 'message')
                 feedback = self.id + ' ' + message
                 self.throw_exactly_matched_exception(self.exceptions['exact'], message, feedback)
                 self.throw_broadly_matched_exception(self.exceptions['broad'], message, feedback)

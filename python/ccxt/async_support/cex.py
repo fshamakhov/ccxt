@@ -13,6 +13,7 @@ except NameError:
     basestring = str  # Python 2
 import json
 from ccxt.base.errors import ExchangeError
+from ccxt.base.errors import AuthenticationError
 from ccxt.base.errors import ArgumentsRequired
 from ccxt.base.errors import NullResponse
 from ccxt.base.errors import InsufficientFunds
@@ -32,7 +33,7 @@ class cex(Exchange):
             'countries': ['GB', 'EU', 'CY', 'RU'],
             'rateLimit': 1500,
             'has': {
-                'CORS': True,
+                'CORS': False,
                 'fetchCurrencies': True,
                 'fetchTickers': True,
                 'fetchOHLCV': True,
@@ -143,6 +144,8 @@ class cex(Exchange):
                     'Invalid Order': InvalidOrder,
                     'Order not found': OrderNotFound,
                     'Rate limit exceeded': RateLimitExceeded,
+                    'Invalid API key': AuthenticationError,
+                    'There was an error while placing your order': InvalidOrder,
                 },
             },
             'options': {
@@ -362,6 +365,7 @@ class cex(Exchange):
                         'max': None,
                     },
                 },
+                'active': None,
             })
         return result
 
@@ -545,9 +549,44 @@ class cex(Exchange):
         else:
             request['order_type'] = type
         response = await self.privatePostPlaceOrderPair(self.extend(request, params))
+        #
+        #     {
+        #         "id": "12978363524",
+        #         "time": 1586610022259,
+        #         "type": "buy",
+        #         "price": "0.033934",
+        #         "amount": "0.10722802",
+        #         "pending": "0.10722802",
+        #         "complete": False
+        #     }
+        #
+        placedAmount = self.safe_float(response, 'amount')
+        remaining = self.safe_float(response, 'pending')
+        timestamp = self.safe_value(response, 'time')
+        complete = self.safe_value(response, 'complete')
+        status = 'closed' if complete else 'open'
+        filled = None
+        if (placedAmount is not None) and (remaining is not None):
+            filled = max(placedAmount - remaining, 0)
         return {
+            'id': self.safe_string(response, 'id'),
             'info': response,
-            'id': response['id'],
+            'clientOrderId': None,
+            'timestamp': timestamp,
+            'datetime': self.iso8601(timestamp),
+            'lastTradeTimestamp': None,
+            'type': type,
+            'side': self.safe_string(response, 'type'),
+            'symbol': symbol,
+            'status': status,
+            'price': self.safe_float(response, 'price'),
+            'amount': placedAmount,
+            'cost': None,
+            'average': None,
+            'remaining': remaining,
+            'filled': filled,
+            'fee': None,
+            'trades': None,
         }
 
     async def cancel_order(self, id, symbol=None, params={}):
@@ -771,9 +810,12 @@ class cex(Exchange):
                         'currency': market['quote'],
                     },
                     'info': item,
+                    'type': None,
+                    'takerOrMaker': None,
                 })
         return {
             'id': orderId,
+            'clientOrderId': None,
             'datetime': self.iso8601(timestamp),
             'timestamp': timestamp,
             'lastTradeTimestamp': None,
@@ -789,6 +831,7 @@ class cex(Exchange):
             'trades': trades,
             'fee': fee,
             'info': order,
+            'average': None,
         }
 
     async def fetch_open_orders(self, symbol=None, since=None, limit=None, params={}):
@@ -1096,10 +1139,10 @@ class cex(Exchange):
     def handle_errors(self, code, reason, url, method, headers, body, response, requestHeaders, requestBody):
         if isinstance(response, list):
             return response  # public endpoints may return []-arrays
+        if body == 'true':
+            return
         if response is None:
             raise NullResponse(self.id + ' returned ' + self.json(response))
-        if response is True or response == 'true':
-            return
         if 'e' in response:
             if 'ok' in response:
                 if response['ok'] == 'ok':
