@@ -12,8 +12,8 @@ use \ccxt\InvalidOrder;
 
 class bilaxy extends Exchange {
 
-    public function describe () {
-        return array_replace_recursive(parent::describe (), array(
+    public function describe() {
+        return $this->deep_extend(parent::describe (), array(
             'id' => 'bilaxy',
             'name' => 'Bilaxy',
             'countries' => ['CN'], // Japan, Malta
@@ -112,7 +112,7 @@ class bilaxy extends Exchange {
         ));
     }
 
-    public function fetch_markets ($params = array ()) {
+    public function fetch_markets($params = array ()) {
         $response = $this->publicGetCoins ();
         $markets = $response['data'];
         $result = array();
@@ -162,7 +162,7 @@ class bilaxy extends Exchange {
         return $result;
     }
 
-    public function get_bilaxy_symbol ($symbol) {
+    public function get_bilaxy_symbol($symbol) {
         if ($this->bilaxySymbols === null) {
             throw new ExchangeError($this->id . ' markets not loaded');
         }
@@ -172,7 +172,7 @@ class bilaxy extends Exchange {
         throw new ExchangeError($this->id . ' does not have market $symbol ' . $symbol);
     }
 
-    public function get_symbol_from_bilaxy ($symbol) {
+    public function get_symbol_from_bilaxy($symbol) {
         if ($this->bilaxySymbols === null) {
             throw new ExchangeError($this->id . ' markets not loaded');
         }
@@ -186,8 +186,8 @@ class bilaxy extends Exchange {
         throw new ExchangeError($this->id . ' does not have market symbol');
     }
 
-    public function fetch_order_book ($symbol, $limit = null, $params = array ()) {
-        $bilaxy_symbol = $this->get_bilaxy_symbol ($symbol);
+    public function fetch_order_book($symbol, $limit = null, $params = array ()) {
+        $bilaxy_symbol = $this->get_bilaxy_symbol($symbol);
         $request = array(
             'symbol' => $bilaxy_symbol,
         );
@@ -195,7 +195,7 @@ class bilaxy extends Exchange {
         return $this->parse_order_book($response['data']);
     }
 
-    public function parse_ticker ($symbol, $ticker, $market = null) {
+    public function parse_ticker($symbol, $ticker, $market = null) {
         $last = $this->safe_float($ticker, 'last');
         return array(
             'symbol' => $symbol,
@@ -221,34 +221,34 @@ class bilaxy extends Exchange {
         );
     }
 
-    public function fetch_ticker ($symbol, $params = array ()) {
-        $bilaxy_symbol = $this->get_bilaxy_symbol ($symbol);
+    public function fetch_ticker($symbol, $params = array ()) {
+        $bilaxy_symbol = $this->get_bilaxy_symbol($symbol);
         $response = $this->publicGetTicker (array_merge(array(
             'symbol' => $bilaxy_symbol,
         ), $params));
         $this->load_markets();
-        $market = $this->market ($symbol);
+        $market = $this->market($symbol);
         return $this->parse_ticker($symbol, $response['data'], $market);
     }
 
-    public function parse_tickers ($rawTickers, $symbols = null) {
+    public function parse_tickers($rawTickers, $symbols = null) {
         $this->load_markets();
         $tickers = array();
         for ($i = 0; $i < count($rawTickers); $i++) {
-            $symbol = $this->get_symbol_from_bilaxy ($rawTickers[$i]['symbol']);
-            $market = $this->market ($symbol);
+            $symbol = $this->get_symbol_from_bilaxy($rawTickers[$i]['symbol']);
+            $market = $this->market($symbol);
             $tickers[] = $this->parse_ticker($symbol, $rawTickers[$i], $market);
         }
         return $this->filter_by_array($tickers, 'symbol', $symbols);
     }
 
-    public function fetch_tickers ($symbols = null, $params = array ()) {
+    public function fetch_tickers($symbols = null, $params = array ()) {
         $this->load_markets();
         $rawTickers = $this->publicGetTickers ($params);
-        return $this->parse_tickers ($rawTickers['data'], $symbols);
+        return $this->parse_tickers($rawTickers['data'], $symbols);
     }
 
-    public function parse_trade ($trade, $market = null) {
+    public function parse_trade($trade, $market = null) {
         $timestamp = $this->safe_integer($trade, 'date');
         $price = $this->safe_float($trade, 'price');
         $amount = $this->safe_float($trade, 'count');
@@ -262,7 +262,7 @@ class bilaxy extends Exchange {
         return array(
             'info' => $trade,
             'timestamp' => $timestamp,
-            'datetime' => $this->iso8601 ($timestamp),
+            'datetime' => $this->iso8601($timestamp),
             'symbol' => $symbol,
             'id' => $id,
             'order' => null,
@@ -274,9 +274,9 @@ class bilaxy extends Exchange {
         );
     }
 
-    public function fetch_trades ($symbol, $since = null, $limit = null, $params = array ()) {
+    public function fetch_trades($symbol, $since = null, $limit = null, $params = array ()) {
         $this->load_markets();
-        $market = $this->market ($symbol);
+        $market = $this->market($symbol);
         $request = array(
             'symbol' => $market['info']['symbol'],
         );
@@ -287,7 +287,7 @@ class bilaxy extends Exchange {
         return $this->parse_trades($response['data'], $market, null, $limit);
     }
 
-    public function fetch_balance ($params = array ()) {
+    public function fetch_balance($params = array ()) {
         $this->load_markets();
         $response = $this->privateGetBalances ($params);
         $result = array( 'info' => $response['data'] );
@@ -303,13 +303,13 @@ class bilaxy extends Exchange {
                 'used' => floatval ($balance['frozen']),
                 'total' => 0.0,
             );
-            $account['total'] = $this->sum ($account['free'], $account['used']);
+            $account['total'] = $this->sum($account['free'], $account['used']);
             $result[$currency] = $account;
         }
         return $this->parse_balance($result);
     }
 
-    public function handle_errors ($code, $reason, $url, $method, $headers, $body, $response, $requestHeaders, $requestBody) {
+    public function handle_errors($code, $reason, $url, $method, $headers, $body, $response, $requestHeaders, $requestBody) {
         if ($response === null) {
             throw new ExchangeError($this->id . ' $response is empty.');
         }
@@ -322,12 +322,12 @@ class bilaxy extends Exchange {
         }
     }
 
-    public function fetch_order ($id, $symbol = null, $params = array ()) {
+    public function fetch_order($id, $symbol = null, $params = array ()) {
         if ($symbol === null) {
             throw new ArgumentsRequired($this->id . ' fetchOrder requires a $symbol argument');
         }
         $this->load_markets();
-        $market = $this->market ($symbol);
+        $market = $this->market($symbol);
         $request = array(
             'id' => intval ($id),
         );
@@ -335,12 +335,12 @@ class bilaxy extends Exchange {
         return $this->parse_order($response, $market);
     }
 
-    public function fetch_orders ($symbol = null, $since = null, $limit = null, $params = array ()) {
+    public function fetch_orders($symbol = null, $since = null, $limit = null, $params = array ()) {
         if ($symbol === null) {
             throw new ArgumentsRequired($this->id . ' fetchOrders requires a $symbol argument');
         }
         $this->load_markets();
-        $market = $this->market ($symbol);
+        $market = $this->market($symbol);
         $request = array(
             'symbol' => $market['info']['symbol'],
             'type' => 0, // => All orders
@@ -352,22 +352,22 @@ class bilaxy extends Exchange {
         return $this->parse_orders($response['data'], $market, $since, $limit);
     }
 
-    public function fetch_open_orders ($symbol = null, $since = null, $limit = null, $params = array ()) {
+    public function fetch_open_orders($symbol = null, $since = null, $limit = null, $params = array ()) {
         $openParams = array( 'type' => 1 ); // 1 => Pending orders
         return $this->fetch_orders($symbol, $since, $limit, array_merge($openParams, $params));
     }
 
-    public function fetch_closed_orders ($symbol = null, $since = null, $limit = null, $params = array ()) {
+    public function fetch_closed_orders($symbol = null, $since = null, $limit = null, $params = array ()) {
         $orders = $this->fetch_orders($symbol, $since, $limit, $params);
         return $this->filter_by($orders, 'status', 3); // 3 => Traded completely
     }
 
-    public function cancel_order ($id, $symbol = null, $params = array ()) {
+    public function cancel_order($id, $symbol = null, $params = array ()) {
         if ($symbol === null) {
             throw new ArgumentsRequired($this->id . ' cancelOrder requires a $symbol argument');
         }
         $this->load_markets();
-        $market = $this->market ($symbol);
+        $market = $this->market($symbol);
         $request = array(
             'id' => intval ($id),
         );
@@ -376,7 +376,7 @@ class bilaxy extends Exchange {
         return $this->parse_order($order['data'], $market);
     }
 
-    public function parse_order_status ($status) {
+    public function parse_order_status($status) {
         $statusString = $this->number_to_string($status);
         $statuses = array(
             '1' => 'open',
@@ -387,7 +387,7 @@ class bilaxy extends Exchange {
         return $this->safe_string($statuses, $statusString, $statusString);
     }
 
-    public function parse_order ($order, $market = null) {
+    public function parse_order($order, $market = null) {
         $status = $this->parse_order_status($this->safe_string($order, 'status'));
         $symbol = null;
         if ($market) {
@@ -396,7 +396,7 @@ class bilaxy extends Exchange {
         $timestamp = null;
         $datetime = $this->safe_string($order, 'datetime');
         if ($datetime) {
-            $timestamp = $this->parse8601 ($datetime);
+            $timestamp = $this->parse8601($datetime);
         }
         $price = $this->safe_float($order, 'price');
         $amount = $this->safe_float($order, 'amount');
@@ -427,7 +427,7 @@ class bilaxy extends Exchange {
             'info' => $order,
             'id' => $id,
             'timestamp' => $timestamp,
-            'datetime' => $this->iso8601 ($timestamp),
+            'datetime' => $this->iso8601($timestamp),
             'lastTradeTimestamp' => null,
             'symbol' => $symbol,
             'type' => $type,
@@ -443,9 +443,9 @@ class bilaxy extends Exchange {
         );
     }
 
-    public function create_order ($symbol, $type, $side, $amount, $price = null, $params = array ()) {
+    public function create_order($symbol, $type, $side, $amount, $price = null, $params = array ()) {
         $this->load_markets();
-        $market = $this->market ($symbol);
+        $market = $this->market($symbol);
         if ($price === null) {
             throw new InvalidOrder($this->id . ' createOrder method requires a $price argument');
         }
@@ -460,10 +460,10 @@ class bilaxy extends Exchange {
         return $this->parse_order($order['data'], $market);
     }
 
-    public function fetch_deposit_address ($code, $params = array ()) {
-        $balance = $this->fetch_balance ();
+    public function fetch_deposit_address($code, $params = array ()) {
+        $balance = $this->fetch_balance();
         $this->load_markets();
-        $currency = $this->currency ($code);
+        $currency = $this->currency($code);
         $symbol = $this->filter_by($balance['info'], 'name', $currency['id']);
         if (strlen($symbol) !== 1) {
             throw new ExchangeError($this->id . ' could not find $currency with $code ' . $code);
@@ -483,24 +483,24 @@ class bilaxy extends Exchange {
         );
     }
 
-    public function sign ($path, $api = 'public', $method = 'GET', $params = array (), $headers = null, $body = null) {
+    public function sign($path, $api = 'public', $method = 'GET', $params = array (), $headers = null, $body = null) {
         $url = $this->urls['api'][$api];
         $url .= '/' . $path;
         if (($api === 'public') || ($api === 'v2')) {
             if ($params) {
-                $url .= '?' . $this->urlencode ($params);
+                $url .= '?' . $this->urlencode($params);
             }
             if ($api === 'v2') {
                 $headers = array( 'accept' => 'application/json' );
             }
         } else {
             $this->check_required_credentials();
-            $sorted = $this->encode ($this->urlencode ($this->keysort (array_merge(array(
+            $sorted = $this->encode($this->urlencode($this->keysort(array_merge(array(
                 'key' => $this->apiKey,
                 'secret' => $this->secret,
             ), $params))));
-            $signature = $this->hash ($sorted, 'sha1');
-            $query = $this->urlencode ($this->keysort (array_merge(array(
+            $signature = $this->hash($sorted, 'sha1');
+            $query = $this->urlencode($this->keysort(array_merge(array(
                 'key' => $this->apiKey,
                 'sign' => $signature,
             ), $params)));

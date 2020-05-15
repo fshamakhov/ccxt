@@ -102,14 +102,50 @@ class idex(Exchange):
                 'apiKey': False,
                 'secret': False,
             },
+            'idexContractAddress': None,
             'commonCurrencies': {
+                'ACC': 'Accelerator',
+                'AIC': 'Akaiito',
+                'AMB': 'Amber Token',
+                'BIO': 'BioCrypt',
+                'BLUE': 'Ethereum Blue',
+                'BST': 'Blocksquare Token',
+                'BTT': 'Blocktrade',
+                'CAT2': 'BitClave',
+                'CCC': 'Container Crypto Coin',
+                'CRE': 'Carry Token',
+                'CST': 'CryptosolarTech',
+                'EXO': 'EXOLOVER',
                 'FT': 'Fabric Token',
+                'GBX': 'Globitex Token',
+                'GENE': 'GeneSourceCodeChain',
+                'GET': 'GUTS',
+                'GET2': 'GET',
+                'IPL': 'InsurePal',
                 'MT': 'Monarch',
+                'NTK2': 'Netkoin',
                 'ONE': 'Menlo One',
+                'ONG': 'onG.social',
+                'PDX': 'PdxToken',
                 'PLA': 'PlayChip',
+                'PRO': 'ProChain',
+                'PRO2': 'PRO',
+                'SAT': 'Satisfaction Token',
+                'SET': 'Swytch Energy Token',
+                'SMT': 'Sun Money Token',
+                'TFT': 'Travelling Free Token',
+                'VNT': 'Vanta Network',
                 'WAX': 'WAXP',
+                'WCT': 'Wealth Chain Token',
             },
+            'currencyById': None,
+            'enableLastResponseHeaders': True,
         })
+
+    def get_currency(self, currency=''):
+        if currency in self.currencyById:
+            return self.currencyById[currency]
+        raise ExchangeError('Exchange ' + self.id + 'currency ' + currency + ' not found')
 
     def fetch_markets(self, params={}):
         # idex does not have an endpoint for markets
@@ -123,6 +159,7 @@ class idex(Exchange):
         for i in range(0, len(currencies)):
             currency = currencies[i]
             currenciesById[currency['symbol']] = currency
+        self.currencyById = currenciesById
         result = []
         limits = {
             'amount': {
@@ -274,7 +311,7 @@ class idex(Exchange):
     def fetch_order_book(self, symbol, limit=None, params={}):
         self.load_markets()
         market = self.market(symbol)
-        id = market['quote'] + '_' + market['base']
+        id = market['id']
         request = {
             'market': id,
             'count': 100,  # the default will only return one trade
@@ -360,6 +397,61 @@ class idex(Exchange):
             }
         return self.parse_balance(result)
 
+    def prepare_order_for_trade(self, order, amount, nonce, side, params={}):
+        orderHash = order['orderHash']
+        address = self.safe_string(self.extend({'address': self.walletAddress}, params), 'address')
+        total = 0
+        if side == 'buy':
+            price = self.safe_float(order, 'price')
+            total = amount * price
+        elif side == 'sell':
+            total = amount
+        else:
+            raise InvalidOrder(self.id + ' invalid side value: ' + side)
+        amountBuy = self.to_wei(total, 'ether', order['params']['buyPrecision'])
+        orderToSign = {
+            'orderHash': orderHash,
+            'amount': amountBuy,
+            'address': address,
+            'nonce': nonce,
+        }
+        hash = self.get_idex_market_order_hash(orderToSign)
+        signature = self.sign_message(hash, self.privateKey)
+        request = self.extend(orderToSign, signature)
+        return request
+
+    def idex_trade(self, base, quote, side, amount, nonce, params={}):
+        symbol = base['symbol'] + '/' + quote['symbol']
+        market = self.market(symbol)
+        request = {
+            'market': market['id'],
+            'count': 100,
+        }
+        orderbook = self.publicPostReturnOrderBook(request)
+        orderbookKey = None
+        if side == 'buy':
+            orderbookKey = 'asks'
+        elif side == 'sell':
+            orderbookKey = 'bids'
+        else:
+            raise InvalidOrder(self.id + ' invalid side value: ' + side)
+        totalAmount = 0
+        orders = []
+        for i in range(0, len(orderbook[orderbookKey])):
+            if totalAmount >= amount:
+                break
+            openOrder = orderbook[orderbookKey][i]
+            orderAmount = self.safe_float(openOrder, 'amount')
+            if orderAmount is None:
+                continue
+            if totalAmount + orderAmount > amount:
+                orderAmount = amount - totalAmount
+            totalAmount += orderAmount
+            newOrder = self.prepare_order_for_trade(openOrder, orderAmount, nonce, side, params)
+            if newOrder['amount'] != '0':
+                orders.append(newOrder)
+        return self.privatePostTrade(orders)
+
     def create_order(self, symbol, type, side, amount, price=None, params={}):
         self.check_required_dependencies()
         self.load_markets()
@@ -444,17 +536,16 @@ class idex(Exchange):
             #      expires: 10000,
             #      nonce: 1564656561510,
             #      user: '0xc3f8304270e49b8e8197bfcfd8567b83d9e4479b'}}
+            nonce = self.get_nonce()
             orderToSign = {
                 'orderHash': params['orderHash'],
                 'amount': params['params']['amountBuy'],
-                'address': params['params']['user'],
-                'nonce': params['params']['nonce'],
+                'address': self.walletAddress,
+                'nonce': nonce,
             }
             orderHash = self.get_idex_market_order_hash(orderToSign)
             signature = self.sign_message(orderHash, self.privateKey)
             signedOrder = self.extend(orderToSign, signature)
-            signedOrder['address'] = self.walletAddress
-            signedOrder['nonce'] = self.get_nonce()
             #   [{
             #     "amount": "0.07",
             #     "date": "2017-10-13 16:25:36",
