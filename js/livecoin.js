@@ -93,6 +93,7 @@ module.exports = class livecoin extends Exchange {
             'commonCurrencies': {
                 'BTCH': 'Bithash',
                 'CPC': 'Capricoin',
+                'CBC': 'CryptoBossCoin', // conflict with CBC (CashBet Coin)
                 'CPT': 'Cryptos', // conflict with CPT = Contents Protocol https://github.com/ccxt/ccxt/issues/4920 and https://github.com/ccxt/ccxt/issues/6081
                 'EDR': 'E-Dinar Coin', // conflicts with EDR for Endor Protocol and EDRCoin
                 'eETT': 'EETT',
@@ -104,6 +105,7 @@ module.exports = class livecoin extends Exchange {
                 'RUR': 'RUB',
                 'SCT': 'SpaceCoin',
                 'TPI': 'ThaneCoin',
+                'WAX': 'WAXP',
                 'wETT': 'WETT',
                 'XBT': 'Bricktox',
             },
@@ -254,6 +256,9 @@ module.exports = class livecoin extends Exchange {
                     'max': Math.pow (10, precision),
                 },
             },
+            'id': undefined,
+            'code': undefined,
+            'name': undefined,
         };
         const currencies = [
             { 'id': 'USD', 'code': 'USD', 'name': 'US Dollar' },
@@ -435,7 +440,18 @@ module.exports = class livecoin extends Exchange {
             }
         }
         let symbol = undefined;
-        if (market !== undefined) {
+        const marketId = this.safeString (trade, 'symbol');
+        if (marketId !== undefined) {
+            if (marketId in this.markets_by_id) {
+                market = this.markets_by_id[marketId];
+            } else {
+                const [ baseId, quoteId ] = marketId.split ('/');
+                const base = this.safeCurrencyCode (baseId);
+                const quote = this.safeCurrencyCode (quoteId);
+                symbol = base + '/' + quote;
+            }
+        }
+        if ((symbol === undefined) && (market !== undefined)) {
             symbol = market['symbol'];
         }
         return {
@@ -456,16 +472,17 @@ module.exports = class livecoin extends Exchange {
     }
 
     async fetchMyTrades (symbol = undefined, since = undefined, limit = undefined, params = {}) {
-        if (symbol === undefined) {
-            throw new ArgumentsRequired (this.id + ' fetchMyTrades requires a symbol argument');
-        }
         await this.loadMarkets ();
-        const market = this.market (symbol);
         const request = {
-            'currencyPair': market['id'],
-            // orderDesc': 'true', // or 'false', if true then new orders will be first, otherwise old orders will be first.
+            // 'currencyPair': market['id'],
+            // 'orderDesc': 'true', // or 'false', if true then new orders will be first, otherwise old orders will be first.
             // 'offset': 0, // page offset, position of the first item on the page
         };
+        let market = undefined;
+        if (symbol !== undefined) {
+            market = this.market (symbol);
+            request['currencyPair'] = market['id'];
+        }
         if (limit !== undefined) {
             request['limit'] = limit;
         }
@@ -602,6 +619,7 @@ module.exports = class livecoin extends Exchange {
         return {
             'info': order,
             'id': order['id'],
+            'clientOrderId': undefined,
             'timestamp': timestamp,
             'datetime': this.iso8601 (timestamp),
             'lastTradeTimestamp': undefined,
@@ -620,6 +638,7 @@ module.exports = class livecoin extends Exchange {
                 'currency': feeCurrency,
                 'rate': feeRate,
             },
+            'average': undefined,
         };
     }
 

@@ -8,6 +8,8 @@ from ccxt.base.errors import ExchangeError
 from ccxt.base.errors import AuthenticationError
 from ccxt.base.errors import ArgumentsRequired
 from ccxt.base.errors import BadSymbol
+from ccxt.base.errors import OrderNotFound
+from ccxt.base.errors import RateLimitExceeded
 from ccxt.base.errors import ExchangeNotAvailable
 
 
@@ -82,18 +84,10 @@ class bw(Exchange):
             },
             'fees': {
                 'trading': {
-                    'tierBased': True,
+                    'tierBased': False,
                     'percentage': True,
                     'taker': 0.2 / 100,
                     'maker': 0.2 / 100,
-                    'tiers': {
-                        'taker': [
-                            [0, 0.2 / 100],
-                        ],
-                        'maker': [
-                            [0, 0.2 / 100],
-                        ],
-                    },
                 },
                 'funding': {
                 },
@@ -102,7 +96,9 @@ class bw(Exchange):
                 'exact': {
                     '999': AuthenticationError,
                     '1000': ExchangeNotAvailable,  # {"datas":null,"resMsg":{"message":"getKlines error:data not exitsts\uff0cplease wait ,dataType=4002_KLINE_1M","method":null,"code":"1000"}}
+                    '2012': OrderNotFound,  # {"datas":null,"resMsg":{"message":"entrust not exists or on dealing with system","method":null,"code":"2012"}}
                     '5017': BadSymbol,  # {"datas":null,"resMsg":{"message":"market not exist","method":null,"code":"5017"}}
+                    '10001': RateLimitExceeded,  # {"resMsg":{"code":"10001","message":"API frequency limit"}}
                 },
             },
             'api': {
@@ -316,7 +312,7 @@ class bw(Exchange):
                     },
                     'withdraw': {
                         'min': None,
-                        'max': float(self.safe_integer(currency, 'onceDrawLimit')),
+                        'max': self.safe_float(currency, 'onceDrawLimit'),
                     },
                 },
             }
@@ -342,8 +338,10 @@ class bw(Exchange):
         marketId = self.safe_string(ticker, 0)
         if marketId in self.markets_by_id:
             market = self.markets_by_id[marketId]
-        if (symbol is None) and (market is not None):
+        if market is not None:
             symbol = market['symbol']
+        else:
+            symbol = marketId
         timestamp = self.milliseconds()
         close = float(self.safe_value(ticker, 1))
         bid = self.safe_value(ticker, 'bid', {})
@@ -594,7 +592,7 @@ class bw(Exchange):
         result = {'info': response}
         for i in range(0, len(balances)):
             balance = balances[i]
-            currencyId = self.safe_integer(balance, 'currencyTypeId')
+            currencyId = self.safe_string(balance, 'currencyTypeId')
             code = self.safe_currency_code(currencyId)
             account = self.account()
             account['free'] = self.safe_float(balance, 'amount')
@@ -647,6 +645,7 @@ class bw(Exchange):
             'status': 'open',
             'fee': None,
             'trades': None,
+            'clientOrderId': None,
         }
 
     def parse_order_status(self, status):
@@ -707,6 +706,7 @@ class bw(Exchange):
         return {
             'info': order,
             'id': self.safe_string(order, 'entrustId'),
+            'clientOrderId': None,
             'timestamp': timestamp,
             'datetime': self.iso8601(timestamp),
             'lastTradeTimestamp': None,
