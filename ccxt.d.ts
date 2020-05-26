@@ -417,6 +417,7 @@ declare module 'ccxt' {
         marketIds (symbols: string[]): string[];
         microseconds (): number;
         nonce (): number;
+        parseTimeframe (timeframe: string): number;
         purgeCachedOrders (timestamp: number): void;
         request (path: string, api?: string, method?: string, params?: Params, headers?: any, body?: any): Promise<any>;
         seconds (): number;
@@ -491,6 +492,7 @@ declare module 'ccxt' {
     export class deribit extends Exchange {}
     export class digifinex extends Exchange {}
     export class dsx extends Exchange {}
+    export class eterbase extends Exchange {}
     export class exmo extends Exchange {}
     export class exx extends Exchange {}
     export class fcoin extends Exchange {}
@@ -530,6 +532,7 @@ declare module 'ccxt' {
     export class paymium extends Exchange {}
     export class poloniex extends Exchange {}
     export class probit extends Exchange {}
+    export class qtrade extends Exchange {}
     export class rightbtc extends Exchange {}
     export class southxchange extends Exchange {}
     export class stex extends Exchange {}
