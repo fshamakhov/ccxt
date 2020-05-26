@@ -461,7 +461,7 @@ class okex(Exchange):
                     '33005': ExchangeError,  # {"code": 33005, "message": "repayment amount must exceed 0"}
                     '33006': ExchangeError,  # {"code": 33006, "message": "loan order not found"}
                     '33007': ExchangeError,  # {"code": 33007, "message": "status not found"}
-                    '33008': ExchangeError,  # {"code": 33008, "message": "loan amount cannot exceed the maximum limit"}
+                    '33008': InsufficientFunds,  # {"code": 33008, "message": "loan amount cannot exceed the maximum limit"}
                     '33009': ExchangeError,  # {"code": 33009, "message": "user ID is blank"}
                     '33010': ExchangeError,  # {"code": 33010, "message": "you cannot cancel an order during session 2 of call auction"}
                     '33011': ExchangeError,  # {"code": 33011, "message": "no new market data"}
@@ -1111,7 +1111,7 @@ class okex(Exchange):
             ticker = self.parse_ticker(response[i])
             symbol = ticker['symbol']
             result[symbol] = ticker
-        return result
+        return self.filter_by_array(result, 'symbol', symbols)
 
     async def fetch_tickers(self, symbols=None, params={}):
         defaultType = self.safe_string_2(self.options, 'fetchTickers', 'defaultType')
@@ -1759,6 +1759,10 @@ class okex(Exchange):
             # 'client_oid': 'abcdef1234567890',  # [a-z0-9]{1,32}
             # 'order_type': '0',  # 0: Normal limit order(Unfilled and 0 represent normal limit order) 1: Post only 2: Fill Or Kill 3: Immediatel Or Cancel
         }
+        clientOrderId = self.safe_string_2(params, 'client_oid', 'clientOrderId')
+        if clientOrderId is not None:
+            request['client_oid'] = clientOrderId
+            params = self.omit(params, ['client_oid', 'clientOrderId'])
         method = None
         if market['futures'] or market['swap']:
             size = self.number_to_string(amount) if market['futures'] else self.amount_to_precision(symbol, amount)
@@ -1816,7 +1820,10 @@ class okex(Exchange):
             raise ArgumentsRequired(self.id + ' cancelOrder() requires a symbol argument')
         await self.load_markets()
         market = self.market(symbol)
-        type = market['type']
+        defaultType = self.safe_string_2(self.options, 'cancelOrder', 'defaultType', market['type'])
+        type = self.safe_string(params, 'type', defaultType)
+        if type is None:
+            raise ArgumentsRequired(self.id + " cancelOrder requires a type parameter(one of 'spot', 'margin', 'futures', 'swap').")
         method = type + 'PostCancelOrder'
         request = {
             'instrument_id': market['id'],
@@ -1825,14 +1832,14 @@ class okex(Exchange):
             method += 'InstrumentId'
         else:
             method += 's'
-        clientOid = self.safe_string(params, 'client_oid')
-        if clientOid is not None:
+        clientOrderId = self.safe_string_2(params, 'client_oid', 'clientOrderId')
+        if clientOrderId is not None:
             method += 'ClientOid'
-            request['client_oid'] = clientOid
+            request['client_oid'] = clientOrderId
         else:
             method += 'OrderId'
             request['order_id'] = id
-        query = self.omit(params, 'type')
+        query = self.omit(params, ['type', 'client_oid', 'clientOrderId'])
         response = await getattr(self, method)(self.extend(request, query))
         result = response if ('result' in response) else self.safe_value(response, market['id'], {})
         #
@@ -2094,7 +2101,10 @@ class okex(Exchange):
             raise ArgumentsRequired(self.id + ' fetchOrdersByState requires a symbol argument')
         await self.load_markets()
         market = self.market(symbol)
-        type = market['type']
+        defaultType = self.safe_string_2(self.options, 'fetchOrder', 'defaultType', market['type'])
+        type = self.safe_string(params, 'type', defaultType)
+        if type is None:
+            raise ArgumentsRequired(self.id + " fetchOrder requires a type parameter(one of 'spot', 'margin', 'futures', 'swap').")
         request = {
             'instrument_id': market['id'],
             # '-2': failed,
@@ -2395,12 +2405,14 @@ class okex(Exchange):
         # fetchDeposits
         #
         #     {
-        #         amount: "0.47847546",
-        #         txid: "1723573_3_0_0_WALLET",
-        #         currency: "BTC",
-        #         to: "",
-        #         timestamp: "2018-08-16T03:41:10.000Z",
-        #         status: "2"
+        #         "amount": "4.19511659",
+        #         "txid": "14c9a8c925647cdb7e5b2937ea9aefe2b29b2c273150ad3f44b3b8a4635ed437",
+        #         "currency": "XMR",
+        #         "from": "",
+        #         "to": "48PjH3ksv1fiXniKvKvyH5UtFs5WhfS2Vf7U3TwzdRJtCc7HJWvCQe56dRahyhQyTAViXZ8Nzk4gQg6o4BJBMUoxNy8y8g7",
+        #         "deposit_id": 11571659, <-- we can use self
+        #         "timestamp": "2019-10-01T14:54:19.000Z",
+        #         "status": "2"
         #     }
         #
         type = None
@@ -2415,7 +2427,7 @@ class okex(Exchange):
             address = addressTo
         else:
             # the payment_id will appear on new deposits but appears to be removed from the response after 2 months
-            id = self.safe_string(transaction, 'payment_id')
+            id = self.safe_string_2(transaction, 'payment_id', 'deposit_id')
             type = 'deposit'
             address = addressTo
         currencyId = self.safe_string(transaction, 'currency')
