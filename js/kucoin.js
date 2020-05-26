@@ -686,7 +686,7 @@ module.exports = class kucoin extends Exchange {
     async fetchOrderBook (symbol, limit = undefined, params = {}) {
         const level = this.safeInteger (params, 'level', 2);
         let levelLimit = level.toString ();
-        if (level === '2') {
+        if (levelLimit === '2') {
             if (limit !== undefined) {
                 if ((limit !== 20) && (limit !== 100)) {
                     throw new ExchangeError (this.id + ' fetchOrderBook limit argument must be undefined, 20 or 100');
@@ -753,9 +753,10 @@ module.exports = class kucoin extends Exchange {
         await this.loadMarkets ();
         const marketId = this.marketId (symbol);
         // required param, cannot be used twice
-        const clientOid = this.uuid ();
+        const clientOrderId = this.safeString2 (params, 'clientOid', 'clientOrderId', this.uuid ());
+        params = this.omit (params, [ 'clientOid', 'clientOrderId' ]);
         const request = {
-            'clientOid': clientOid,
+            'clientOid': clientOrderId,
             'side': side,
             'symbol': marketId,
             'type': type,
@@ -795,7 +796,7 @@ module.exports = class kucoin extends Exchange {
             'datetime': this.iso8601 (timestamp),
             'fee': undefined,
             'status': 'open',
-            'clientOrderId': clientOid,
+            'clientOrderId': clientOrderId,
             'info': data,
         };
         if (!this.safeValue (params, 'quoteAmount')) {

@@ -4,7 +4,7 @@
 
 # -----------------------------------------------------------------------------
 
-__version__ = '1.27.77'
+__version__ = '1.28.64'
 
 # -----------------------------------------------------------------------------
 
@@ -74,6 +74,8 @@ import time
 import uuid
 import zlib
 from decimal import Decimal
+from time import mktime
+from wsgiref.handlers import format_date_time
 
 # -----------------------------------------------------------------------------
 
@@ -967,6 +969,15 @@ class Exchange(object):
             return None
 
     @staticmethod
+    def rfc2616(self, timestamp=None):
+        if timestamp is None:
+            ts = datetime.datetime.now()
+        else:
+            ts = timestamp
+        stamp = mktime(ts.timetuple())
+        return format_date_time(stamp)
+
+    @staticmethod
     def dmy(timestamp, infix='-'):
         utc_datetime = datetime.datetime.utcfromtimestamp(int(round(timestamp / 1000)))
         return utc_datetime.strftime('%m' + infix + '%d' + infix + '%Y')
@@ -1783,7 +1794,7 @@ class Exchange(object):
     @staticmethod
     def from_wei(amount, decimals=18):
         amount_float = float(amount)
-        exponential = '{:.15e}'.format(amount_float)
+        exponential = '{:.14e}'.format(amount_float)
         n, exponent = exponential.split('e')
         new_exponent = int(exponent) - decimals
         return float(n + 'e' + str(new_exponent))
@@ -1791,7 +1802,7 @@ class Exchange(object):
     @staticmethod
     def to_wei(amount, decimals=18):
         amount_float = float(amount)
-        exponential = '{:.15e}'.format(amount_float)
+        exponential = '{:.14e}'.format(amount_float)
         n, exponent = exponential.split('e')
         new_exponent = int(exponent) + decimals
         return number_to_string(n + 'e' + str(new_exponent))

@@ -434,7 +434,7 @@ module.exports = class okex extends Exchange {
                     '33005': ExchangeError, // { "code": 33005, "message": "repayment amount must exceed 0" }
                     '33006': ExchangeError, // { "code": 33006, "message": "loan order not found" }
                     '33007': ExchangeError, // { "code": 33007, "message": "status not found" }
-                    '33008': ExchangeError, // { "code": 33008, "message": "loan amount cannot exceed the maximum limit" }
+                    '33008': InsufficientFunds, // { "code": 33008, "message": "loan amount cannot exceed the maximum limit" }
                     '33009': ExchangeError, // { "code": 33009, "message": "user ID is blank" }
                     '33010': ExchangeError, // { "code": 33010, "message": "you cannot cancel an order during session 2 of call auction" }
                     '33011': ExchangeError, // { "code": 33011, "message": "no new market data" }
@@ -1107,7 +1107,7 @@ module.exports = class okex extends Exchange {
             const symbol = ticker['symbol'];
             result[symbol] = ticker;
         }
-        return result;
+        return this.filterByArray (result, 'symbol', symbols);
     }
 
     async fetchTickers (symbols = undefined, params = {}) {
@@ -1790,6 +1790,11 @@ module.exports = class okex extends Exchange {
             // 'client_oid': 'abcdef1234567890', // [a-z0-9]{1,32}
             // 'order_type': '0', // 0: Normal limit order (Unfilled and 0 represent normal limit order) 1: Post only 2: Fill Or Kill 3: Immediatel Or Cancel
         };
+        const clientOrderId = this.safeString2 (params, 'client_oid', 'clientOrderId');
+        if (clientOrderId !== undefined) {
+            request['client_oid'] = clientOrderId;
+            params = this.omit (params, [ 'client_oid', 'clientOrderId' ]);
+        }
         let method = undefined;
         if (market['futures'] || market['swap']) {
             const size = market['futures'] ? this.numberToString (amount) : this.amountToPrecision (symbol, amount);
@@ -1856,7 +1861,11 @@ module.exports = class okex extends Exchange {
         }
         await this.loadMarkets ();
         const market = this.market (symbol);
-        const type = market['type'];
+        const defaultType = this.safeString2 (this.options, 'cancelOrder', 'defaultType', market['type']);
+        const type = this.safeString (params, 'type', defaultType);
+        if (type === undefined) {
+            throw new ArgumentsRequired (this.id + " cancelOrder requires a type parameter (one of 'spot', 'margin', 'futures', 'swap').");
+        }
         let method = type + 'PostCancelOrder';
         const request = {
             'instrument_id': market['id'],
@@ -1866,15 +1875,15 @@ module.exports = class okex extends Exchange {
         } else {
             method += 's';
         }
-        const clientOid = this.safeString (params, 'client_oid');
-        if (clientOid !== undefined) {
+        const clientOrderId = this.safeString2 (params, 'client_oid', 'clientOrderId');
+        if (clientOrderId !== undefined) {
             method += 'ClientOid';
-            request['client_oid'] = clientOid;
+            request['client_oid'] = clientOrderId;
         } else {
             method += 'OrderId';
             request['order_id'] = id;
         }
-        const query = this.omit (params, 'type');
+        const query = this.omit (params, [ 'type', 'client_oid', 'clientOrderId' ]);
         const response = await this[method] (this.extend (request, query));
         const result = ('result' in response) ? response : this.safeValue (response, market['id'], {});
         //
@@ -2158,7 +2167,11 @@ module.exports = class okex extends Exchange {
         }
         await this.loadMarkets ();
         const market = this.market (symbol);
-        const type = market['type'];
+        const defaultType = this.safeString2 (this.options, 'fetchOrder', 'defaultType', market['type']);
+        const type = this.safeString (params, 'type', defaultType);
+        if (type === undefined) {
+            throw new ArgumentsRequired (this.id + " fetchOrder requires a type parameter (one of 'spot', 'margin', 'futures', 'swap').");
+        }
         const request = {
             'instrument_id': market['id'],
             // '-2': failed,
@@ -2482,12 +2495,14 @@ module.exports = class okex extends Exchange {
         // fetchDeposits
         //
         //     {
-        //         amount: "0.47847546",
-        //         txid: "1723573_3_0_0_WALLET",
-        //         currency: "BTC",
-        //         to: "",
-        //         timestamp: "2018-08-16T03:41:10.000Z",
-        //         status: "2"
+        //         "amount": "4.19511659",
+        //         "txid": "14c9a8c925647cdb7e5b2937ea9aefe2b29b2c273150ad3f44b3b8a4635ed437",
+        //         "currency": "XMR",
+        //         "from": "",
+        //         "to": "48PjH3ksv1fiXniKvKvyH5UtFs5WhfS2Vf7U3TwzdRJtCc7HJWvCQe56dRahyhQyTAViXZ8Nzk4gQg6o4BJBMUoxNy8y8g7",
+        //         "deposit_id": 11571659, <-- we can use this
+        //         "timestamp": "2019-10-01T14:54:19.000Z",
+        //         "status": "2"
         //     }
         //
         let type = undefined;
@@ -2502,7 +2517,7 @@ module.exports = class okex extends Exchange {
             address = addressTo;
         } else {
             // the payment_id will appear on new deposits but appears to be removed from the response after 2 months
-            id = this.safeString (transaction, 'payment_id');
+            id = this.safeString2 (transaction, 'payment_id', 'deposit_id');
             type = 'deposit';
             address = addressTo;
         }
