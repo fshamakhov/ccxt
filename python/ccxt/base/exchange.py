@@ -1813,32 +1813,7 @@ class Exchange(object):
         public_key_hash = self.web3.sha3(public_key_bytes)
         return '0x' + Exchange.decode(base64.b16encode(public_key_hash))[-40:].lower()
 
-    def solidityTypesV2(self, array):
-        res = []
-        for val in array:
-            if self.web3.isAddress(val):
-                res.append('address')
-            elif isinstance(val, str) and val[:2] == '0x':
-                res.append('bytes')
-            else:
-                res.append('uint256')
-        return res
-
-    def solidityValuesV2(self, array):
-        res = []
-        for val in array:
-            if self.web3.isAddress(val) or (isinstance(val, str) and val[:2] == '0x'):
-                res.append(val)
-            else:
-                res.append(int(val))
-        return res
-
-    def soliditySha3V2(self, array):
-        values = self.solidityValuesV2(array)
-        types = self.solidityTypesV2(values)
-        return self.web3.soliditySha3(types, values).hex()
-
-    def soliditySha3(self, array):
+    def solidity_sha3(self, array):
         values = self.solidityValues(array)
         types = self.solidityTypes(values)
         return self.web3.soliditySha3(types, values).hex()
@@ -1850,7 +1825,7 @@ class Exchange(object):
         return [self.web3.toChecksumAddress(value) if self.web3.isAddress(value) else (int(value, 16) if str(value)[:2] == '0x' else int(value)) for value in array]
 
     def getZeroExOrderHash2(self, order):
-        return self.soliditySha3([
+        return self.solidity_sha3([
             order['exchangeContractAddress'],  # address
             order['maker'],  # address
             order['taker'],  # address
@@ -1951,7 +1926,7 @@ class Exchange(object):
 
     def signZeroExOrderV2(self, order, privateKey):
         orderHash = self.getZeroExOrderHashV2(order)
-        signature = self.signMessage(orderHash[-64:], privateKey)
+        signature = self.sign_message(orderHash[-64:], privateKey)
         return self.extend(order, {
             'orderHash': orderHash,
             'signature': self._convertECSignatureToSignatureHex(signature),
@@ -1983,7 +1958,7 @@ class Exchange(object):
             'v': 27 + signature['v'],
         }
 
-    def signMessage(self, message, privateKey):
+    def sign_message(self, message, privateKey):
         #
         # The following comment is related to MetaMask, we use the upper type of signature prefix:
         #
