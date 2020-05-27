@@ -77,7 +77,7 @@ assert(equals(exchange.signHash('0x59ea5d98c3500c3729f95cf98aa91663f498518cc4013
     'v': 27
 }))
 
-assert(equals(exchange.sign_message(privateKey, privateKey), {
+assert(equals(exchange.signMessage(privateKey, privateKey), {
     'r': '0x6f684aa41c02da83dac3039d8805ddbe79a03b1297e247c7742cab8dfc19d341',
     's': '0x62473881674550563cb028ff40a7846fd53620ddf40a20cc1003b8484a109a4a',
     'v': 27
@@ -122,8 +122,8 @@ assert(jwt({'lil': 'xan'}, encode('betrayed'), 'HS256') == 'eyJhbGciOiJIUzI1NiIs
 
 # ---------------------------------------------------------------------------------------------------------------------
 
-assert(exchange.solidity_sha3(['0x63581b9abf2b661da0ba247e0dda1b723dcff5e3', 100, 'lulwat']) == '0x1d3e95c10fc64aee6628ea59284503a4eafc6ff13c541f00753fbd2a66cea0f5')
-assert(exchange.solidity_sha3([234]) == '0x61c831beab28d67d1bb40b5ae1a11e2757fa842f031a2d0bc94a7867bc5d26c2')
-assert(exchange.solidity_sha3(['234']) == '0x61c831beab28d67d1bb40b5ae1a11e2757fa842f031a2d0bc94a7867bc5d26c2')
-assert(exchange.solidity_sha3(['Hellonot %']) == '0x661136a4267dba9ccdf6bfddb7c00e714de936674c4bdb065a531cf1cb15c7fc')
-assert(exchange.solidity_sha3(['0x407D73d8a49eeb85D32Cf465507dd71d507100c1']) == '0x4e8ebbefa452077428f93c9520d3edd60594ff452a29ac7d2ccc11d47f3ab95b')
+assert(exchange.soliditySha3(['0x63581b9abf2b661da0ba247e0dda1b723dcff5e3', 100, 'lulwat']) == '0x1d3e95c10fc64aee6628ea59284503a4eafc6ff13c541f00753fbd2a66cea0f5')
+assert(exchange.soliditySha3([234]) == '0x61c831beab28d67d1bb40b5ae1a11e2757fa842f031a2d0bc94a7867bc5d26c2')
+assert(exchange.soliditySha3(['234']) == '0x61c831beab28d67d1bb40b5ae1a11e2757fa842f031a2d0bc94a7867bc5d26c2')
+assert(exchange.soliditySha3(['Hellonot %']) == '0x661136a4267dba9ccdf6bfddb7c00e714de936674c4bdb065a531cf1cb15c7fc')
+assert(exchange.soliditySha3(['0x407D73d8a49eeb85D32Cf465507dd71d507100c1']) == '0x4e8ebbefa452077428f93c9520d3edd60594ff452a29ac7d2ccc11d47f3ab95b')
