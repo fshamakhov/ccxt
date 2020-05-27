@@ -536,7 +536,11 @@ class idex(Exchange):
             #      expires: 10000,
             #      nonce: 1564656561510,
             #      user: '0xc3f8304270e49b8e8197bfcfd8567b83d9e4479b'}}
-            nonce = self.get_nonce()
+            nonce = None
+            if 'nonce' in params and params['nonce']:
+                nonce = params['nonce']
+            else:
+                nonce = self.get_nonce()
             orderToSign = {
                 'orderHash': params['orderHash'],
                 'amount': params['params']['amountBuy'],

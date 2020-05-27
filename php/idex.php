@@ -563,7 +563,12 @@ class idex extends Exchange {
             //      $expires => 10000,
             //      $nonce => 1564656561510,
             //      user => '0xc3f8304270e49b8e8197bfcfd8567b83d9e4479b' } }
-            $nonce = $this->get_nonce();
+            $nonce = null;
+            if (is_array($params && $params['nonce']) && array_key_exists('nonce', $params && $params['nonce'])) {
+                $nonce = $params['nonce'];
+            } else {
+                $nonce = $this->get_nonce();
+            }
             $orderToSign = array(
                 'orderHash' => $params['orderHash'],
                 'amount' => $params['params']['amountBuy'],
