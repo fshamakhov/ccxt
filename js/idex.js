@@ -559,7 +559,12 @@ module.exports = class idex extends Exchange {
             //      expires: 10000,
             //      nonce: 1564656561510,
             //      user: '0xc3f8304270e49b8e8197bfcfd8567b83d9e4479b' } }
-            const nonce = await this.getNonce ();
+            let nonce = undefined;
+            if ('nonce' in params && params['nonce']) {
+                nonce = params['nonce'];
+            } else {
+                nonce = await this.getNonce ();
+            }
             const orderToSign = {
                 'orderHash': params['orderHash'],
                 'amount': params['params']['amountBuy'],
