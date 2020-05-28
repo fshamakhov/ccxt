@@ -1851,7 +1851,7 @@ class Exchange(object):
     @staticmethod
     def from_wei(amount, decimals=18):
         if Web3:
-            return from_wei(amount, decimals)
+            return float(from_wei(amount, decimals))
         amount_float = float(amount)
         exponential = '{:.14e}'.format(amount_float)
         n, exponent = exponential.split('e')
@@ -1861,7 +1861,7 @@ class Exchange(object):
     @staticmethod
     def to_wei(amount, decimals=18):
         if Web3:
-            return to_wei(amount, decimals)
+            return str(to_wei(amount, decimals))
         amount_float = float(amount)
         exponential = '{:.14e}'.format(amount_float)
         n, exponent = exponential.split('e')
