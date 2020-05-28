@@ -7,6 +7,7 @@
 __version__ = '1.28.78'
 
 # -----------------------------------------------------------------------------
+from typing import Union
 
 from ccxt.base.errors import ExchangeError
 from ccxt.base.errors import NetworkError
@@ -73,7 +74,7 @@ from ssl import SSLError
 import time
 import uuid
 import zlib
-from decimal import Decimal
+from decimal import Decimal, localcontext
 from time import mktime
 from wsgiref.handlers import format_date_time
 
@@ -103,6 +104,62 @@ try:
     from web3 import Web3, HTTPProvider
 except ImportError:
     Web3 = HTTPProvider = None  # web3/0x not supported in Python 2
+
+# -----------------------------------------------------------------------------
+# To and from Wei methods
+try:
+    from eth_utils.currency import MAX_WEI, MIN_WEI
+except ImportError:
+    MIN_WEI = 0
+    MAX_WEI = 2 ** 256 - 1
+
+
+def from_wei(
+    number: Union[Decimal, float, str],
+    precision: int = 18,
+) -> Decimal:
+    with localcontext() as ctx:
+        ctx.prec = 999
+        unit_value = Decimal(f'1e{precision}')
+        d_number = Decimal(value=number, context=ctx)
+        result_value = d_number / unit_value
+
+    return result_value
+
+
+def to_wei(number: Union[Decimal, float, str], precision: int = 18) -> int:
+    if isinstance(number, int) or isinstance(number, str):
+        d_number = Decimal(value=number)
+    elif isinstance(number, float):
+        d_number = Decimal(value=str(number))
+    elif isinstance(number, Decimal):
+        d_number = number
+    else:
+        raise TypeError(
+            "Unsupported type.  Must be one of integer, float, or string")
+
+    if d_number == 0:
+        return 0
+
+    s_number = str(number)
+    unit_value = Decimal(f'1e{precision}')
+
+    if d_number < 1 and "." in s_number:
+        with localcontext() as ctx:
+            multiplier = len(s_number) - s_number.index(".") - 1
+            ctx.prec = multiplier
+            d_number = Decimal(value=number, context=ctx) * 10 ** multiplier
+        unit_value /= 10 ** multiplier
+
+    with localcontext() as ctx:
+        ctx.prec = 999
+        result_value = Decimal(value=d_number, context=ctx) * unit_value
+
+    if result_value < MIN_WEI or result_value > MAX_WEI:
+        raise ValueError(
+            "Resulting wei value must be between 1 and 2**256 - 1")
+
+    return int(result_value)
 
 # -----------------------------------------------------------------------------
 
@@ -1793,6 +1850,8 @@ class Exchange(object):
 
     @staticmethod
     def from_wei(amount, decimals=18):
+        if Web3:
+            return from_wei(amount, decimals)
         amount_float = float(amount)
         exponential = '{:.14e}'.format(amount_float)
         n, exponent = exponential.split('e')
@@ -1801,6 +1860,8 @@ class Exchange(object):
 
     @staticmethod
     def to_wei(amount, decimals=18):
+        if Web3:
+            return to_wei(amount, decimals)
         amount_float = float(amount)
         exponential = '{:.14e}'.format(amount_float)
         n, exponent = exponential.split('e')
