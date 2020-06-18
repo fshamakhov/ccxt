@@ -22,7 +22,7 @@
 
 # ----------------------------------------------------------------------------
 
-__version__ = '1.28.78'
+__version__ = '1.30.14'
 
 # ----------------------------------------------------------------------------
 
@@ -96,6 +96,7 @@ from ccxt.bitso import bitso                                # noqa: F401
 from ccxt.bitstamp import bitstamp                          # noqa: F401
 from ccxt.bitstamp1 import bitstamp1                        # noqa: F401
 from ccxt.bittrex import bittrex                            # noqa: F401
+from ccxt.bitvavo import bitvavo                            # noqa: F401
 from ccxt.bitz import bitz                                  # noqa: F401
 from ccxt.bl3p import bl3p                                  # noqa: F401
 from ccxt.bleutrade import bleutrade                        # noqa: F401
@@ -128,6 +129,7 @@ from ccxt.coinspot import coinspot                          # noqa: F401
 from ccxt.coolcoin import coolcoin                          # noqa: F401
 from ccxt.coss import coss                                  # noqa: F401
 from ccxt.crex24 import crex24                              # noqa: F401
+from ccxt.currencycom import currencycom                    # noqa: F401
 from ccxt.deribit import deribit                            # noqa: F401
 from ccxt.digifinex import digifinex                        # noqa: F401
 from ccxt.dsx import dsx                                    # noqa: F401
@@ -152,7 +154,6 @@ from ccxt.idex import idex                                  # noqa: F401
 from ccxt.independentreserve import independentreserve      # noqa: F401
 from ccxt.indodax import indodax                            # noqa: F401
 from ccxt.itbit import itbit                                # noqa: F401
-from ccxt.kkex import kkex                                  # noqa: F401
 from ccxt.kraken import kraken                              # noqa: F401
 from ccxt.kucoin import kucoin                              # noqa: F401
 from ccxt.kuna import kuna                                  # noqa: F401
@@ -186,6 +187,7 @@ from ccxt.topq import topq                                  # noqa: F401
 from ccxt.upbit import upbit                                # noqa: F401
 from ccxt.vaultoro import vaultoro                          # noqa: F401
 from ccxt.vbtc import vbtc                                  # noqa: F401
+from ccxt.wavesexchange import wavesexchange                # noqa: F401
 from ccxt.whitebit import whitebit                          # noqa: F401
 from ccxt.xbtce import xbtce                                # noqa: F401
 from ccxt.yobit import yobit                                # noqa: F401
@@ -221,6 +223,7 @@ exchanges = [
     'bitstamp',
     'bitstamp1',
     'bittrex',
+    'bitvavo',
     'bitz',
     'bl3p',
     'bleutrade',
@@ -253,6 +256,7 @@ exchanges = [
     'coolcoin',
     'coss',
     'crex24',
+    'currencycom',
     'deribit',
     'digifinex',
     'dsx',
@@ -277,7 +281,6 @@ exchanges = [
     'independentreserve',
     'indodax',
     'itbit',
-    'kkex',
     'kraken',
     'kucoin',
     'kuna',
@@ -311,6 +314,7 @@ exchanges = [
     'upbit',
     'vaultoro',
     'vbtc',
+    'wavesexchange',
     'whitebit',
     'xbtce',
     'yobit',

@@ -75,7 +75,7 @@ declare module 'ccxt' {
         lastTradeTimestamp: number;
         status: 'open' | 'closed' | 'canceled';
         symbol: string;
-        type: 'market' | 'limit';
+        type: string;
         side: 'buy' | 'sell';
         price: number;
         average?: number;
@@ -457,6 +457,7 @@ declare module 'ccxt' {
     export class bitstamp extends Exchange {}
     export class bitstamp1 extends Exchange {}
     export class bittrex extends Exchange {}
+    export class bitvavo extends Exchange {}
     export class bitz extends Exchange {}
     export class bl3p extends Exchange {}
     export class bleutrade extends Exchange {}
@@ -489,6 +490,7 @@ declare module 'ccxt' {
     export class coolcoin extends coinegg {}
     export class coss extends Exchange {}
     export class crex24 extends Exchange {}
+    export class currencycom extends Exchange {}
     export class deribit extends Exchange {}
     export class digifinex extends Exchange {}
     export class dsx extends Exchange {}
@@ -513,7 +515,6 @@ declare module 'ccxt' {
     export class independentreserve extends Exchange {}
     export class indodax extends Exchange {}
     export class itbit extends Exchange {}
-    export class kkex extends Exchange {}
     export class kraken extends Exchange {}
     export class kucoin extends Exchange {}
     export class kuna extends acx {}
@@ -547,6 +548,7 @@ declare module 'ccxt' {
     export class upbit extends Exchange {}
     export class vaultoro extends Exchange {}
     export class vbtc extends foxbit {}
+    export class wavesexchange extends Exchange {}
     export class whitebit extends Exchange {}
     export class xbtce extends Exchange {}
     export class yobit extends Exchange {}
