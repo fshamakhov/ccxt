@@ -4,7 +4,7 @@
 
 # -----------------------------------------------------------------------------
 
-__version__ = '1.28.78'
+__version__ = '1.30.14'
 
 # -----------------------------------------------------------------------------
 
@@ -77,6 +77,7 @@ from ccxt.async_support.bitso import bitso                                # noqa
 from ccxt.async_support.bitstamp import bitstamp                          # noqa: F401
 from ccxt.async_support.bitstamp1 import bitstamp1                        # noqa: F401
 from ccxt.async_support.bittrex import bittrex                            # noqa: F401
+from ccxt.async_support.bitvavo import bitvavo                            # noqa: F401
 from ccxt.async_support.bitz import bitz                                  # noqa: F401
 from ccxt.async_support.bl3p import bl3p                                  # noqa: F401
 from ccxt.async_support.bleutrade import bleutrade                        # noqa: F401
@@ -109,6 +110,7 @@ from ccxt.async_support.coinspot import coinspot                          # noqa
 from ccxt.async_support.coolcoin import coolcoin                          # noqa: F401
 from ccxt.async_support.coss import coss                                  # noqa: F401
 from ccxt.async_support.crex24 import crex24                              # noqa: F401
+from ccxt.async_support.currencycom import currencycom                    # noqa: F401
 from ccxt.async_support.deribit import deribit                            # noqa: F401
 from ccxt.async_support.digifinex import digifinex                        # noqa: F401
 from ccxt.async_support.dsx import dsx                                    # noqa: F401
@@ -133,7 +135,6 @@ from ccxt.async_support.idex import idex                                  # noqa
 from ccxt.async_support.independentreserve import independentreserve      # noqa: F401
 from ccxt.async_support.indodax import indodax                            # noqa: F401
 from ccxt.async_support.itbit import itbit                                # noqa: F401
-from ccxt.async_support.kkex import kkex                                  # noqa: F401
 from ccxt.async_support.kraken import kraken                              # noqa: F401
 from ccxt.async_support.kucoin import kucoin                              # noqa: F401
 from ccxt.async_support.kuna import kuna                                  # noqa: F401
@@ -167,6 +168,7 @@ from ccxt.async_support.topq import topq                                  # noqa
 from ccxt.async_support.upbit import upbit                                # noqa: F401
 from ccxt.async_support.vaultoro import vaultoro                          # noqa: F401
 from ccxt.async_support.vbtc import vbtc                                  # noqa: F401
+from ccxt.async_support.wavesexchange import wavesexchange                # noqa: F401
 from ccxt.async_support.whitebit import whitebit                          # noqa: F401
 from ccxt.async_support.xbtce import xbtce                                # noqa: F401
 from ccxt.async_support.yobit import yobit                                # noqa: F401
@@ -201,6 +203,7 @@ exchanges = [
     'bitstamp',
     'bitstamp1',
     'bittrex',
+    'bitvavo',
     'bitz',
     'bl3p',
     'bleutrade',
@@ -233,6 +236,7 @@ exchanges = [
     'coolcoin',
     'coss',
     'crex24',
+    'currencycom',
     'deribit',
     'digifinex',
     'dsx',
@@ -257,7 +261,6 @@ exchanges = [
     'independentreserve',
     'indodax',
     'itbit',
-    'kkex',
     'kraken',
     'kucoin',
     'kuna',
@@ -291,6 +294,7 @@ exchanges = [
     'upbit',
     'vaultoro',
     'vbtc',
+    'wavesexchange',
     'whitebit',
     'xbtce',
     'yobit',

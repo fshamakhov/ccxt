@@ -264,8 +264,10 @@ module.exports = class Exchange {
         this.trades       = {}
         this.transactions = {}
         this.ohlcvs       = {}
+        this.myTrades     = undefined
 
         this.requiresWeb3 = false
+        this.requiresEddsa = false
         this.precision = {}
 
         this.enableLastJsonResponse = true
@@ -743,23 +745,23 @@ module.exports = class Exchange {
         throw new NotSupported (this.id + ' fetchBidsAsks not supported yet')
     }
 
-    async fetchOHLCVC (symbol, timeframe = '1m', since = undefined, limits = undefined, params = {}) {
+    async fetchOHLCVC (symbol, timeframe = '1m', since = undefined, limit = undefined, params = {}) {
         if (!this.has['fetchTrades']) {
             throw new NotSupported (this.id + ' fetchOHLCV() not supported yet')
         }
         await this.loadMarkets ()
-        const trades = await this.fetchTrades (symbol, since, limits, params)
-        const ohlcvc = buildOHLCVC (trades, timeframe, since, limits)
+        const trades = await this.fetchTrades (symbol, since, limit, params)
+        const ohlcvc = buildOHLCVC (trades, timeframe, since, limit)
         return ohlcvc
     }
 
-    async fetchOHLCV (symbol, timeframe = '1m', since = undefined, limits = undefined, params = {}) {
+    async fetchOHLCV (symbol, timeframe = '1m', since = undefined, limit = undefined, params = {}) {
         if (!this.has['fetchTrades']) {
             throw new NotSupported (this.id + ' fetchOHLCV() not supported yet')
         }
         await this.loadMarkets ()
-        const trades = await this.fetchTrades (symbol, since, limits, params)
-        const ohlcvc = buildOHLCVC (trades, timeframe, since, limits)
+        const trades = await this.fetchTrades (symbol, since, limit, params)
+        const ohlcvc = buildOHLCVC (trades, timeframe, since, limit)
         return ohlcvc.map ((c) => c.slice (0, -1))
     }
 
@@ -896,8 +898,9 @@ module.exports = class Exchange {
     }
 
     commonCurrencyCode (currency) {
-        if (!this.substituteCommonCurrencyCodes)
+        if (!this.substituteCommonCurrencyCodes) {
             return currency
+        }
         return this.safeString (this.commonCurrencies, currency, currency)
     }
 
@@ -1212,7 +1215,7 @@ module.exports = class Exchange {
         return ((symbol !== undefined) ? array.filter ((entry) => entry.symbol === symbol) : array)
     }
 
-    parseOHLCV (ohlcv, market = undefined, timeframe = '1m', since = undefined, limit = undefined) {
+    parseOHLCV (ohlcv, market = undefined) {
         return Array.isArray (ohlcv) ? ohlcv.slice (0, 6) : ohlcv
     }
 
@@ -1227,7 +1230,7 @@ module.exports = class Exchange {
             if (limit && (result.length >= limit)) {
                 break;
             }
-            const ohlcv = this.parseOHLCV (ohlcvs[i], market, timeframe, since, limit)
+            const ohlcv = this.parseOHLCV (ohlcvs[i], market)
             if (since && (ohlcv[0] < since)) {
                 continue
             }
@@ -1319,7 +1322,7 @@ module.exports = class Exchange {
     }
 
     checkRequiredDependencies () {
-        if (!Exchange.hasWeb3 ()) {
+        if (this.requiresWeb3 && !Exchange.hasWeb3 ()) {
             throw new ExchangeError ('Required dependencies missing: \nnpm i ethereumjs-util ethereumjs-abi --no-save');
         }
     }
